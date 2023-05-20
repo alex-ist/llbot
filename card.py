@@ -471,23 +471,28 @@ class TrainingCardSet:
         #нужно извлечь из базы и сформировать список
         conn = sqlite3.connect(DB)
         cursor = conn.cursor()
-        cursor.execute(f"SELECT training_card_id, card_id, direction, next_training_t, last_training_t FROM training_cards WHERE user_id = {self.user_id} ORDER BY next_training_t ASC LIMIT {n}")
+        #cursor.execute(f"SELECT training_card_id, card_id, direction, next_training_t, last_training_t FROM training_cards WHERE user_id = {self.user_id} ORDER BY next_training_t ASC LIMIT {n}")
+
+        #новые карты у которых next_training_t = -1 выбирает в случайном порядке.
+        cursor.execute(f"""
+    SELECT training_card_id, card_id, direction, next_training_t, last_training_t 
+    FROM training_cards 
+    WHERE user_id = {self.user_id} 
+    ORDER BY (CASE WHEN next_training_t = -1 THEN ABS(RANDOM()) % 16384 ELSE next_training_t END) ASC
+    LIMIT {n}
+        """)
         rows = cursor.fetchall()
         conn.close()
 
         self.current_pos=0
         tmp_set=[]
-        for row in rows:
+        self.tcard_set.clear()
+        #заменяем все  карты, так как новая выборка может быть содержать другие карты
+        for row in rows: 
             nt=convert_t_from_DB(row[3])
             lt=convert_t_from_DB(row[4])
             training_card_id=row[0]
-            for tc in self.tcard_set:
-                if tc.training_card_id==training_card_id: 
-                    tc.UpdateTCard(nt, lt) #fixme: может и  не надо апдейтить? в базе вроде должно совпадать  
-                    break
-            else:
-                tmp_set.append(TrainingCard(training_card_id, self.user_id, row[1], row[2], nt, lt))
-        self.tcard_set.extend(tmp_set)
+            self.tcard_set.append(TrainingCard(training_card_id, self.user_id, row[1], row[2], nt, lt))
 
         #сразу отсортируем список - чтобы сначала шли только четные dir, а затем нечетн dir. Чтобы одна и таже карта в разных направлениях не повторялась сама за собой
         self.tcard_set.sort(key=lambda t: t.direction)

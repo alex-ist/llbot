@@ -2,12 +2,12 @@ import sqlite3
 from sqlite3 import Error
 DB='lingostu.db'
 
-def f(w, e):
-    conn = sqlite3.connect(DB) 
-    cursor = conn.cursor()
-    cursor.execute("INSERT INTO word_set (f_word, f_example) VALUES (?, ?)",(w, e))
-    conn.commit()
-    conn.close()
+# def f(w, e):
+#     conn = sqlite3.connect(DB) 
+#     cursor = conn.cursor()
+#     cursor.execute("INSERT INTO word_set (f_word, f_example) VALUES (?, ?)",(w, e))
+#     conn.commit()
+#     conn.close()
 
 
 # ("garbage", "Sorry about the garbage cans blocking the driveway, I'll move them.")
@@ -24,15 +24,15 @@ def f(w, e):
 # ("environment","We should do something about the environment, like organizing a clean-up.")
 # ("lawn","Your lawn looks incredible! How do you keep it so green?")
 
-f("recycling","I think we should start recycling, it's important for the environment.")
-f("stomping","We can hear stomping from your apartment, it's a bit disturbing.")
-f("clean up", "Could you please clean up after your dog in the garden?")
-f("ceiling", "There's a water leak from my ceiling, I think it's coming from your apartment.")
-f("wait","Could you wait to start your renovation until after 9 am?")
-f("concern", "I understand your concern about the noise.")
-f("tranquility","We moved here for the tranquility, it's so peaceful.")
-f("upstairs","Every time the upstairs neighbors drop something, I half expect a bowling ball to come through the ceiling.")
-f("downstairs","I think my downstairs neighbors might be vampires, they're only active after midnight!")
+# f("recycling","I think we should start recycling, it's important for the environment.")
+# f("stomping","We can hear stomping from your apartment, it's a bit disturbing.")
+# f("clean up", "Could you please clean up after your dog in the garden?")
+# f("ceiling", "There's a water leak from my ceiling, I think it's coming from your apartment.")
+# f("wait","Could you wait to start your renovation until after 9 am?")
+# f("concern", "I understand your concern about the noise.")
+# f("tranquility","We moved here for the tranquility, it's so peaceful.")
+# f("upstairs","Every time the upstairs neighbors drop something, I half expect a bowling ball to come through the ceiling.")
+# f("downstairs","I think my downstairs neighbors might be vampires, they're only active after midnight!")
 
   
 
@@ -41,3 +41,54 @@ f("downstairs","I think my downstairs neighbors might be vampires, they're only 
 
 
 #,"Let's organize a playdate for our kids."
+
+
+# извлечь из базы и сформировать список
+user_id=5800537837
+li=30
+
+conn = sqlite3.connect(DB)
+cursor = conn.cursor()
+# cursor.execute(
+# f"""
+# SELECT training_card_id, card_id, direction, next_training_t, last_training_t FROM training_cards
+# WHERE user_id = {user_id} ORDER BY next_training_t ASC LIMIT {li}
+# """
+# )
+
+cursor.execute(
+f"""
+    SELECT training_card_id, card_id, direction, next_training_t, last_training_t 
+    FROM training_cards 
+    WHERE user_id = {user_id} 
+    ORDER BY (CASE WHEN next_training_t = -1 THEN ABS(RANDOM()) % 10000 ELSE next_training_t END) ASC
+    LIMIT {li}
+"""
+)
+rows = cursor.fetchall()
+conn.close()
+
+
+tmp_set=[]
+print (f"total={len(rows)}")
+for r in rows:
+    print (f"id={r[1]}  nt={r[3]}")
+
+#self.tcard_set.sort(key=lambda t: t.direction)
+
+
+# SELECT training_card_id, card_id, direction, next_training_t, last_training_t
+# FROM (
+#     SELECT 
+#         training_card_id, 
+#         card_id, 
+#         direction, 
+#         next_training_t, 
+#         last_training_t, 
+#         ROW_NUMBER() OVER(PARTITION BY card_id ORDER BY next_training_t) as rn
+#     FROM training_cards 
+#     WHERE user_id = {self.user_id} 
+# ) 
+# WHERE rn = 1
+# ORDER BY next_training_t ASC
+# LIMIT {n}
