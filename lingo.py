@@ -309,6 +309,8 @@ class UI:
         if self.state_prev is UI.States.FIRST_SET and data is not None:
             if data=='kbd:ok':
                 if self.cfg.first_set is not None:
+                    #add words to base 
+                    cards_add_words_by_topic(self.user_id, self.cfg.first_set, flang= "en", nlang="ru")
                     self.state=UI.States.TREN0
                     return True
                 else:
@@ -316,13 +318,9 @@ class UI:
             else:
                 parts = data.split(':')
                 if len(parts) != 2 or parts[0] != 'kbd':
-                    #fixme: че делать?
-                    logger.info("select lang error: %s", data)
+                    logger.error("select word set error: %s", data)
                     return False
                 self.cfg.first_set=parts[1]
-                #add words to base 
-                cards_add_words_by_topic(self.user_id, self.cfg.first_set, flang= "en", nlang="ru")
-                #add_set (user_id)
 
         await self.m1_text(msg03_first_set(), kbd=self.create_buttons(data))
         self.state_prev = UI.States.FIRST_SET
