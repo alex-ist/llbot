@@ -60,3 +60,11 @@ def get_next(tt):
         w=f"через {delta_days} дней"
     return w
 
+def msg07_edit_card():
+    return "<pre>Редактирование карты:</pre>\n"
+
+def msg08_del_card():
+    return "<pre>УДАЛЕНИЕ карты:</pre>\n"
+
+def msg09_reset_prog():
+    return "<pre>Сброс прогресса карты:</pre>\n"

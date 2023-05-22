@@ -250,6 +250,12 @@ class TrainingCard:
             self.next_training_t=datetime.now()
         #self.incorrect_answer=False        #fixme, неверное не надо апдейтить это поле?
     
+    def RemoveCard(self):
+        #удаляет из базы Card, и по тригеру удаляться обе Tcard
+        #carset дожен удаить их обе у себя.
+        if self.card is not None:
+            self.card.RemoveFromDb()
+            self.card=None
     
     def GetCard(self) ->Card:
         return self.card
@@ -339,7 +345,18 @@ class TrainingCard:
         if self.card is None:
             return None
         return self.card.GetExample()
-    
+
+    def ChangeForeign(self, f):
+        if self.card is not None:
+            self.card.ChangeForeign(f)
+
+    def ChangeNative(self, n):
+        if self.card is not None:
+            self.card.ChangeNative(n)
+
+    def ChangeExample(self,e):
+        if self.card is not None:
+            self.card.ChangeExample(e)
 
     @staticmethod
     def ReadFromDb(user_id:int, training_card_id:int) -> 'TrainingCard':
@@ -370,6 +387,22 @@ class TrainingCardSet:
         else:
             return None
     
+    def RemoveCurrentCard(self):
+        tc=self.GetCurrentTCard()
+        if tc is not None:
+            #нужно найти пару и удалить ее из кардset
+            tc.RemoveCard()
+            del self.tcard_set[self.current_pos]
+            if self.current_pos>len(self.tcard_set):
+                self.current_pos=0
+
+            for pos,tc in enumerate(self.tcard_set):
+                if tc.card.card_id==-1:
+                    del self.tcard_set[pos]
+                    if pos<self.current_pos:
+                        self.current_pos-=1
+                    break
+        
     #сообщаем результат,
     # если рез положительный, удаляет карту из набора
     # сдвигает счетчик на след карту
@@ -538,17 +571,41 @@ class TrainingCardSet:
         now=datetime.now()
         result=""
         for r in rows:
-            n=r[1]
-            t=convert_t_from_DB(n)
-            td=t-now
-            sec = td.total_seconds()
-            sign = '-' if sec < 0 else ' '
-            sec = abs(sec)
-            h = int(sec // 3600)
-            m = int((sec % 3600) // 60)
             d='&gt;' if r[2]==0 else '&lt;'
             w=r[0]
-            stat_line=f"{d}{w[:24].ljust(20)}:{sign}{h:02}:{m:02}\n"
+            n=r[1]
+            t=convert_t_from_DB(n)
+            if t is not None:
+                td=t-now
+                sec = td.total_seconds()
+                sign = '-' if sec < 0 else ' '
+                sec = abs(sec)
+                h = int(sec // 3600)
+                m = int((sec % 3600) // 60)
+                stat_line=f"{d}{w[:24].ljust(20)}:{sign}{h:02}:{m:02}\n"
+            else:
+                stat_line=f"{d}{w[:24].ljust(20)}:new\n"
+            result+=stat_line
+        return result
+
+    # статистику по текущему тренировочному набору
+    def get_word_stat2(self):
+        now=datetime.now()
+        result=""
+        for c in self.tcard_set:
+            d='&gt;' if c.direction==0 else '&lt;'
+            w=c.GetForeign()
+            t=c.last_training_t
+            if t is not None:
+                td=t-now
+                sec = td.total_seconds()
+                sign = '-' if sec < 0 else ' '
+                sec = abs(sec)
+                h = int(sec // 3600)
+                m = int((sec % 3600) // 60)
+                stat_line=f"{d}{w[:24].ljust(20)}:{sign}{h:02}:{m:02}\n"
+            else:
+                stat_line=f"{d}{w[:24].ljust(20)}:new\n"
             result+=stat_line
         return result
 
