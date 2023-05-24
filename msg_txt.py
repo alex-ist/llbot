@@ -68,3 +68,6 @@ def msg08_del_card():
 
 def msg09_reset_prog():
     return "<pre>Сброс прогресса карты:</pre>\n"
+
+def msg10_add_new_card():
+    return "Введите слово для новой карты:"

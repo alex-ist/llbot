@@ -52,7 +52,6 @@ def card_read_by_id(user_id:int, card_id:int):
                     (user_id, card_id))
     row = cursor.fetchone()
 
-    conn.commit()
     conn.close()
     return row[0],row[1],row[2],row[3],row[4]
 
@@ -102,7 +101,7 @@ class Card:
         self.example=example
         self.audio=None
         self.audio_example=None
-
+    
     def GetForeign(self):
         return self.foreign_w
 
@@ -124,16 +123,16 @@ class Card:
     #сохраняет карту в базе
     #если self.card_id==-1 (новая карта) то insert
     #если self.card_id!=-1 (старая карта) то update
-    def SaveToDb(self):
+    def SaveCardToDb(self):
         if self.card_id>=0:
             card_update_by_id(self.user_id, self.card_id, self.foreign_w, self.native_w, self.example)
         else:
             self.card_id=card_add(self.user_id, self.foreign_w, self.native_w, self.foreign_lang, self.native_lang, self.example)
             #триггеры добавят две новые TreningCard. осталось установить в них next_trening_time=now()
-            tc = TrainingCard.ReadFromDb_by_card_id(self.user_id, self.card_id, direction=1)
-            tc.SaveToDb()
-            tc = TrainingCard.ReadFromDb_by_card_id(self.user_id, self.card_id, direction=0)
-            tc.SaveToDb()
+            # tc = TrainingCard.ReadFromDb_by_card_id(self.user_id, self.card_id, direction=1)
+            # tc.SaveToDb()
+            # tc = TrainingCard.ReadFromDb_by_card_id(self.user_id, self.card_id, direction=0)
+            # tc.SaveToDb()
 
     def RemoveFromDb(self):
         if self.card_id>=0: 
@@ -188,22 +187,6 @@ class Card:
     def GetAudioExample(self):
         return self.audio_example
 
-
-def convert_t_from_DB(db_time:int) ->datetime :
-    if db_time is None:
-        return None
-    if db_time==-1:
-        return None
-    else:
-        return datetime.fromtimestamp(db_time)
-
-def convert_t_to_DB(time:datetime):
-    if time is None:
-        return -1
-    else:    
-        return int(time.timestamp())
-    
-
 def training_card_read_by_id(user_id:int, training_card_id:int):
     conn = sqlite3.connect(DB)
     cursor = conn.cursor()
@@ -211,7 +194,7 @@ def training_card_read_by_id(user_id:int, training_card_id:int):
                     (training_card_id, user_id))
     row = cursor.fetchone()
     conn.close()
-    return row[0],row[1],convert_t_from_DB(row[2]),convert_t_from_DB(row[3])
+    return row[0],row[1],t_from_DB(row[2]),t_from_DB(row[3])
 
 
 def training_card_read_by_card_id(user_id:int, card_id:int, direction:int):
@@ -221,19 +204,19 @@ def training_card_read_by_card_id(user_id:int, card_id:int, direction:int):
                     (card_id, direction, user_id))
     row = cursor.fetchone()
     conn.close()
-    return row[0],convert_t_from_DB(row[1]),convert_t_from_DB(row[2])
+    return row[0],t_from_DB(row[1]),t_from_DB(row[2])
 
 def training_card_update_by_id(training_card_id, user_id, next_training_t, last_training_t):
     conn = sqlite3.connect(DB)
     cursor = conn.cursor()
     cursor.execute("UPDATE training_cards SET next_training_t = ?, last_training_t = ? WHERE training_card_id = ? AND user_id = ?",
-             (convert_t_to_DB(next_training_t), convert_t_to_DB(last_training_t), training_card_id, user_id))
+             (t_to_DB(next_training_t), t_to_DB(last_training_t), training_card_id, user_id))
     conn.commit()
     conn.close()
 
 
 class TrainingCard:
-    def __init__(self, training_card_id, user_id, card_id, direction, next_training_t, last_training_t):
+    def __init__(self, training_card_id, user_id, card_id, direction, next_training_t, last_training_t, cfg:UserConfig=None ):
         self.training_card_id=training_card_id
         self.card=None
         self.user_id=user_id
@@ -241,13 +224,21 @@ class TrainingCard:
         self.direction=direction
         self.incorrect_answer=False        
         self.UpdateTCard(next_training_t, last_training_t)
-        self.cfg=UserConfig.GetUserConfig(user_id)
+        self.cfg=cfg
+    
+    #создает tcard без записи в базе. После редактирования запишем в базу
+    @staticmethod
+    def CreateNewTCard(user_id, cfg:UserConfig, foreign_w, native_w="", example="") -> 'TrainingCard':
+        tc=TrainingCard(-1, user_id, -1, -1, None, None, cfg)
+        tc.card=Card(user_id, cfg.foreign_lang, foreign_w, cfg.native_lang, native_w, example)
+        tc.next_training_t=-1
+        return tc        
     
     def UpdateTCard(self, next_training_t, last_training_t):
         self.next_training_t=next_training_t 
         self.last_training_t=last_training_t #вообще бывают апдейты? или ролмьл заменгяем и все?
         if self.next_training_t is None:
-            self.next_training_t=datetime.now()
+            self.next_training_t=datetime.now() #fixme - почему?
         #self.incorrect_answer=False        #fixme, неверное не надо апдейтить это поле?
     
     def RemoveCard(self):
@@ -369,14 +360,14 @@ class TrainingCard:
         return TrainingCard(training_card_id, user_id, card_id, direction, next_training_t, last_training_t)
 
 class TrainingCardSet:
-    def __init__(self, user_id):
+    def __init__(self, user_id, cfg:UserConfig):
         self.user_id=user_id
         self.tcard_set=[]
         self.current_pos=0
         self.audio_words=False
         self.text_examples=False
         self.audio_examples=False
-        self.cfg=UserConfig.GetUserConfig(user_id)
+        self.cfg=cfg
 
     
     #возвращает текущую карту или ноне
@@ -422,7 +413,7 @@ class TrainingCardSet:
             l=len(self.tcard_set)
             if l==0 : 
                 return None           
-            if self.current_pos>=l or self.current_pos>self.cfg.min_cards_for_study:
+            if self.current_pos>=l or self.current_pos>self.cfg.min_cards_for_trening:
                 self.current_pos=0
 
             return self.tcard_set[self.current_pos]
@@ -437,11 +428,11 @@ class TrainingCardSet:
         conn = sqlite3.connect(DB)
         cursor = conn.cursor()
         tn = datetime.now()     # tn = текущее время
-        cursor.execute(f"SELECT COUNT(*) FROM training_cards WHERE user_id = {self.user_id} AND next_training_t <= ?", (convert_t_to_DB(tn),))        
+        cursor.execute(f"SELECT COUNT(*) FROM training_cards WHERE user_id = {self.user_id} AND next_training_t <= ?", (t_to_DB(tn),))        
         n = cursor.fetchone()[0]
         while 1:
             # 1) есть больше слов чем минимальный набор. - сейчас
-            if n>=self.cfg.min_cards_for_study:
+            if n>=self.cfg.min_cards_for_trening:
                 tt=tn
                 break
 
@@ -455,7 +446,7 @@ class TrainingCardSet:
                 return tt, n #предполагаемое время след тренинга, N=колличество карт для обучения прямо сейчас
 
             # t0 = минимальное время из всех карт
-            t0 = convert_t_from_DB(r[0])
+            t0 = t_from_DB(r[0])
             if t0 is None: #есть новая карта,  еще не разу непоказывалась  (значение в базе -1)
                 tt=tn
                 break
@@ -468,26 +459,26 @@ class TrainingCardSet:
                 break
 
             #4) вычисляем когда наберется хотя бы 12 карт в будущем не позднее te.
-            cursor.execute(f"SELECT next_training_t FROM training_cards WHERE user_id = {self.user_id} AND next_training_t <= ? ORDER BY next_training_t ASC LIMIT ?", (convert_t_to_DB(te), self.cfg.min_cards_for_study))
+            cursor.execute(f"SELECT next_training_t FROM training_cards WHERE user_id = {self.user_id} AND next_training_t <= ? ORDER BY next_training_t ASC LIMIT ?", (t_to_DB(te), self.cfg.min_cards_for_trening))
             r=cursor.fetchall()
-            tt=convert_t_from_DB(r[-1][0])
+            tt=t_from_DB(r[-1][0])
             n_t=len(r)
             break
 
-        if n>self.cfg.max_cards_for_study:
-            n=self.cfg.max_cards_for_study
+        if n>self.cfg.max_cards_for_trening:
+            n=self.cfg.max_cards_for_trening
 
         cursor.execute(f"SELECT MAX(last_training_t) FROM training_cards WHERE user_id = {self.user_id}") #хотя бы одна карта в базе есть.
         r=cursor.fetchone()
-        last_tr_end_t=convert_t_from_DB(r[0])
+        last_tr_end_t=t_from_DB(r[0])
         if last_tr_end_t is None: #все карты новые (не было ни одного тренинга еще)
             tt=tn                 #значит начинаем сейчас
         else:
             if last_tr_end_t>tn:
                 logger.info("last_tr_end_t in the future!: %s", last_tr_end_t.strftime("%Y-%m-%d %H:%M:%S"))
-            #тренинг не чаще чем раз в час(self.cfg.min_interval_for_study_sessions)
-            if tt<last_tr_end_t+self.cfg.min_interval_for_study_sessions: 
-                tt=last_tr_end_t+self.cfg.min_interval_for_study_sessions
+            #тренинг не чаще чем раз в час(self.cfg.min_trening_interval)
+            if tt<last_tr_end_t+self.cfg.min_trening_interval: 
+                tt=last_tr_end_t+self.cfg.min_trening_interval
 
         conn.close()
         return tt, n #предполагаемое время след тренинга, N=колличество карт для обучения прямо сейчас
@@ -522,10 +513,10 @@ class TrainingCardSet:
         self.tcard_set.clear()
         #заменяем все  карты, так как новая выборка может быть содержать другие карты
         for row in rows: 
-            nt=convert_t_from_DB(row[3])
-            lt=convert_t_from_DB(row[4])
+            nt=t_from_DB(row[3])
+            lt=t_from_DB(row[4])
             training_card_id=row[0]
-            self.tcard_set.append(TrainingCard(training_card_id, self.user_id, row[1], row[2], nt, lt))
+            self.tcard_set.append(TrainingCard(training_card_id, self.user_id, row[1], row[2], nt, lt, self.cfg))
 
         #сразу отсортируем список - чтобы сначала шли только четные dir, а затем нечетн dir. Чтобы одна и таже карта в разных направлениях не повторялась сама за собой
         self.tcard_set.sort(key=lambda t: t.direction)
@@ -559,6 +550,8 @@ class TrainingCardSet:
             if ae is not None and ae!="":
                 self.audio_examples=True
                 break
+        
+        self.cfg.SetLastAccess()
 
 
     # для отладки статистику вывеедем по словам. слово > через сколько повторять
@@ -574,7 +567,7 @@ class TrainingCardSet:
             d='&gt;' if r[2]==0 else '&lt;'
             w=r[0]
             n=r[1]
-            t=convert_t_from_DB(n)
+            t=t_from_DB(n)
             if t is not None:
                 td=t-now
                 sec = td.total_seconds()
@@ -615,7 +608,7 @@ class TrainingCardSet:
         cursor = conn.cursor()
         now=datetime.now()
         cursor.execute("UPDATE training_cards SET next_training_t = ?, last_training_t = ? WHERE  user_id = ?",
-             (convert_t_to_DB(None), convert_t_to_DB(None), self.user_id))
+             (t_to_DB(None), t_to_DB(None), self.user_id))
 
         conn.commit()
         conn.close()
