@@ -71,3 +71,6 @@ def msg09_reset_prog():
 
 def msg10_add_new_card():
     return "Введите слово для новой карты:"
+
+def msg11_t_o():
+    return "Я на тех. обслуживании, извини!"

@@ -6,6 +6,7 @@ from g_ttos import google_speach
 from datetime import *
 from user_config import *
 from botlog import *
+from trans import make_trans
 
 DB='lingostu.db'
 

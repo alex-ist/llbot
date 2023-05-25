@@ -172,10 +172,14 @@ class UI:
         #self.context=context #fixme?
         while True:
             next_step=False
+            if data=="stop:":
+                await self.stop_chat()
+                return
             if data is not None and data.startswith('msg:'): #need to clear screen and new messages from bot instead of edit last messages
                 self.need_to_clear_screen()
 
             if data=="cmd:add":
+                self.timer_stop()
                 self.states_q.append(self.state)
                 self.state=UI.States.ADD_CARD
                 data=None
@@ -200,7 +204,6 @@ class UI:
             if next_step!=True:
                 break
             data=None
-
 
     @staticmethod
     async def process_buttons_(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -250,9 +253,9 @@ class UI:
                         InlineKeyboardButton("English", callback_data="kbd:en"),
                         InlineKeyboardButton("Српски", callback_data="kbd:sr"),
                     ],[
-                        InlineKeyboardButton("Deutsche", callback_data="kbd:de"),
-                        InlineKeyboardButton("Français", callback_data="kbd:fr"),
-                    ],[
+                    #     InlineKeyboardButton("Deutsche", callback_data="kbd:de"),
+                    #     InlineKeyboardButton("Français", callback_data="kbd:fr"),
+                    # ],[
                         InlineKeyboardButton("начать 🌐", callback_data="kbd:ok"),
                         ]]
         elif self.state is UI.States.FIRST_SET:
@@ -293,6 +296,13 @@ class UI:
             select_button(kbd, selected, sel_symb)
         
         return InlineKeyboardMarkup(kbd)
+
+    async def stop_chat(self) -> None:
+        await self.clear_m2()
+        await self.m1_text(msg11_t_o())
+        #сохранить в базе chat_id, msg_id у m1, что бы при запуске удалить его. 
+        save_maintenance_data(self.user_id, self.m1.chat_id, self.m1.message_id)
+
 
     async def new_user(self, data=None) -> None:
         self.state = UI.States.NEW_USER
@@ -396,7 +406,7 @@ class UI:
         elif self.state_prev is UI.States.TREN0 or self.state_prev is UI.States.TREN3:
             self.tcs.Create()
             self.sub_state="q"
-        elif self.state_prev is UI.States.TREN1:
+        elif self.state_prev is UI.States.TREN1 and data is not None:
             if data=="kbd:?":
                 self.sub_state="a"
             elif data=='kbd:+' or data=='kbd:-':
@@ -473,8 +483,10 @@ class UI:
                 self.tcs.RemoveCurrentCard() #fixme - надо как то по другому - удалять по training_card_id
                 self.tcard=None 
             elif self.selected_button=="reset":     #4) сброс прогресса ->todo
-                pass
-                logger.warning("implement reset progress!")
+#                logger.warning("implement reset progress!")
+                self.edited_tcard.next_training_t=None
+                self.edited_tcard.last_training_t=None
+                self.edited_tcard.SaveToDb()
             else:                                   #2) апдейт существующей ткарты:
                 self.edited_tcard.card.SaveCardToDb()        
         else:                                       #3) insert новой карты:
@@ -513,7 +525,7 @@ class UI:
                 self.selected_button="delete"
                 self.kbd=self.create_buttons("kbd:delete")
             elif data=='kbd:cancel':
-                self.state=UI.States.TREN1 #goto tren1,
+                self.state=self.states_q.pop() #goto back
                 return True
             elif data=='kbd:save':
                 self.save_edited_tcard() #fixme удаление, апдейт, insert
@@ -553,7 +565,8 @@ class UI:
                 return True
             elif data.startswith('msg:'):
                 data = data.split('msg:', 1)[1]
-                self.edited_tcard=TrainingCard.CreateNewTCard(self.user_id, self.cfg, data, data)
+                f,n = make_trans (self.cfg.foreign_lang, self.cfg.native_lang, data)
+                self.edited_tcard=TrainingCard.CreateNewTCard(self.user_id, self.cfg, f, n)
                 self.states_q.append(self.state)
                 self.state = UI.States.EDIT_CARD
                 return True
@@ -583,6 +596,9 @@ class UI:
         global ui_set
         ui=get_ui(update.effective_user.id, update.effective_chat.id, context)
         await ui.process_ev("cmd:edit")
+
+    async def stop_chat_signal(self) -> None:
+        await self.process_ev("stop:")
 
     @staticmethod
     async def reset_cmd_(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -646,18 +662,18 @@ async def settings_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
 
 
 #установка меню
-async def post_init(a):
+async def post_init(context):
     commands_en = [
         BotCommand('start', 'Begin work'),
         BotCommand('help',  'Help'),
         BotCommand('edit',  'Edit cards'),
         BotCommand('add' ,  'Add cards'),
     ]
-    await a.bot.delete_my_commands(language_code='')
-    await a.bot.set_my_commands(commands_en, language_code=None)
+    await context.bot.delete_my_commands(language_code='')
+    await context.bot.set_my_commands(commands_en, language_code=None)
 
-    await a.bot.delete_my_commands(language_code='en')
-    await a.bot.set_my_commands(commands_en, language_code='en')
+    await context.bot.delete_my_commands(language_code='en')
+    await context.bot.set_my_commands(commands_en, language_code='en')
     
     commands_ru = [
         BotCommand('start', 'Начать общение с ботом'),
@@ -668,16 +684,32 @@ async def post_init(a):
         #BotCommand('reset', 'сброс прогресса'),
         ]
         
-    await a.bot.delete_my_commands(language_code='ru')
-    await a.bot.set_my_commands(commands_ru, language_code='ru')
+    await context.bot.delete_my_commands(language_code='ru')
+    await context.bot.set_my_commands(commands_ru, language_code='ru')
+
+    #удалить старое сообщение о тех обслуживании и создать UI
+    r=load_maintenance_data()
+    if r is not None and len(r) > 0:
+        for u in r:
+            user_id=u[0]
+            chat_id=u[1]
+            msg_id=u[2]
+            await context.bot.delete_message(chat_id, msg_id)
+            ui=get_ui(user_id, chat_id, context)
+            await ui.start()
+
+async def post_stop(a):
+    for ui in ui_set.values():
+        await ui.stop_chat_signal()
 
 
 def main() -> None:
     with open ("data/token.txt", 'r') as f:
         token=f.readline()
 
+    logging.getLogger('httpx').setLevel(logging.WARNING)
     bot_def=telegram.ext.Defaults(parse_mode="HTML", disable_notification=True)
-    application = Application.builder().token(token).post_init(post_init).defaults(bot_def).build()
+    application = Application.builder().token(token).post_init(post_init).post_stop(post_stop).defaults(bot_def).build()
     application.add_handler(CommandHandler("start", start_cmd))
     application.add_handler(CommandHandler("add", UI.add_cmd_))
     application.add_handler(CommandHandler("help", help_cmd))
