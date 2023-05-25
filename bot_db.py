@@ -32,10 +32,10 @@ def t_to_DB(time:datetime) ->int:
     else:    
         return int(time.timestamp())
 
-def save_maintenance_data(user_id:int, chat_id:int, msg_id:int):
+def save_maintenance_data(user_id:int, chat_id:int, msg_id:int, state:str):
     c=open_db()
-    c.execute("INSERT INTO maintenance_data (user_id, chat_id, msg_id) VALUES (?, ?, ?)",
-             (user_id, chat_id, msg_id))
+    c.execute("INSERT INTO maintenance_data (user_id, chat_id, msg_id, state) VALUES (?, ?, ?, ?)",
+             (user_id, chat_id, msg_id, state))
     close_db(commit=True)
 
 def load_maintenance_data():

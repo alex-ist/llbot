@@ -63,14 +63,6 @@ class UI:
         self.timer_job= None
         self.context=None
         self.states_q=[]
-        self.need_clear_m1=False
-        self.need_clear_m2=False
-
-    def need_to_clear_screen(self): #need to clear screen before new messages from the bot instead of edit last messages
-        if self.m1 is not None:
-            self.need_clear_m1=True        
-        if self.m2 is not None:
-            self.need_clear_m2=True
 
     async def clear_screan(self):
         await self.clear_m1()
@@ -83,7 +75,6 @@ class UI:
         self.m2_txt=None
         self.m2_kbd=None
         self.m2_type=None
-        self.need_clear_m2=False
 
     async def clear_m1(self):
         if self.m1 is not None:
@@ -92,10 +83,9 @@ class UI:
         self.m1_txt=None
         self.m1_kbd=None
         self.m1_type=None
-        self.need_clear_m1=False
 
     async def m1_text(self, txt:str=None, kbd:InlineKeyboardMarkup=None):        
-        if self.m1_type!="txt" or self.need_clear_m1:
+        if self.m1_type!="txt":
             await self.clear_m1()
 
         if self.m1 is None: #1) new message
@@ -117,7 +107,7 @@ class UI:
                 await self.m1.edit_text(text=txt, reply_markup=kbd)
 
     async def m2_text(self, txt:str=None, kbd:InlineKeyboardMarkup=None):
-        if self.m2_type!="txt" or self.need_clear_m2:
+        if self.m2_type!="txt":
             await self.clear_m2()
 
         if self.m2 is None: #1) new message
@@ -138,9 +128,8 @@ class UI:
                 self.m2_txt=txt
                 self.m2_kbd=kbd
 
-
     async def m1_audio(self, media:InputMediaAudio):
-        if self.m1_type!="au" or self.need_clear_m1:
+        if self.m1_type!="au":
             await self.clear_m1()
 
         if self.m1 is None:
@@ -152,7 +141,7 @@ class UI:
             await self.m1.edit_media(media=media)  
 
     async def m2_voice(self, voice=None, txt:str=None, kbd:InlineKeyboardMarkup=None):
-        if self.m2_type!="vo" or self.need_clear_m2:
+        if self.m2_type!="vo":
             await self.clear_m2()
         elif  self.m2_type=="vo" and voice is not None:
             await self.clear_m2() #нельязя редактировать войс
@@ -175,8 +164,6 @@ class UI:
             if data=="stop:":
                 await self.stop_chat()
                 return
-            if data is not None and data.startswith('msg:'): #need to clear screen and new messages from bot instead of edit last messages
-                self.need_to_clear_screen()
 
             if data=="cmd:add":
                 self.timer_stop()
@@ -594,6 +581,7 @@ class UI:
     @staticmethod
     async def edit_cmd_(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         global ui_set
+        await context.bot.delete_message(update.effective_chat.id, update.effective_message.id)
         ui=get_ui(update.effective_user.id, update.effective_chat.id, context)
         await ui.process_ev("cmd:edit")
 
@@ -621,6 +609,7 @@ class UI:
     @staticmethod
     async def add_cmd_(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         global ui_set
+        await context.bot.delete_message(update.effective_chat.id, update.effective_message.id)
         ui=get_ui(update.effective_user.id, update.effective_chat.id, context)
         await ui.process_ev("cmd:add")
         
@@ -632,6 +621,7 @@ class UI:
     @staticmethod
     async def rx_msg_(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         global ui_set
+        await context.bot.delete_message(update.effective_chat.id, update.effective_message.id)
         ui=get_ui(update.effective_user.id, update.effective_chat.id, context)
         text = update.message.text
         if text is None:
@@ -643,6 +633,9 @@ async def start_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     global ui_set
     chat_id=update.effective_chat.id
     user_id=update.effective_user.id
+    msg_id=update.effective_message.id
+    await context.bot.delete_message(chat_id, msg_id)
+
     logger.info(f"user_id: {user_id} chat_id: {chat_id}")
 
     ui=get_ui(user_id, chat_id, context)
