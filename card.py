@@ -354,7 +354,7 @@ class TrainingCardSet:
                     cnt+=1
                     tc.card.last_training_t=None
                     tc.card.next_training_t=None
-                if tc>=2:
+                if cnt>=2:
                     break
 
             card_reset_progress(self.user_id, cid)

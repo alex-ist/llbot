@@ -255,7 +255,7 @@ class UI:
         elif self.state is UI.States.CFG_LANG:
             kbd = [[
                         InlineKeyboardButton("English", callback_data="kbd:en"),
-                        InlineKeyboardButton("Српски", callback_data="kbd:sr"),
+                        #InlineKeyboardButton("Српски", callback_data="kbd:sr"),
                     ],[
                     #     InlineKeyboardButton("Deutsche", callback_data="kbd:de"),
                     #     InlineKeyboardButton("Français", callback_data="kbd:fr"),
@@ -291,7 +291,7 @@ class UI:
 
         elif self.state is UI.States.ADD_CARD:
             kbd = [[
-                        InlineKeyboardButton("↩️ Назад", callback_data="kbd:cancel"),
+                        InlineKeyboardButton("Назад ↩️", callback_data="kbd:cancel"),
                     ]]
         else:
             return None
@@ -588,16 +588,18 @@ class UI:
                 InlineKeyboardButton(f"{l}", callback_data=f"kbd:{cid}")])
         
         if self.show_cards_list_pos>0:
-            left=InlineKeyboardButton("«", callback_data="kbd:prev")
+            #left=InlineKeyboardButton("«", callback_data="kbd:prev")
+            left=InlineKeyboardButton("⏪", callback_data="kbd:prev")
         else:
-            left=InlineKeyboardButton("x", callback_data="kbd:x")
+            left=InlineKeyboardButton("✖️", callback_data="kbd:x")
 
         if n2<n:
-            right=InlineKeyboardButton("»", callback_data="kbd:next")
+            right=InlineKeyboardButton("⏩", callback_data="kbd:next")
+            #right=InlineKeyboardButton("»", callback_data="kbd:next")
         else:
-            right=InlineKeyboardButton("x", callback_data="kbd:x")
+            right=InlineKeyboardButton("✖️", callback_data="kbd:x")
 
-        kbd.append([left, InlineKeyboardButton("↩️ Назад", callback_data="kbd:cancel"), right])
+        kbd.append([left, InlineKeyboardButton("Назад ↩️", callback_data="kbd:cancel"), right])
         return InlineKeyboardMarkup(kbd)
 
 
@@ -715,11 +717,16 @@ async def start_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     chat_id=update.effective_chat.id
     user_id=update.effective_user.id
     msg_id=update.effective_message.id
-    await context.bot.delete_message(chat_id, msg_id)
+    #await context.bot.delete_message(chat_id, msg_id)
 
+    if user_id in ui_set:
+        await ui_set[user_id].clear_screan()
+        del ui_set[user_id]
+
+    ui=UI(user_id, chat_id)
+    ui_set[user_id]=ui
+    ui.context=context
     logger.info(f"user_id: {user_id} chat_id: {chat_id}")
-
-    ui=get_ui(user_id, chat_id, context)
     await ui.start()
 
 async def help_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
