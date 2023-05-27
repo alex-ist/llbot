@@ -45,3 +45,79 @@ def load_maintenance_data():
     c.execute("DELETE FROM maintenance_data")
     close_db(commit=True)
     return rows
+
+
+def cards_read(user_id:int):
+    c=open_db()
+    c.execute("SELECT card_id, foreign_w, native_w FROM cards WHERE user_id = ? ORDER BY foreign_w ASC", (user_id,))
+    rows = c.fetchall()
+    close_db()
+    return rows
+
+def card_read(user_id:int, card_id:int):
+    c=open_db()
+    c.execute("SELECT foreign_w, native_w, foreign_lang, native_lang, example FROM cards WHERE user_id = ? AND card_id = ?",
+                    (user_id, card_id))
+    row = c.fetchone()
+    close_db()
+    return row[0],row[1],row[2],row[3],row[4]
+
+
+def card_get_progress(user_id:int, card_id:int):
+    unicode_symbols = {0:"\u2800 ",  1: "\u28c0 ", 2: "\u28e4 ", 3: "\u28f6 ", 4: "\u28ff "}
+    if card_id<0:
+        return unicode_symbols[0]
+
+    c=open_db()
+    c.execute(f"SELECT next_training_t, last_training_t FROM training_cards WHERE user_id = {user_id} AND card_id = {card_id}")
+    r = c.fetchall()
+    close_db()
+    total=0
+    for v in r:
+        if v[0]==-1 or v[1]==-1:
+            return unicode_symbols[0]
+        total+=(v[0]-v[1])
+    total/=2
+    
+    if total<3600*6:
+        return unicode_symbols[0]
+    elif total<3600*24:
+        return unicode_symbols[1]
+    elif total<3600*24*4:
+        return unicode_symbols[2]
+    elif total<3600*24*16:
+        return unicode_symbols[3]
+    else:
+        return unicode_symbols[4]
+    
+
+def card_delete(user_id:int, cid:int):
+    c=open_db()
+    c.execute(f"DELETE FROM cards WHERE card_id = {cid} and user_id = {user_id}")
+    close_db(commit=True)
+
+
+def card_reset_progress(user_id:int, cid:int):
+    c=open_db()
+    c.execute(f"UPDATE training_cards SET next_training_t=-1, last_training_t=-1 WHERE card_id = {cid} and user_id = {user_id}")
+    close_db(commit=True)
+
+
+def card_update(user_id:int, card_id:int, foreign_w, native_w, example):
+    c=open_db()
+    c.execute("UPDATE cards SET foreign_w = ?, native_w = ?, example = ? WHERE card_id = ? AND user_id = ?", 
+             (foreign_w, native_w, example, card_id, user_id))
+    close_db(commit=True)
+
+def card_add(user_id:int, foreign_w, native_w, foreign_lang, native_lang, example=None):
+    c=open_db()
+    #fixme: должно ли быть foreign_w уникальным для каждого юзера? если да:
+    #if not cursor.execute("SELECT * FROM cards WHERE user_id = ? AND foreign_w = ?", (user_id, foreign_w,)).fetchone():
+    c.execute("INSERT INTO cards (user_id, foreign_w, native_w, foreign_lang, native_lang, example) VALUES (?, ?, ?, ?, ?, ?)",
+             (user_id, foreign_w, native_w, foreign_lang, native_lang, example))
+    card_id=c.lastrowid
+    close_db(commit=True)
+    return card_id
+
+
+

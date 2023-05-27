@@ -10,51 +10,12 @@ from trans import make_trans
 
 DB='lingostu.db'
 
-
-def card_add(user_id:int, foreign_w, native_w, foreign_lang, native_lang, example=None):
-    conn = sqlite3.connect(DB) 
-    cursor = conn.cursor()
-    #fixme: должно ли быть foreign_w уникальным для каждого юзера? если да:
-    #if not cursor.execute("SELECT * FROM cards WHERE user_id = ? AND foreign_w = ?", (user_id, foreign_w,)).fetchone():
-    cursor.execute("INSERT INTO cards (user_id, foreign_w, native_w, foreign_lang, native_lang, example) VALUES (?, ?, ?, ?, ?, ?)",
-             (user_id, foreign_w, native_w, foreign_lang, native_lang, example))
-    card_id=cursor.lastrowid
-    conn.commit()
-    conn.close()
-    return card_id
-
 def card_remove(user_id:int, foreign_w):
     conn = sqlite3.connect(DB) 
     cursor = conn.cursor()
     cursor.execute("DELETE FROM cards WHERE user_id = ? AND foreign_w = ?", (user_id, foreign_w,))
     conn.commit()
     conn.close()
-
-def card_remove_by_id(user_id:int, card_id:int):
-    conn = sqlite3.connect(DB) 
-    cursor = conn.cursor()
-    cursor.execute("DELETE FROM cards WHERE user_id = ? AND card_id = ?", (user_id, card_id,))
-    conn.commit()
-    conn.close()
-    
-def card_update_by_id(user_id:int, card_id:int, foreign_w, native_w, example):
-    conn = sqlite3.connect(DB)
-    cursor = conn.cursor()
-    cursor.execute("UPDATE cards SET foreign_w = ?, native_w = ?, example = ? WHERE card_id = ? AND user_id = ?", 
-             (foreign_w, native_w, example, card_id, user_id))
-    conn.commit()
-    conn.close()
-
-
-def card_read_by_id(user_id:int, card_id:int):
-    conn = sqlite3.connect(DB)
-    cursor = conn.cursor()
-    cursor.execute("SELECT foreign_w, native_w, foreign_lang, native_lang, example FROM cards WHERE user_id = ? AND card_id = ?",
-                    (user_id, card_id))
-    row = cursor.fetchone()
-
-    conn.close()
-    return row[0],row[1],row[2],row[3],row[4]
 
 
 def cards_count(user_id:int):
@@ -126,23 +87,13 @@ class Card:
     #если self.card_id!=-1 (старая карта) то update
     def SaveCardToDb(self):
         if self.card_id>=0:
-            card_update_by_id(self.user_id, self.card_id, self.foreign_w, self.native_w, self.example)
+            card_update(self.user_id, self.card_id, self.foreign_w, self.native_w, self.example)
         else:
             self.card_id=card_add(self.user_id, self.foreign_w, self.native_w, self.foreign_lang, self.native_lang, self.example)
-            #триггеры добавят две новые TreningCard. осталось установить в них next_trening_time=now()
-            # tc = TrainingCard.ReadFromDb_by_card_id(self.user_id, self.card_id, direction=1)
-            # tc.SaveToDb()
-            # tc = TrainingCard.ReadFromDb_by_card_id(self.user_id, self.card_id, direction=0)
-            # tc.SaveToDb()
-
-    def RemoveFromDb(self):
-        if self.card_id>=0: 
-            card_remove_by_id(self.user_id, self.card_id)
-            self.card_id=-1
 
     @staticmethod
     def ReadFromDb(user_id:int, card_id:int) -> 'Card':
-        foreign_w, native_w, foreign_lang, native_lang, example=card_read_by_id(user_id, card_id)
+        foreign_w, native_w, foreign_lang, native_lang, example=card_read(user_id, card_id)
         card=Card(user_id, foreign_lang, foreign_w, native_lang, native_w, example, card_id)
         card.SetAudio()
         card.SetAudioExample()
@@ -224,31 +175,27 @@ class TrainingCard:
         self.card_id=card_id
         self.direction=direction
         self.incorrect_answer=False        
-        self.UpdateTCard(next_training_t, last_training_t)
-        self.cfg=cfg
-    
-    #создает tcard без записи в базе. После редактирования запишем в базу
-    @staticmethod
-    def CreateNewTCard(user_id, cfg:UserConfig, foreign_w, native_w="", example="") -> 'TrainingCard':
-        tc=TrainingCard(-1, user_id, -1, -1, None, None, cfg)
-        tc.card=Card(user_id, cfg.foreign_lang, foreign_w, cfg.native_lang, native_w, example)
-        tc.next_training_t=-1
-        return tc        
-    
-    def UpdateTCard(self, next_training_t, last_training_t):
         self.next_training_t=next_training_t 
         self.last_training_t=last_training_t #вообще бывают апдейты? или ролмьл заменгяем и все?
-        if self.next_training_t is None:
-            self.next_training_t=datetime.now() #fixme - почему?
-        #self.incorrect_answer=False        #fixme, неверное не надо апдейтить это поле?
+        self.cfg=cfg
     
-    def RemoveCard(self):
-        #удаляет из базы Card, и по тригеру удаляться обе Tcard
-        #carset дожен удаить их обе у себя.
-        if self.card is not None:
-            self.card.RemoveFromDb()
-            self.card=None
+    #создает новую tcard без записи в базе. После окончания редактирования запишем в базу
+    @staticmethod
+    def CreateNewTCard(user_id, cfg:UserConfig, foreign_w, native_w="", example="") -> 'TrainingCard':
+        tc=TrainingCard(training_card_id=-1, user_id=user_id, card_id=-1, direction=-1, next_training_t=None, last_training_t=None, cfg=cfg)
+        tc.card=Card(user_id, cfg.foreign_lang, foreign_w, cfg.native_lang, native_w, example)
+        return tc        
+
+    @staticmethod
+    def ReadTcardFromDb_by_card_id(user_id:int, cfg, card_id, direction) -> 'TrainingCard':
+        training_card_id, next_training_t, last_training_t=training_card_read_by_card_id(user_id, card_id, direction)
+        return TrainingCard(training_card_id, user_id, card_id, direction, next_training_t, last_training_t, cfg)
     
+  
+    def SaveToDb(self):
+        training_card_update_by_id(self.training_card_id, self.user_id, self.next_training_t, self.last_training_t)
+
+
     def GetCard(self) ->Card:
         return self.card
     
@@ -290,9 +237,6 @@ class TrainingCard:
             self.next_training_t=self.last_training_t + new_i
             self.incorrect_answer=False
 
-    def SaveToDb(self):
-        training_card_update_by_id(self.training_card_id, self.user_id, self.next_training_t, self.last_training_t)
-       
     #вернет слово для изучения
     def GetA(self):
         if self.card is None:
@@ -341,6 +285,7 @@ class TrainingCard:
     def ChangeForeign(self, f):
         if self.card is not None:
             self.card.ChangeForeign(f)
+           
 
     def ChangeNative(self, n):
         if self.card is not None:
@@ -350,15 +295,12 @@ class TrainingCard:
         if self.card is not None:
             self.card.ChangeExample(e)
 
-    @staticmethod
-    def ReadFromDb(user_id:int, training_card_id:int) -> 'TrainingCard':
-        card_id, direction, next_training_t, last_training_t=training_card_read_by_id(user_id, training_card_id)
-        return TrainingCard(training_card_id, user_id, card_id, direction, next_training_t, last_training_t)
+    # def CreateNewTCard(user_id, cfg:UserConfig, foreign_w, native_w="", example="") -> 'TrainingCard':
+    #     tc=TrainingCard(-1, user_id, -1, -1, None, None, cfg)
+    #     tc.card=Card(user_id, cfg.foreign_lang, foreign_w, cfg.native_lang, native_w, example)
+    #     tc.next_training_t=-1
+    #     return tc        
 
-    @staticmethod
-    def ReadFromDb_by_card_id(user_id:int, card_id, direction) -> 'TrainingCard':
-        training_card_id, next_training_t, last_training_t=training_card_read_by_card_id(user_id, card_id, direction)
-        return TrainingCard(training_card_id, user_id, card_id, direction, next_training_t, last_training_t)
 
 class TrainingCardSet:
     def __init__(self, user_id, cfg:UserConfig):
@@ -379,21 +321,44 @@ class TrainingCardSet:
         else:
             return None
     
-    def RemoveCurrentCard(self):
-        tc=self.GetCurrentTCard()
-        if tc is not None:
-            #нужно найти пару и удалить ее из кардset
-            tc.RemoveCard()
-            del self.tcard_set[self.current_pos]
-            if self.current_pos>len(self.tcard_set):
-                self.current_pos=0
+    #извлекает тр карту из списка и возвращет ее
+    def GetTCard(self, cid):
+        for idx, tc in enumerate(self.tcard_set):
+            if tc.card.card_id==cid:
+                del self.tcard_set[idx]
+                if idx < self.current_pos:
+                    self.current_pos-=1
+                if self.current_pos>len(self.tcard_set):
+                    self.current_pos=0
+                return tc
+        return None
 
-            for pos,tc in enumerate(self.tcard_set):
-                if tc.card.card_id==-1:
-                    del self.tcard_set[pos]
-                    if pos<self.current_pos:
-                        self.current_pos-=1
+    # 1) удаление пары tкарт из набора, если они там есть
+    # 2) удаление карты  и пары tкарт из базы
+    def DeleteCard(self, cid):
+        if cid!=-1:
+            if self.GetTCard(cid) is not None:
+                self.GetTCard(cid)
+            card_delete(self.user_id, cid)
+
+
+	# найти в базе 2-tc
+	# проапдейтить их.
+	# если есть tcs - проапдейтить их
+
+    def ResetProgressCard(self, cid):
+        cnt=0
+        if cid!=-1:
+            for tc in self.tcard_set:
+                if tc.card.card_id==cid:
+                    cnt+=1
+                    tc.card.last_training_t=None
+                    tc.card.next_training_t=None
+                if tc>=2:
                     break
+
+            card_reset_progress(self.user_id, cid)
+
         
     #сообщаем результат,
     # если рез положительный, удаляет карту из набора

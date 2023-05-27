@@ -7,10 +7,11 @@ TODO:
 + перевод новых карт.
 + Старт/стоп
 + удаление входящих сообщений
++ Не удалять лишний раз меню редактирования и др.
++просмотр и чистка базы
++показ прогресса
 
-Не удалять лишний раз меню редактирования и др.
 поиск  предложений у гпт чата
-просмотр и чистка базы
 добавление слов из наборов пошутчно
 Статья на телегрфе.
 выложить на продакшен
@@ -18,4 +19,6 @@ TODO:
 сделать перевод асинхронным
 сделать sttx асинхронным
 в начальном наборе нужно меньше слов (30)
-
+  File "C:\Users\Администратор\AppData\Local\Programs\Python\Python311\Lib\site-packages\telegram\request\_baserequest.py", line 328, in _request_wrapper
+    raise BadRequest(message)
+telegram.error.BadRequest: Query is too old and response timeout expired or query id is invalid

@@ -43,6 +43,7 @@ class UI:
         TREN3 ="tren2_st"
         EDIT_CARD ="edit_card_st"
         ADD_CARD ="add_card_st"
+        SHOW_CARDS="show_cards_st"
 
     def __init__(self, user_id:int, chat_id:int):
         self.m1=None
@@ -54,8 +55,7 @@ class UI:
         self.chat_id=chat_id
         self.cfg=UserConfig.GetUserConfig(user_id, chat_id)
         self.tcs=TrainingCardSet(user_id, self.cfg)
-        self.tcard=None
-        self.edited_tcard=None
+        self.edited_card=None
         self.state= UI.States.ST_UNDEF  
         self.state_prev= UI.States.ST_UNDEF
         self.sub_state=None
@@ -170,6 +170,12 @@ class UI:
                 self.states_q.append(self.state)
                 self.state=UI.States.ADD_CARD
                 data=None
+            elif data=="cmd:show":
+                self.timer_stop()
+                self.states_q.append(self.state)
+                self.state=UI.States.SHOW_CARDS
+                data=None
+
 
             if self.state is UI.States.TREN0:
                 next_step=await self.tren0(data)
@@ -181,6 +187,8 @@ class UI:
                 next_step=await self.edit_card(data)
             elif self.state is UI.States.ADD_CARD:
                 next_step=await self.add_card(data)
+            elif self.state is UI.States.SHOW_CARDS:
+                next_step=await self.show_cards(data)
             elif self.state is UI.States.NEW_USER:
                 next_step=await self.new_user(data)
             elif self.state is UI.States.CFG_LANG:
@@ -199,8 +207,17 @@ class UI:
         await query.answer()
         user_id=update.effective_user.id
         #user_id=1 #fixme
-        ui=ui_set[user_id]
-        await ui.process_ev(query.data)
+        if user_id in ui_set:
+            ui=ui_set[user_id]
+            await ui.process_ev(query.data)
+        else:
+            #что-то пошло не так, кнопка от старого сообщения?
+            chat_id=update.effective_chat.id
+            msg_id=update.effective_message.id
+            await context.bot.delete_message(chat_id, msg_id)
+            ui=get_ui(user_id, chat_id, context)
+            await ui.start()
+            logger.info(f"repair ui: user_id: {user_id} chat_id: {chat_id}")
 
     def timer_run(self, t, user_data):
         self.timer_stop()
@@ -256,11 +273,11 @@ class UI:
                         InlineKeyboardButton("начать ▶️", callback_data="kbd:ok"),
                     ]]
         elif self.state is UI.States.EDIT_CARD:
-            ex=self.edited_tcard.GetExample()
+            ex=self.edited_card.GetExample()
             if ex is None or ex=="": ex="_"
             kbd = [[
-                    InlineKeyboardButton(f"{self.edited_tcard.GetForeign()}", callback_data="kbd:fw"),
-                    InlineKeyboardButton(f"{self.edited_tcard.GetNative()}", callback_data="kbd:nw"),
+                    InlineKeyboardButton(f"{self.edited_card.GetForeign()}", callback_data="kbd:fw"),
+                    InlineKeyboardButton(f"{self.edited_card.GetNative()}", callback_data="kbd:nw"),
                     ],[
                     InlineKeyboardButton(f"{ex}", callback_data="kbd:ex"),
                 ]]
@@ -274,7 +291,7 @@ class UI:
 
         elif self.state is UI.States.ADD_CARD:
             kbd = [[
-                        InlineKeyboardButton("<< Назад", callback_data="kbd:cancel"),
+                        InlineKeyboardButton("↩️ Назад", callback_data="kbd:cancel"),
                     ]]
         else:
             return None
@@ -288,7 +305,7 @@ class UI:
         await self.clear_m2()
         await self.m1_text(msg11_t_o())
         #сохранить в базе chat_id, msg_id у m1, что бы при запуске удалить его. 
-        save_maintenance_data(self.user_id, self.m1.chat_id, self.m1.message_id)
+        save_maintenance_data(self.user_id, self.m1.chat_id, self.m1.message_id, self.state)
 
 
     async def new_user(self, data=None) -> None:
@@ -388,7 +405,7 @@ class UI:
         return False
 
     async def tren1(self, data=None) -> None:
-        if self.state_prev is UI.States.EDIT_CARD or self.state_prev is UI.States.ADD_CARD:
+        if self.state_prev is UI.States.EDIT_CARD or self.state_prev is UI.States.ADD_CARD or self.state_prev is UI.States.SHOW_CARDS:
             self.sub_state="q"
         elif self.state_prev is UI.States.TREN0 or self.state_prev is UI.States.TREN3:
             self.tcs.Create()
@@ -401,28 +418,30 @@ class UI:
                 self.tcs.SetAnswer(answer)
                 self.sub_state="q"
             elif data=="cmd:edit":
-                self.edited_tcard=self.tcard
+                self.edited_card=self.tcs.GetCurrentTCard().card
                 self.states_q.append(self.state)
                 self.state=UI.States.EDIT_CARD #goto edit_cards
                 return True
             else:
                 return False
+        else:
+            return False
         
-        self.tcard=self.tcs.GetCurrentTCard() 
-        if self.tcard is None:
-            self.state=UI.States.TREN3 #goto tren1
+        tc=self.tcs.GetCurrentTCard()  
+        if tc is None: #нет карт для запоминания
+            self.state=UI.States.TREN3 #goto tren3
             return True
 
         if self.sub_state=="q":
             await self.m1_audio(get_empty_InputMediaAudio())
-            await self.m2_voice(voice=self.tcard.GetAudio(), txt=self.tcard.GetA(), kbd=self.create_buttons())
+            await self.m2_voice(voice=tc.GetAudio(), txt=tc.GetA(), kbd=self.create_buttons())
         else: #self.sub_state=="a":
-            ae_path=self.tcard.GetAudioExample()
+            ae_path=tc.GetAudioExample()
             if ae_path is not None:
                 with open(ae_path, 'rb') as f:
-                    ma=InputMediaAudio(f, filename=self.tcard.GetForeign(), performer="lsbot", title=self.tcard.GetForeign(), caption=f"<i>{self.tcard.GetExample()}</i>" )
+                    ma=InputMediaAudio(f, filename=tc.GetForeign(), performer="lsbot", title=tc.GetForeign(), caption=f"<i>{tc.GetExample()}</i>" )
                 await self.m1_audio(media=ma)
-            await self.m2_voice(txt=f"<u>{self.tcard.GetForeign()}</u> = {self.tcard.GetNative()}", kbd=self.create_buttons())
+            await self.m2_voice(txt=f"<u>{tc.GetForeign()}</u> = {tc.GetNative()}", kbd=self.create_buttons())
         
         self.state_prev = UI.States.TREN1
         return False
@@ -453,33 +472,15 @@ class UI:
         self.state_prev = UI.States.TREN3
         return False
 
-    #fixme удаление, апдейт, insert
-    def save_edited_tcard(self):
-        # 1) если удаление существующей ткарты:
-        #       удалить card из базы(таблица cards)
-        #       автоматическое удаление 2-х tcards из базы (таблица training_cards), по триггеру
-        #       удаление из набора tcs, tcard=None, edit_card=None
-        # 2) апдейт существующей ткарты:
-        #       проапдейтить card в базе(таблица cards)
-        #       проапдейтить card  и в проге
-        # 3) insert новой карты:
-        #       добавить card в базу таблица cards.
-        # 4) сброс прогресса ->todo
-        if self.edited_tcard.training_card_id!=-1:
-            if self.selected_button=="delete":      #1) удаление существующей ткарты
-                self.tcs.RemoveCurrentCard() #fixme - надо как то по другому - удалять по training_card_id
-                self.tcard=None 
-            elif self.selected_button=="reset":     #4) сброс прогресса ->todo
-#                logger.warning("implement reset progress!")
-                self.edited_tcard.next_training_t=None
-                self.edited_tcard.last_training_t=None
-                self.edited_tcard.SaveToDb()
-            else:                                   #2) апдейт существующей ткарты:
-                self.edited_tcard.card.SaveCardToDb()        
-        else:                                       #3) insert новой карты:
-            self.edited_tcard.card.SaveCardToDb()
+    def save_edited_card(self):
+        if self.selected_button=="delete":      #1) удаление существующей ткарты из tcs и из базы
+            self.tcs.DeleteCard(self.edited_card.card_id)
+        elif self.selected_button=="reset":     #4) сброс прогресса ->todo
+            self.tcs.ResetProgressCard(self.edited_card.card_id) 
+        else:                                   #2) апдейт существующей ткарты, #3) insert новой карты:
+            self.edited_card.SaveCardToDb()
         
-        self.edited_tcard=None
+        self.edited_card=None
 
     async def edit_card(self, data:str=None) -> None:
         #decoding inside state events:
@@ -487,10 +488,11 @@ class UI:
             await self.clear_screan()
             self.selected_button=None
             if self.state_prev is UI.States.TREN1:
-                self.sub_state="edit_old" #or edit_old
-                self.edited_tcard=self.tcard
+                self.sub_state="edit_old"
             elif self.state_prev is UI.States.ADD_CARD:
-                self.sub_state="edit_new" #or edit_old
+                self.sub_state="edit_new"
+            elif self.state_prev is UI.States.SHOW_CARDS:
+                self.sub_state="edit_old"
             else:
                 logger.warning("edit_card: unknown state_prev:"+self.state_prev)
             self.kbd=self.create_buttons()
@@ -515,31 +517,34 @@ class UI:
                 self.state=self.states_q.pop() #goto back
                 return True
             elif data=='kbd:save':
-                self.save_edited_tcard() #fixme удаление, апдейт, insert
+                self.save_edited_card() #удаление, апдейт, insert
                 self.state=self.states_q.pop() #goto back
                 return True
             elif data.startswith('msg:'):
                 data = data.split('msg:', 1)[1]
                 logger.info(self.selected_button+": rx_msg: "+data)
                 if self.selected_button=="fw":
-                    self.edited_tcard.ChangeForeign(data)
+                    self.edited_card.ChangeForeign(data)
                     self.kbd=self.create_buttons("kbd:fw", "✏️")
                 elif self.selected_button=="nw":
-                    self.edited_tcard.ChangeNative(data)
+                    self.edited_card.ChangeNative(data)
                     self.kbd=self.create_buttons("kbd:nw", "✏️")
                 elif self.selected_button=="ex":
-                    self.edited_tcard.ChangeExample(data)
+                    self.edited_card.ChangeExample(data)
                     self.kbd=self.create_buttons("kbd:ex", "✏️")
             else:
                 return False #ignore other signals (need to log?)
         
-        txt2=f"<u>{self.edited_tcard.GetForeign()}</u> = {self.edited_tcard.GetNative()}\n<i>{self.edited_tcard.GetExample()}</i>"
-        txt=msg07_edit_card()+txt2
+        pg=card_get_progress(self.user_id, self.edited_card.card_id)
+        txt2=f"\n{pg}<u>{self.edited_card.GetForeign()}</u> = {self.edited_card.GetNative()}\n\n<i>{self.edited_card.GetExample()}</i>"
         if self.selected_button=="reset":
             txt=msg09_reset_prog()+txt2
         elif self.selected_button=="delete":
             txt2=f"<s>{txt2}</s>"
             txt=msg08_del_card()+txt2
+        else:
+            txt=msg07_edit_card()+txt2
+
                             
         await self.m2_text(txt, kbd=self.kbd)
         self.state_prev = UI.States.EDIT_CARD
@@ -553,7 +558,8 @@ class UI:
             elif data.startswith('msg:'):
                 data = data.split('msg:', 1)[1]
                 f,n = make_trans (self.cfg.foreign_lang, self.cfg.native_lang, data)
-                self.edited_tcard=TrainingCard.CreateNewTCard(self.user_id, self.cfg, f, n)
+                #fixme - generate example:
+                self.edited_card=Card(self.user_id, self.cfg.foreign_lang, f, self.cfg.native_lang, n, "")
                 self.states_q.append(self.state)
                 self.state = UI.States.EDIT_CARD
                 return True
@@ -563,6 +569,73 @@ class UI:
         await self.clear_m1()
         await self.m2_text(msg10_add_new_card(), kbd=self.create_buttons())
         self.state_prev = UI.States.ADD_CARD
+        return False            
+
+    def create_show_cards_buttons(self):
+        kbd = [[]]
+        n=len(self.show_cards_list)-1
+        n1=self.show_cards_list_pos
+        n2=min(n, n1+6)
+
+        for i in range (n1, n2):
+            card_data=self.show_cards_list[i]
+            cid=card_data[0]
+            pg=card_get_progress(self.user_id, cid)
+            f=format_button_text(pg+card_data[1], 17)
+            l=format_button_text(card_data[2], 17)                
+            kbd.append([
+                InlineKeyboardButton(f"{f}", callback_data=f"kbd:{cid}"),
+                InlineKeyboardButton(f"{l}", callback_data=f"kbd:{cid}")])
+        
+        if self.show_cards_list_pos>0:
+            left=InlineKeyboardButton("«", callback_data="kbd:prev")
+        else:
+            left=InlineKeyboardButton("x", callback_data="kbd:x")
+
+        if n2<n:
+            right=InlineKeyboardButton("»", callback_data="kbd:next")
+        else:
+            right=InlineKeyboardButton("x", callback_data="kbd:x")
+
+        kbd.append([left, InlineKeyboardButton("↩️ Назад", callback_data="kbd:cancel"), right])
+        return InlineKeyboardMarkup(kbd)
+
+
+    async def show_cards(self, data:str=None) -> None:
+        if self.state_prev is not UI.States.SHOW_CARDS:
+            self.show_cards_list=cards_read(self.user_id)
+            #сохранить  позицию при выходе из редактирования
+            if self.state_prev is not UI.States.EDIT_CARD or self.show_cards_list_pos>=len (self.show_cards_list):
+                self.show_cards_list_pos=0 
+        elif self.state_prev is UI.States.SHOW_CARDS and data is not None:
+            if data=='kbd:cancel':
+                self.show_cards_list=None
+                self.show_cards_list_pos=0
+                self.state=self.states_q.pop() #goto back, сбросить список
+                return True
+            elif data=="kbd:prev": #продвинуться по списку
+                self.show_cards_list_pos-=6
+                if self.show_cards_list_pos<0:
+                    self.show_cards_list_pos=0
+            elif data=="kbd:next":
+                self.show_cards_list_pos+=6
+                if self.show_cards_list_pos>len(self.show_cards_list)-1:
+                    self.show_cards_list_pos-=6
+            elif data=="kbd:x":
+                return False
+            elif data.startswith('kbd:'):
+                data = data.split('kbd:', 1)[1] #card_id
+                self.edited_card=Card.ReadFromDb(self.user_id, int(data))
+                self.states_q.append(self.state)
+                self.state = UI.States.EDIT_CARD
+                return True
+            else:
+                return False
+
+
+        await self.clear_m1()
+        await self.m2_text(msg12_select_card(), kbd=self.create_show_cards_buttons())
+        self.state_prev = UI.States.SHOW_CARDS
         return False
 
     async def stat(self) -> None:
@@ -612,6 +685,14 @@ class UI:
         await context.bot.delete_message(update.effective_chat.id, update.effective_message.id)
         ui=get_ui(update.effective_user.id, update.effective_chat.id, context)
         await ui.process_ev("cmd:add")
+
+    @staticmethod
+    async def show_cmd_(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        global ui_set
+        await context.bot.delete_message(update.effective_chat.id, update.effective_message.id)
+        ui=get_ui(update.effective_user.id, update.effective_chat.id, context)
+        await ui.process_ev("cmd:show")
+        
         
     async def stat_cmd2_(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         global ui_set
@@ -661,6 +742,7 @@ async def post_init(context):
         BotCommand('help',  'Help'),
         BotCommand('edit',  'Edit cards'),
         BotCommand('add' ,  'Add cards'),
+        BotCommand('show' , 'show cards'),
     ]
     await context.bot.delete_my_commands(language_code='')
     await context.bot.set_my_commands(commands_en, language_code=None)
@@ -674,6 +756,7 @@ async def post_init(context):
         BotCommand('edit',  'Редактировать карту'),
         BotCommand('stat',  'статистика'),
         BotCommand('add',   'Добавить карту'),
+        BotCommand('show' , 'показать карты'),
         #BotCommand('reset', 'сброс прогресса'),
         ]
         
@@ -705,6 +788,7 @@ def main() -> None:
     application = Application.builder().token(token).post_init(post_init).post_stop(post_stop).defaults(bot_def).build()
     application.add_handler(CommandHandler("start", start_cmd))
     application.add_handler(CommandHandler("add", UI.add_cmd_))
+    application.add_handler(CommandHandler("show", UI.show_cmd_))
     application.add_handler(CommandHandler("help", help_cmd))
     application.add_handler(CommandHandler("edit", UI.edit_cmd_))
     application.add_handler(CommandHandler("stat", UI.stat_cmd_))

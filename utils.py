@@ -47,3 +47,16 @@ def kbd_eq(k1:InlineKeyboardMarkup, k2:InlineKeyboardMarkup) -> bool:
                 return False
 
     return True
+
+
+def format_button_text(txt:str, max_l:int):
+    l=len(txt)
+    if l > max_l:
+        return txt[:max_l-1]+'…'
+    elif l == max_l:
+        return txt
+    
+    txt=txt.ljust(max_l+max_l-l-1) #удваиваеем пробелы, так как они имеют маленькую ширину. fixme: а для руссккого утроить?
+    txt+="\u3164"
+    
+    return txt

@@ -36,7 +36,7 @@ def msg05_tren0(tt: datetime):
     if w is not None:
         return f"🤷‍♂️ Пока нет карточек для повторения, следующий тренинг {w}"
     else:
-        return "🤷‍♂️ Нет карточек для повторения"
+        return "🤷‍♂️ Нет карточек для повторения 💤"
 
 def msg06_tren0(n):
     return f"🏄🏼 Пора начинать!\n{n}-карточек для повторения"
@@ -74,3 +74,6 @@ def msg10_add_new_card():
 
 def msg11_t_o():
     return "Я на тех. обслуживании, извини!"
+
+def msg12_select_card():
+    return "<pre>Выберите карту:</pre>\n"
