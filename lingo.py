@@ -166,16 +166,19 @@ class UI:
                 return
 
             if data=="cmd:add":
+                if self.state==UI.States.ADD_CARD:
+                    return
                 self.timer_stop()
                 self.states_q.append(self.state)
                 self.state=UI.States.ADD_CARD
                 data=None
             elif data=="cmd:show":
+                if self.state==UI.States.SHOW_CARDS:
+                    return
                 self.timer_stop()
                 self.states_q.append(self.state)
                 self.state=UI.States.SHOW_CARDS
                 data=None
-
 
             if self.state is UI.States.TREN0:
                 next_step=await self.tren0(data)
@@ -247,11 +250,11 @@ class UI:
                     ]]
         elif self.state is UI.States.TREN3:
             kbd = [[
-                    InlineKeyboardButton("Пока что, хорош!", callback_data="kbd:enough"),
+                    InlineKeyboardButton("Пока что - хорош!", callback_data="kbd:enough"),
                     InlineKeyboardButton("Продолжить", callback_data="kbd:again"),
                     ]]
         elif self.state is UI.States.NEW_USER:
-            kbd = [[InlineKeyboardButton("начать🎈", callback_data="kbd:satrt")]]
+            kbd = [[InlineKeyboardButton("Начать🎈", callback_data="kbd:satrt")]]
         elif self.state is UI.States.CFG_LANG:
             kbd = [[
                         InlineKeyboardButton("English", callback_data="kbd:en"),
@@ -260,17 +263,17 @@ class UI:
                     #     InlineKeyboardButton("Deutsche", callback_data="kbd:de"),
                     #     InlineKeyboardButton("Français", callback_data="kbd:fr"),
                     # ],[
-                        InlineKeyboardButton("начать 🌐", callback_data="kbd:ok"),
+                        InlineKeyboardButton("Начать 🌐", callback_data="kbd:ok"),
                         ]]
-        elif self.state is UI.States.FIRST_SET:
+        elif self.state is UI.States.FIRST_SET: 
             kbd = [[
-                        InlineKeyboardButton("в магазине", callback_data="kbd:market"),
-                        InlineKeyboardButton("соседи", callback_data="kbd:neighbours"),
+                        InlineKeyboardButton("Школа", callback_data="kbd:school"),
+                        InlineKeyboardButton("Соседи", callback_data="kbd:neighbours"),
+                        # ],[
+                        # InlineKeyboardButton("медецина", callback_data="kbd:med"),
+                        # InlineKeyboardButton("дети", callback_data="kbd:kids"),
                         ],[
-                        InlineKeyboardButton("медецина", callback_data="kbd:med"),
-                        InlineKeyboardButton("дети", callback_data="kbd:kids"),
-                        ],[
-                        InlineKeyboardButton("начать ▶️", callback_data="kbd:ok"),
+                        InlineKeyboardButton("Начать ▶️", callback_data="kbd:ok"),
                     ]]
         elif self.state is UI.States.EDIT_CARD:
             ex=self.edited_card.GetExample()
@@ -291,7 +294,11 @@ class UI:
 
         elif self.state is UI.States.ADD_CARD:
             kbd = [[
+                        InlineKeyboardButton("Школа", callback_data="kbd:school"),
+                        InlineKeyboardButton("Соседи", callback_data="kbd:neighbours"),
+                    ],[
                         InlineKeyboardButton("Назад ↩️", callback_data="kbd:cancel"),
+                        InlineKeyboardButton("Добавить ▶️", callback_data="kbd:ok"),
                     ]]
         else:
             return None
@@ -551,11 +558,12 @@ class UI:
         return False
 
     async def add_card(self, data:str=None) -> None:
-        if self.state_prev is UI.States.ADD_CARD and data is not None:
-            if data=='kbd:cancel':
-                self.state=self.states_q.pop() #goto back
-                return True
-            elif data.startswith('msg:'):
+        if self.state_prev is not UI.States.ADD_CARD:
+            await self.clear_m1()
+            self.selected_button=None
+            self.kbd=self.create_buttons()
+        elif self.state_prev is UI.States.ADD_CARD and data is not None:
+            if data.startswith('msg:'):
                 data = data.split('msg:', 1)[1]
                 f,n = make_trans (self.cfg.foreign_lang, self.cfg.native_lang, data)
                 #fixme - generate example:
@@ -563,11 +571,22 @@ class UI:
                 self.states_q.append(self.state)
                 self.state = UI.States.EDIT_CARD
                 return True
+            elif data=='kbd:cancel':
+                self.state=self.states_q.pop() #goto back
+                return True
+            elif data=='kbd:ok':
+                if self.selected_button is not None:
+                    n=cards_add_words_by_topic(self.user_id, self.selected_button, flang=self.cfg.foreign_lang, nlang=self.cfg.native_lang)
+                    logger.info(f"{self.user_id}: added {n} words from word_set[{self.selected_button}]")
+                self.state=self.states_q.pop() #goto back
+                return True
+            elif data.startswith('kbd:'):
+                self.selected_button = data.split('kbd:', 1)[1]
+                self.kbd=self.create_buttons(data)
             else:
                 return False
 
-        await self.clear_m1()
-        await self.m2_text(msg10_add_new_card(), kbd=self.create_buttons())
+        await self.m2_text(msg10_add_new_card(), kbd=self.kbd)
         self.state_prev = UI.States.ADD_CARD
         return False            
 
@@ -749,7 +768,8 @@ async def post_init(context):
         BotCommand('help',  'Help'),
         BotCommand('edit',  'Edit cards'),
         BotCommand('add' ,  'Add cards'),
-        BotCommand('show' , 'show cards'),
+        BotCommand('show' , 'Show all cards'),
+        BotCommand('stat',  'статистика'),
     ]
     await context.bot.delete_my_commands(language_code='')
     await context.bot.set_my_commands(commands_en, language_code=None)
@@ -761,9 +781,9 @@ async def post_init(context):
         BotCommand('start', 'Начать общение с ботом'),
         BotCommand('help',  'Получить помощь'),
         BotCommand('edit',  'Редактировать карту'),
+        BotCommand('add',   'Добавить карты'),
+        BotCommand('show' , 'Показать все карты'),
         BotCommand('stat',  'статистика'),
-        BotCommand('add',   'Добавить карту'),
-        BotCommand('show' , 'показать карты'),
         #BotCommand('reset', 'сброс прогресса'),
         ]
         

@@ -33,22 +33,6 @@ def cards_remove(user_id:int):
     conn.commit()
     conn.close()
 
-def cards_add_words_by_topic(user_id:int, topic:str, flang= "en", nlang="ru"):
-    conn = sqlite3.connect(DB)
-    cursor = conn.cursor()
-    #fixme подумать с переводом на другие языки
-    sql = f"""
-INSERT INTO cards (user_id, foreign_w, native_w, foreign_lang, native_lang, example)
-SELECT ?, f_word, tr1, '{flang}', '{nlang}', f_example
-FROM word_set 
-WHERE topic = ? and f_lang= '{flang}'
-"""
-    cursor.execute(sql, (user_id, topic))
-    n=cursor.rowcount
-    conn.commit()
-    conn.close()
-    return n
-
 def get_hash(input_string):
     return hashlib.md5(input_string.encode()).hexdigest()[:10]
 
@@ -591,5 +575,3 @@ class TrainingCardSet:
     def IsAudioWords(self):
         return self.audio_words
     
-
-

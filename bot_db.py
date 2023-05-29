@@ -119,5 +119,18 @@ def card_add(user_id:int, foreign_w, native_w, foreign_lang, native_lang, exampl
     close_db(commit=True)
     return card_id
 
-
+def cards_add_words_by_topic(user_id:int, topic:str, flang= "en", nlang="ru"):
+    c=open_db()
+    #fixme подумать с переводом на другие языки
+    sql = f"""
+INSERT INTO cards (user_id, foreign_w, native_w, foreign_lang, native_lang, example)
+SELECT ?, f_word, tr1, '{flang}', '{nlang}', f_example
+FROM word_set 
+WHERE topic = ? and f_lang= '{flang}' AND NOT EXISTS 
+(SELECT 1 FROM cards WHERE foreign_w = word_set.f_word AND user_id = ?)
+"""
+    c.execute(sql, (user_id, topic, user_id))
+    n=c.rowcount
+    close_db(commit=True)
+    return n
 
