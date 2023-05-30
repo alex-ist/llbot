@@ -20,6 +20,7 @@ from msg_txt import *
 from utils import *
 from user_config import *
 from botlog import *
+from oai import *
 
 
 ui_set={}
@@ -529,16 +530,20 @@ class UI:
                 return True
             elif data.startswith('msg:'):
                 data = data.split('msg:', 1)[1]
-                logger.info(self.selected_button+": rx_msg: "+data)
                 if self.selected_button=="fw":
+                    logger.info("fw: rx_msg: "+data)
                     self.edited_card.ChangeForeign(data)
                     self.kbd=self.create_buttons("kbd:fw", "✏️")
                 elif self.selected_button=="nw":
+                    logger.info("nw: rx_msg: "+data)
                     self.edited_card.ChangeNative(data)
                     self.kbd=self.create_buttons("kbd:nw", "✏️")
                 elif self.selected_button=="ex":
+                    logger.info("ex: rx_msg: "+data)
                     self.edited_card.ChangeExample(data)
                     self.kbd=self.create_buttons("kbd:ex", "✏️")
+                else:
+                    return False
             else:
                 return False #ignore other signals (need to log?)
         
@@ -566,8 +571,8 @@ class UI:
             if data.startswith('msg:'):
                 data = data.split('msg:', 1)[1]
                 f,n = make_trans (self.cfg.foreign_lang, self.cfg.native_lang, data)
-                #fixme - generate example:
-                self.edited_card=Card(self.user_id, self.cfg.foreign_lang, f, self.cfg.native_lang, n, "")
+                ex=oai_get_example(self.user_id, f)
+                self.edited_card=Card(self.user_id, self.cfg.foreign_lang, f, self.cfg.native_lang, n, ex)
                 self.states_q.append(self.state)
                 self.state = UI.States.EDIT_CARD
                 return True
@@ -807,8 +812,10 @@ async def post_stop(a):
 
 
 def main() -> None:
-    with open ("data/token.txt", 'r') as f:
+    with open ("keys/tg-token.txt", 'r') as f:
         token=f.readline()
+    
+    init_oai()
 
     logging.getLogger('httpx').setLevel(logging.WARNING)
     bot_def=telegram.ext.Defaults(parse_mode="HTML", disable_notification=True)

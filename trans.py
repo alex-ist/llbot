@@ -6,6 +6,10 @@ from langdetect import detect_langs
 from translate import Translator
 def make_trans (flang:str, nlang:str, word:str):
     lang=detect(word)
+    
+    if lang!=nlang:
+        lang=flang
+        
     if lang==flang:
         translator= Translator(from_lang=flang,to_lang=nlang)
         translation = translator.translate(word)
