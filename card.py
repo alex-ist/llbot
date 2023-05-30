@@ -8,7 +8,7 @@ from user_config import *
 from botlog import *
 from trans import make_trans
 
-DB='lingostu.db'
+DB='data/ll.db'
 
 def card_remove(user_id:int, foreign_w):
     conn = sqlite3.connect(DB) 

@@ -3,7 +3,7 @@ import sqlite3
 from sqlite3 import Error
 from datetime import *
 
-DB='lingostu.db'
+DB='data/ll.db'
 db_conn=None
 
 def open_db():
