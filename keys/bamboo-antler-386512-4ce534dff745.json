@@ -1,0 +1,13 @@
+{
+  "type": "service_account",
+  "project_id": "bamboo-antler-386512",
+  "private_key_id": "4ce534dff74520167f89b3a188e92f39add068c0",
+  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQDhoocFaiLtNk3o\n/CevxliTBT9ezcoIivQRvuasXqwMigX9+3RvuCDsWFB3XEEADdhbTvdu2uFloN+O\nDi5K7LLd3iJg2rUEcXyfJNKj0cmojvOBJ7oqMSwmwbIOnNFVj3dNfCDja7hvIjsP\nX8jBb2u2yTmnoh9tjRRfAL05tOP081YixNeh+muWzp2GQkB7TJbBARyaXm9xY+ek\nd8xd3IFNWlXTFKxZAYxBQ6A+YH4jhgXfiiGs8+TaZMNv/ujGQR5pD45xsFpjp3t5\nKj/h0xe9sJ3AZnsZVQfJ9n41qwxqReWJZJincFEwt+a3GBIJGkXlTfcC9vTFqMJZ\nXDji+349AgMBAAECggEABi8qdLlJPkeuAHwCyXROAq+S4lIRHsVSNbdOArzwicJx\nshmlghdhnaC5CeB3Lp1yh+Qk736jzWGIpw/X8HlG2MJpHk74RagnooQDmvZZyNss\nLObOGTByVZia/QAK08XEHxVPIHSYIEGnrT7ylWysntyqjh/pLRtACu+OAConUlQY\n37l6DvoIcJFSl7fbvs23GMI3U7KiO05jSlsBVqJE+JUPtj4xpd9cAWp2HXfOQb2K\nWk0SWjrZQv7uTCoeoihVrT3quDv/cyCItkw+1JTsOUZMY0q5POSj+XFLM1TJXeej\n3IGWryNzU3vPMKj3HA1e/B4kpeAFC1fgSpCzvMf1aQKBgQD9NhmHpV1hfuB6+ONO\n5RFaKa+awnkmmju7ypO4zpnbgnECROZrEmnISxZJekwT+cn5CMh96lDGYNlyJBe3\nKO2zrdk8lu7K2IRXzVuaovze1XJ2udtjKarPFAyg/fypjI9gmuDsCZZMxEyslUjQ\n40PIYW5ZjZwR9iFyUB+JYGjjVQKBgQDkHq3WY5IKr1HExNFbK6H4uFaXDipYWRTq\n3QUT3EbNJieZ2GAUuqNTsEaz8qi+vddCDocdG6W4oaLKmjGL3GUmBrLHsj/pz8M2\nFH5acpIgOSelmvYMxHac48Q3/ADOJ9uJSxZxHj3/3048PRRx2eneG+xVKbmHuY5r\nX1rtgh3/SQKBgQDzYNyJFNj8rQb3K+LQIjzbfNXc2q+3+ucPSVdTesFHy8jzdWZD\n5B7o9cMmPPaC/MS1KUwMOvwIsW5P14Ez+5L98UusgSZkslgCTNCPgbmsNV0f4OSO\nG66h+5Nn6ri//uqQ4EzwkwZ0IvnPqG2k2cx8/akjSomIehsL1Rd647/tQQKBgETo\ns5CAkXwiy6uJ3MgSnSH55UZKJCZ9+mCcFU2Ti9uqu+mwQA3i9zVvmVwAYFMGG8E7\njDsRv/TO9tMG0xKxp+hdu6GxSbdCaHCsriJ6W4PaYAyZi9v9eOsZrotO15tu1NVb\nVlMjVI03knWF6egecJQEkVaEfSPvvILY0inO1WrpAoGAFPstqA1TIBAPXtPWu7QE\nUgzN0zjfKzburgFbE9dgYHp2IFSL4j85FCBaoWL86Bt4v96rw2s++iO44yxGo7tJ\nlFZiGAxLwIfJqfAnw2qrnCNd0x3TKKIEBEAici0cBN+gypZte+njduOv++/sur6l\nK9ivRpOKQSbom72CZKCkgb8=\n-----END PRIVATE KEY-----\n",
+  "client_email": "lingostudo-bot@bamboo-antler-386512.iam.gserviceaccount.com",
+  "client_id": "114182022606915813419",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://oauth2.googleapis.com/token",
+  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/lingostudo-bot%40bamboo-antler-386512.iam.gserviceaccount.com",
+  "universe_domain": "googleapis.com"
+}

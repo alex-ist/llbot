@@ -812,8 +812,18 @@ async def post_stop(a):
 
 
 def main() -> None:
-    with open ("keys/tg-token.txt", 'r') as f:
-        token=f.readline()
+    try:
+        with open("keys/tg-token.txt", 'r') as f:
+            token = f.readline()
+            logger.info("Running LL test")
+    except FileNotFoundError:
+        try:
+            with open("keys/lingolink.txt", 'r') as f:
+                token = f.readline()
+                logger.info("Running LL production")
+        except FileNotFoundError:
+            logger.error("No telegram token found")
+            
     
     init_oai()
 
