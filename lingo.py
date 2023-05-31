@@ -1,8 +1,5 @@
 #!/usr/bin/env python
 import asyncio
-from datetime import *
-from enum import Enum, auto
-
 
 from telegram import Update, BotCommand
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
@@ -17,9 +14,12 @@ import telegram
 from card import Card, TrainingCard, TrainingCardSet
 from card import *
 from msg_txt import *
+
 from utils import *
 from user_config import *
 from botlog import *
+from datetime import *
+from botlog import logger
 from oai import *
 
 
@@ -827,7 +827,6 @@ def main() -> None:
     
     init_oai()
 
-    logging.getLogger('httpx').setLevel(logging.WARNING)
     bot_def=telegram.ext.Defaults(parse_mode="HTML", disable_notification=True)
     application = Application.builder().token(token).post_init(post_init).post_stop(post_stop).defaults(bot_def).build()
     application.add_handler(CommandHandler("start", start_cmd))

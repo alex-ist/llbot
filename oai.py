@@ -1,7 +1,7 @@
 import os
 import openai
 from openai.error import RateLimitError
-from botlog import *
+from botlog import logger
 import random
 
 

@@ -1,6 +1,6 @@
 from datetime import *
 from bot_db import *
-from botlog import *
+from botlog import logger
 
 
 class UserConfig:

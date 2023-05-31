@@ -1,8 +1,21 @@
 import logging
-
+import os
+import datetime
 
 # Enable logging
-logging.basicConfig(
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO
-)
-logger = logging.getLogger(__name__)
+def log_init():
+
+    if not os.path.exists("log"):
+        os.makedirs("log")
+
+    logging.basicConfig(
+        filename="log/ll.log",
+        filemode='a',
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO
+    )
+    logging.getLogger('httpx').setLevel(logging.WARNING)
+    return logging.getLogger("LL")
+
+
+logger = log_init()
+logger.info(f"Run at {str(datetime.datetime.now())}")

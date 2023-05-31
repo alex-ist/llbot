@@ -47,4 +47,8 @@ Thumbs.db
 *.flv
 *.mov
 *.wmv
+*.ogg
+*m4a
+_map.txt
+
 

@@ -5,7 +5,7 @@ import hashlib
 from g_ttos import google_speach
 from datetime import *
 from user_config import *
-from botlog import *
+from botlog import logger
 from trans import make_trans
 
 DB='data/ll.db'
