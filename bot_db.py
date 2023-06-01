@@ -63,33 +63,7 @@ def card_read(user_id:int, card_id:int):
     return row[0],row[1],row[2],row[3],row[4]
 
 
-def card_get_progress(user_id:int, card_id:int):
-    unicode_symbols = {0:"\u2800 ",  1: "\u28c0 ", 2: "\u28e4 ", 3: "\u28f6 ", 4: "\u28ff "}
-    if card_id<0:
-        return unicode_symbols[0]
 
-    c=open_db()
-    c.execute(f"SELECT next_training_t, last_training_t FROM training_cards WHERE user_id = {user_id} AND card_id = {card_id}")
-    r = c.fetchall()
-    close_db()
-    total=0
-    for v in r:
-        if v[0]==-1 or v[1]==-1:
-            return unicode_symbols[0]
-        total+=(v[0]-v[1])
-    total/=2
-    
-    if total<3600*6:
-        return unicode_symbols[0]
-    elif total<3600*24:
-        return unicode_symbols[1]
-    elif total<3600*24*4:
-        return unicode_symbols[2]
-    elif total<3600*24*16:
-        return unicode_symbols[3]
-    else:
-        return unicode_symbols[4]
-    
 
 def card_delete(user_id:int, cid:int):
     c=open_db()
@@ -141,3 +115,65 @@ def cards_count(user_id:int):
     n = cursor.fetchone()[0]
     conn.close()
     return n
+
+def get_progr (t:int ):
+    unicode_symbols = {0:"\u2800",  1: "\u28c0", 2: "\u28e4", 3: "\u28f6", 4: "\u28ff"}
+    if t<3600*6:
+        return unicode_symbols[0]
+    elif t<3600*24:
+        return unicode_symbols[1]
+    elif t<3600*24*4:
+        return unicode_symbols[2]
+    elif t<3600*24*16:
+        return unicode_symbols[3]
+    else:
+        return unicode_symbols[4]
+
+
+def card_get_progress(user_id:int, card_id:int):
+    if card_id<0:
+        return get_progr(0)
+
+    c=open_db()
+    c.execute(f"SELECT next_training_t, last_training_t FROM training_cards WHERE user_id = {user_id} AND card_id = {card_id}")
+    r = c.fetchall()
+    close_db()
+    total=0
+    for v in r:
+        if v[0]==-1 or v[1]==-1:
+            return get_progr(0)
+        total+=(v[0]-v[1])
+    total/=2
+    return get_progr(total)
+
+def cards_stat(user_id:int, len, offset=0):
+    c=open_db()
+    c.execute(f"SELECT cards.foreign_w, cards.native_w, training_cards.next_training_t, training_cards.last_training_t, training_cards.direction FROM training_cards INNER JOIN cards ON training_cards.card_id = cards.card_id WHERE training_cards.user_id = {user_id} ORDER BY training_cards.next_training_t ASC LIMIT {len} OFFSET {offset}")
+    rows = c.fetchall()
+    close_db()
+    r=""
+    #prog:word(n,f):    next_t\n
+    for v in rows:
+        nt=v[2]
+        lt=v[3]
+        d=v[4]
+        if nt==-1 or lt==-1:
+            p=get_progr(0)
+        else:
+            p=get_progr(nt-lt)
+
+        w=v[0] if d==0 else v[1] #fixme - check dir
+        
+        t=t_from_DB(nt)
+        if t is not None:
+            td=t-datetime.now()
+            sec = td.total_seconds()
+            sign = '-' if sec < 0 else ' '
+            sec = abs(sec)
+            h = int(sec // 3600)
+            m = int((sec % 3600) // 60)
+            r+=f"{p}{w[:24].ljust(20)}:{sign}{h:02}:{m:02}\n"
+        else:
+            r+=f"{p}{w[:24].ljust(20)}:new\n"
+    return r
+

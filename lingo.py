@@ -43,6 +43,7 @@ class UI:
         TREN3 ="tren2_st"
         EDIT_CARD ="edit_card_st"
         ADD_CARD ="add_card_st"
+        SHOW_STAT ="show_card_st"
         SHOW_CARDS="show_cards_st"
 
     def __init__(self, user_id:int, chat_id:int):
@@ -165,12 +166,23 @@ class UI:
                 await self.stop_chat()
                 return
 
-            if data=="cmd:add":
+            #cmd_add не работатет в режиме добавления
+            if data=="cmd:start":
+                self.timer_stop()
+                self.state_prev = UI.States.ST_UNDEF
+            elif data=="cmd:add":
                 if self.state==UI.States.ADD_CARD:
                     return
                 self.timer_stop()
                 self.states_q.append(self.state)
                 self.state=UI.States.ADD_CARD
+                data=None
+            elif data=="cmd:stat":
+                if self.state==UI.States.SHOW_STAT:
+                    return
+                self.timer_stop()
+                self.states_q.append(self.state)
+                self.state=UI.States.SHOW_STAT
                 data=None
             elif data=="cmd:show":
                 if self.state==UI.States.SHOW_CARDS:
@@ -179,6 +191,13 @@ class UI:
                 self.states_q.append(self.state)
                 self.state=UI.States.SHOW_CARDS
                 data=None
+
+            if self.state_prev is UI.States.ST_UNDEF:
+                cn=cards_count(self.user_id) #проверка на нового пользователя.
+                if cn>0:
+                    self.state = UI.States.TREN0
+                else:
+                    self.state = UI.States.NEW_USER
 
             if self.state is UI.States.TREN0:
                 next_step=await self.tren0(data)
@@ -190,6 +209,8 @@ class UI:
                 next_step=await self.edit_card(data)
             elif self.state is UI.States.ADD_CARD:
                 next_step=await self.add_card(data)
+            elif self.state is UI.States.SHOW_STAT:
+                next_step=await self.show_stat(data)
             elif self.state is UI.States.SHOW_CARDS:
                 next_step=await self.show_cards(data)
             elif self.state is UI.States.NEW_USER:
@@ -300,6 +321,18 @@ class UI:
                         InlineKeyboardButton("Назад ↩️", callback_data="kbd:cancel"),
                         InlineKeyboardButton("Добавить ▶️", callback_data="kbd:ok"),
                     ]]
+        elif self.state is UI.States.SHOW_STAT:
+            if self.list_pos>0:
+                left=InlineKeyboardButton("⏪", callback_data="kbd:prev")
+            else:
+                left=InlineKeyboardButton("✖️", callback_data="kbd:x")
+
+            if self.list_pos+30<self.list_sz-1:
+                right=InlineKeyboardButton("⏩", callback_data="kbd:next")
+            else:
+                right=InlineKeyboardButton("✖️", callback_data="kbd:x")
+
+            kbd = [[left, InlineKeyboardButton("Назад ↩️", callback_data="kbd:cancel"), right]]
         else:
             return None
         
@@ -326,18 +359,6 @@ class UI:
         await self.m1_text(msg01_welcom(), self.create_buttons())
         self.state_prev = UI.States.NEW_USER
         return False
-
-    async def start(self) -> None:
-        self.timer_stop()
-        self.state_prev = UI.States.ST_UNDEF
-
-        cn=cards_count(self.user_id) #проверка на нового пользователя.
-        if cn>0:
-            self.state = UI.States.TREN0
-            await self.tren0()
-        else:
-            self.state = UI.States.NEW_USER
-            await self.new_user()
 
     async def cfg_lang(self, data=None) -> None:
         lang=None
@@ -547,7 +568,7 @@ class UI:
                 return False #ignore other signals (need to log?)
         
         pg=card_get_progress(self.user_id, self.edited_card.card_id)
-        txt2=f"\n{pg}<u>{self.edited_card.GetForeign()}</u> = {self.edited_card.GetNative()}\n\n<i>{self.edited_card.GetExample()}</i>"
+        txt2=f"\n{pg} <u>{self.edited_card.GetForeign()}</u> = {self.edited_card.GetNative()}\n\n<i>{self.edited_card.GetExample()}</i>"
         if self.selected_button=="reset":
             txt=msg09_reset_prog()+txt2
         elif self.selected_button=="delete":
@@ -594,23 +615,51 @@ class UI:
         self.state_prev = UI.States.ADD_CARD
         return False            
 
+    async def show_stat(self, data:str=None) -> None:
+        if self.state_prev is not UI.States.SHOW_STAT:
+            await self.clear_m1()
+            self.list_pos=0
+            self.list_sz=cards_count(self.user_id)
+            self.selected_button=None
+        elif self.state_prev is UI.States.SHOW_STAT and data is not None:
+            if data=='kbd:cancel':
+                self.state=self.states_q.pop() #goto back, сбросить список
+                return True
+            elif data=="kbd:prev": #продвинуться по списку
+                self.list_pos-=30
+                if self.list_pos<0:
+                    self.list_pos=0
+            elif data=="kbd:next":
+                if self.list_pos + 30 < self.list_sz:
+                    self.list_pos += 30
+            elif data=="kbd:x":
+                return False
+            else:
+                return False
+        
+        t=msg11_total_stat(self.list_sz)
+        t+=f"<pre>{cards_stat(self.user_id, 30, offset=self.list_pos)}</pre>"
+        await self.m2_text(t, kbd=self.create_buttons())
+        self.state_prev = UI.States.SHOW_STAT
+        return False
+
     def create_show_cards_buttons(self):
         kbd = [[]]
         n=len(self.show_cards_list)-1
-        n1=self.show_cards_list_pos
+        n1=self.list_pos
         n2=min(n, n1+6)
 
         for i in range (n1, n2):
             card_data=self.show_cards_list[i]
             cid=card_data[0]
-            pg=card_get_progress(self.user_id, cid)
+            pg=card_get_progress(self.user_id, cid)+" "
             f=format_button_text(pg+card_data[1], 17)
             l=format_button_text(card_data[2], 17)                
             kbd.append([
                 InlineKeyboardButton(f"{f}", callback_data=f"kbd:{cid}"),
                 InlineKeyboardButton(f"{l}", callback_data=f"kbd:{cid}")])
         
-        if self.show_cards_list_pos>0:
+        if self.list_pos>0:
             #left=InlineKeyboardButton("«", callback_data="kbd:prev")
             left=InlineKeyboardButton("⏪", callback_data="kbd:prev")
         else:
@@ -630,22 +679,21 @@ class UI:
         if self.state_prev is not UI.States.SHOW_CARDS:
             self.show_cards_list=cards_read(self.user_id)
             #сохранить  позицию при выходе из редактирования
-            if self.state_prev is not UI.States.EDIT_CARD or self.show_cards_list_pos>=len (self.show_cards_list):
-                self.show_cards_list_pos=0 
+            if self.state_prev is not UI.States.EDIT_CARD or self.list_pos>=len (self.show_cards_list):
+                self.list_pos=0 
         elif self.state_prev is UI.States.SHOW_CARDS and data is not None:
             if data=='kbd:cancel':
                 self.show_cards_list=None
-                self.show_cards_list_pos=0
+                self.list_pos=0
                 self.state=self.states_q.pop() #goto back, сбросить список
                 return True
             elif data=="kbd:prev": #продвинуться по списку
-                self.show_cards_list_pos-=6
-                if self.show_cards_list_pos<0:
-                    self.show_cards_list_pos=0
+                self.list_pos-=6
+                if self.list_pos<0:
+                    self.list_pos=0
             elif data=="kbd:next":
-                self.show_cards_list_pos+=6
-                if self.show_cards_list_pos>len(self.show_cards_list)-1:
-                    self.show_cards_list_pos-=6
+                if self.list_pos+6<len(self.show_cards_list):
+                    self.list_pos+=6
             elif data=="kbd:x":
                 return False
             elif data.startswith('kbd:'):
@@ -663,9 +711,6 @@ class UI:
         self.state_prev = UI.States.SHOW_CARDS
         return False
 
-    async def stat(self) -> None:
-        await self.context.bot.send_message(chat_id=self.chat_id, text=f"<pre>{self.tcs.get_word_stat()}</pre>", disable_notification=True)
-
     async def stat2(self) -> None:
         await self.context.bot.send_message(chat_id=self.chat_id, text=f"<pre>trening set, pos={self.tcs.current_pos}:\n{self.tcs.get_word_stat2()}</pre>", disable_notification=True)
 
@@ -674,7 +719,7 @@ class UI:
         await self.context.bot.send_message(chat_id=self.chat_id, text="word progress reset", disable_notification=True, )
 
     def del_user(self) -> None:
-        cards_remove(self.user_id)        
+        pass
 
     @staticmethod
     async def edit_cmd_(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -702,7 +747,7 @@ class UI:
     async def stat_cmd_(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         global ui_set
         ui=get_ui(update.effective_user.id, update.effective_chat.id, context)
-        await ui.stat()
+        await ui.process_ev("cmd:stat")
 
     @staticmethod
     async def add_cmd_(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -740,17 +785,19 @@ async def start_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     chat_id=update.effective_chat.id
     user_id=update.effective_user.id
     msg_id=update.effective_message.id
-    #await context.bot.delete_message(chat_id, msg_id)
 
+    #await context.bot.delete_message(chat_id, msg_id)
+    #перезапуск UI
     if user_id in ui_set:
         await ui_set[user_id].clear_screan()
         del ui_set[user_id]
+        logger.info(f"uid: {user_id}. Stop UI")
 
     ui=UI(user_id, chat_id)
     ui_set[user_id]=ui
     ui.context=context
-    logger.info(f"user_id: {user_id} chat_id: {chat_id}")
-    await ui.start()
+    logger.info(f"uid: {user_id}. Start UI")
+    await ui.process_ev("cmd:start")
 
 async def help_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     global chat_id, user_id, tcs
@@ -803,7 +850,7 @@ async def post_init(context):
             msg_id=u[2]
             await context.bot.delete_message(chat_id, msg_id)
             ui=get_ui(user_id, chat_id, context)
-            await ui.start()
+            await ui.process_ev("cmd:start")
 
 async def post_stop(a):
     for ui in ui_set.values():
