@@ -193,11 +193,11 @@ class UI:
                 data=None
 
             if self.state_prev is UI.States.ST_UNDEF:
-                cn=cards_count(self.user_id) #проверка на нового пользователя.
-                if cn>0:
-                    self.state = UI.States.TREN0
-                else:
+                #cn=cards_count(self.user_id) #проверка на нового пользователя.
+                if self.cfg.new_user:
                     self.state = UI.States.NEW_USER
+                else:
+                    self.state = UI.States.TREN0
 
             if self.state is UI.States.TREN0:
                 next_step=await self.tren0(data)
@@ -718,9 +718,6 @@ class UI:
         self.tcs.reset_progress()
         await self.context.bot.send_message(chat_id=self.chat_id, text="word progress reset", disable_notification=True, )
 
-    def del_user(self) -> None:
-        pass
-
     @staticmethod
     async def edit_cmd_(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         global ui_set
@@ -738,10 +735,11 @@ class UI:
         await ui.reset()
 
     @staticmethod
-    async def user_del_cmd_(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-        global ui_set
-        ui=get_ui(update.effective_user.id, update.effective_chat.id, context)
-        ui.del_user()
+    async def del_words(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        # global ui_set
+        # ui=get_ui(update.effective_user.id, update.effective_chat.id, context)
+        # ui.del_words()
+        cards_remove(update.effective_user.id)
 
     @staticmethod
     async def stat_cmd_(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -883,7 +881,7 @@ def main() -> None:
     application.add_handler(CommandHandler("stat", UI.stat_cmd_))
     application.add_handler(CommandHandler("stat2", UI.stat_cmd2_))
     application.add_handler(CommandHandler("reset",UI.reset_cmd_))
-    application.add_handler(CommandHandler("user_del",UI.user_del_cmd_))
+    application.add_handler(CommandHandler("del_words",UI.del_words))
     # application.add_handler(CommandHandler("edit", edit_cmd))
     # application.add_handler(CommandHandler("settings", settings_cmd))
     application.add_handler(MessageHandler(None, callback=UI.rx_msg_))

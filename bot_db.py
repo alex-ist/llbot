@@ -177,3 +177,7 @@ def cards_stat(user_id:int, len, offset=0):
             r+=f"{p}{w[:24].ljust(20)}:new\n"
     return r
 
+def cards_remove(user_id:int):
+    c=open_db()
+    c.execute("DELETE FROM cards WHERE user_id = ?", (user_id,))
+    close_db(True)

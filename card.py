@@ -17,13 +17,6 @@ def card_remove(user_id:int, foreign_w):
     conn.commit()
     conn.close()
 
-def cards_remove(user_id:int):
-    conn = sqlite3.connect(DB)
-    cursor = conn.cursor()
-    cursor.execute("DELETE FROM cards WHERE user_id = ?", (user_id,))
-    conn.commit()
-    conn.close()
-
 def get_hash(input_string):
     return hashlib.md5(input_string.encode()).hexdigest()[:10]
 
