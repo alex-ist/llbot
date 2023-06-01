@@ -134,3 +134,10 @@ WHERE topic = ? and f_lang= '{flang}' AND NOT EXISTS
     close_db(commit=True)
     return n
 
+def cards_count(user_id:int):
+    conn = sqlite3.connect(DB)
+    cursor = conn.cursor()
+    cursor.execute("SELECT COUNT(*) FROM training_cards WHERE user_id = ?", (user_id,))
+    n = cursor.fetchone()[0]
+    conn.close()
+    return n

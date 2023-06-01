@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 import asyncio
+from botlog import logger
 
 from telegram import Update, BotCommand
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
@@ -9,17 +10,15 @@ from telegram import InputFile
 from telegram import ForceReply
 from telegram.ext import Application, CallbackQueryHandler, CommandHandler, ContextTypes, MessageHandler, filters, Defaults
 import telegram 
+from trans import make_trans
 
 
 from card import Card, TrainingCard, TrainingCardSet
-from card import *
 from msg_txt import *
 
 from utils import *
 from user_config import *
-from botlog import *
 from datetime import *
-from botlog import logger
 from oai import *
 
 

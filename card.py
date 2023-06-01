@@ -2,10 +2,10 @@ import sqlite3
 from sqlite3 import Error
 import os
 import hashlib
+from botlog import logger
 from g_ttos import google_speach
 from datetime import *
 from user_config import *
-from botlog import logger
 from trans import make_trans
 
 DB='data/ll.db'
@@ -16,15 +16,6 @@ def card_remove(user_id:int, foreign_w):
     cursor.execute("DELETE FROM cards WHERE user_id = ? AND foreign_w = ?", (user_id, foreign_w,))
     conn.commit()
     conn.close()
-
-
-def cards_count(user_id:int):
-    conn = sqlite3.connect(DB)
-    cursor = conn.cursor()
-    cursor.execute("SELECT COUNT(*) FROM training_cards WHERE user_id = ?", (user_id,))
-    n = cursor.fetchone()[0]
-    conn.close()
-    return n
 
 def cards_remove(user_id:int):
     conn = sqlite3.connect(DB)

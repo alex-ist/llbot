@@ -16,10 +16,9 @@ TODO:
 +поиск  предложений у гпт чата
 +выложить на продакшен
 
-
+улучшить перевод
 виртуальное окружение
 проверка прогресса
-улучшить перевод
 стикеры после ответов?
 Лого, какртинка дескрипшена
 добавление слов из наборов пошутчно
@@ -28,6 +27,6 @@ TODO:
 сделать перевод асинхронным
 сделать sttx асинхронным
 в начальном наборе нужно меньше слов (30)
-  File "C:\Users\Администратор\AppData\Local\Programs\Python\Python311\Lib\site-packages\telegram\request\_baserequest.py", line 328, in _request_wrapper
-    raise BadRequest(message)
-telegram.error.BadRequest: Query is too old and response timeout expired or query id is invalid
+  File "Lib\site-packages\telegram\request\_baserequest.py", line 328, in _request_wrapper raise BadRequest(message) telegram.error.BadRequest: Query is too old and response timeout expired or query id is invalid
+http2
+веб хуки?

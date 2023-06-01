@@ -2,13 +2,12 @@ from langdetect import detect
 from langdetect import detect_langs
 
 
-#lang=detect("пас")
 from translate import Translator
 def make_trans (flang:str, nlang:str, word:str):
     lang=detect(word)
     
-    if lang!=nlang:
-        lang=flang
+    if lang!=flang:
+        lang=nlang
         
     if lang==flang:
         translator= Translator(from_lang=flang,to_lang=nlang)
@@ -21,6 +20,8 @@ def make_trans (flang:str, nlang:str, word:str):
 
     print (f"{lang}:{word}")
 
-# w="appear"
+
+# lang=detect("черешня")
+# w="черешня"
 # tr=make_trans (flang="en", nlang="ru", word=w)
 # print (f"{tr}" )
