@@ -8,6 +8,7 @@ class UserConfig:
         self.user_id=user_id
         self.set_default()
         self.chat_id=chat_id
+        self.new_user=False
 
     def set_default(self):
         self.foreign_lang="en"
@@ -71,6 +72,9 @@ class UserConfig:
         cfg=UserConfig(user_id, chat_id)
         if not cfg.read_from_db():
             cfg.create_in_db()
+            cfg.new_user=True
+        else:
+            cfg.new_user=False
         
         cfg.SetLastAccess()
         return cfg

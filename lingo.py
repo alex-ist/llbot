@@ -590,7 +590,8 @@ class UI:
         elif self.state_prev is UI.States.ADD_CARD and data is not None:
             if data.startswith('msg:'):
                 data = data.split('msg:', 1)[1]
-                f,n = make_trans (self.cfg.foreign_lang, self.cfg.native_lang, data)
+                data=data.lower().strip()
+                f,n = make_trans(self.cfg.foreign_lang, self.cfg.native_lang, data)
                 ex=oai_get_example(self.user_id, f)
                 self.edited_card=Card(self.user_id, self.cfg.foreign_lang, f, self.cfg.native_lang, n, ex)
                 self.states_q.append(self.state)
