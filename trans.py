@@ -11,7 +11,7 @@ def make_trans (flang:str, nlang:str, word:str):
          else:
             src_lang=nlang
     else:
-        tr = translate_client.detect_language(w)
+        tr = translate_client.detect_language(word)
         detected=tr['language']
         if detected==flang or detected==nlang:
             src_lang=detected

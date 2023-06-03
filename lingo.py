@@ -107,6 +107,12 @@ class UI:
                 self.m1_kbd=kbd
                 await self.m1.edit_text(text=txt, reply_markup=kbd)
 
+    async def m1_sticker(self, stick):
+        if self.m1 is not None:
+            await self.clear_m1()
+        self.m1 = await self.context.bot.send_sticker(chat_id=self.chat_id, sticker=stick)
+        self.m1_type="sticker"
+
     async def m2_text(self, txt:str=None, kbd:InlineKeyboardMarkup=None):
         if self.m2_type!="txt":
             await self.clear_m2()
@@ -342,10 +348,10 @@ class UI:
         return InlineKeyboardMarkup(kbd)
 
     async def stop_chat(self) -> None:
-        await self.clear_m2()
-        await self.m1_text(msg11_t_o())
+        await self.m1_sticker(sticker11_t_o())
+        await self.m2_text(msg11_t_o())
         #сохранить в базе chat_id, msg_id у m1, что бы при запуске удалить его. 
-        save_maintenance_data(self.user_id, self.m1.chat_id, self.m1.message_id, self.state)
+        save_maintenance_data(self.user_id, self.m1.chat_id, self.m1.message_id, self.m2.message_id, self.state)
 
 
     async def new_user(self, data=None) -> None:
@@ -846,8 +852,14 @@ async def post_init(context):
         for u in r:
             user_id=u[0]
             chat_id=u[1]
-            msg_id=u[2]
-            await context.bot.delete_message(chat_id, msg_id)
+            msg_id1=u[2]
+            msg_id2=u[3]
+            
+            if msg_id2 is not None:
+                await context.bot.delete_message(chat_id, msg_id2)
+            if msg_id1 is not None:
+                await context.bot.delete_message(chat_id, msg_id1)
+
             ui=get_ui(user_id, chat_id, context)
             await ui.process_ev("cmd:start")
 

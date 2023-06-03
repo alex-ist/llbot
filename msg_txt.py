@@ -81,6 +81,9 @@ def msg10_add_new_card():
 def msg11_t_o():
     return "Я на тех. обслуживании, извини!"
 
+def sticker11_t_o(): #'Hedgehog_Ned язык с телефоном'
+    return 'CAACAgIAAxkBAAIXPmR7xS_plWDjwkD-bwPqRq6srRrsAAI3AAN4qOYPfx9FB5_gW6QvBA'
+
 def msg12_select_card():
     return "<pre>Выберите карту:</pre>\n"
 
