@@ -45,6 +45,7 @@ class UI:
         ADD_CARD ="add_card_st"
         SHOW_STAT ="show_card_st"
         SHOW_CARDS="show_cards_st"
+        HELP_CMD="help_cmd_st"
 
     def __init__(self, user_id:int, chat_id:int):
         self.m1=None
@@ -200,6 +201,13 @@ class UI:
                 self.states_q.append(self.state)
                 self.state=UI.States.SHOW_CARDS
                 data=None
+            elif data=="cmd:help":
+                if self.state==UI.States.HELP_CMD:
+                    return
+                self.timer_stop()
+                self.states_q.append(self.state)
+                self.state=UI.States.HELP_CMD
+                data=None
 
             if self.state_prev is UI.States.ST_UNDEF:
                 #cn=cards_count(self.user_id) #проверка на нового пользователя.
@@ -228,6 +236,8 @@ class UI:
                 next_step=await self.cfg_lang(data)
             elif self.state is UI.States.FIRST_SET:
                 next_step=await self.first_set(data)
+            elif self.state is UI.States.HELP_CMD:
+                next_step=await self.help_cmd(data)
 
             if next_step!=True:
                 break
@@ -342,6 +352,8 @@ class UI:
                 right=InlineKeyboardButton("✖️", callback_data="kbd:x")
 
             kbd = [[left, InlineKeyboardButton("Назад ↩️", callback_data="kbd:cancel"), right]]
+        elif self.state is UI.States.HELP_CMD:
+            kbd = [[InlineKeyboardButton("Ok", callback_data="kbd:ok")]]
         else:
             return None
         
@@ -393,6 +405,15 @@ class UI:
         self.state_prev = UI.States.CFG_LANG
         return False
 
+    async def help_cmd(self, data=None) -> None:
+        if self.state_prev is UI.States.HELP_CMD and data=="kbd:ok":
+            self.state=self.states_q.pop() #goto back
+            return True
+        await self.clear_screan()
+        await self.m1_text('<a href="https://telegra.ph/Lingo-Link-06-04">О LingoLink</a>', self.create_buttons())
+        self.state_prev = UI.States.HELP_CMD
+        return False
+
     async def first_set(self, data=None) -> None:
         if self.state_prev is not UI.States.FIRST_SET:
             self.sub_state=None
@@ -418,27 +439,23 @@ class UI:
 
     #state tren0 => inviting to learn cards
     async def tren0(self, data=None) -> None:
-        #decoding inside state events:
-        self.timer_stop()
         if self.state_prev is UI.States.TREN0 and data is not None:
             if data=="kbd:satrt":
+                self.timer_stop()
                 self.state=UI.States.TREN1 #goto tren1
                 return True        
-            elif data=="tmr:t0":
-                pass
-            else:
+            elif data!="tmr:t0":
                 return False
 
-        await self.clear_m1()
         tt, n=self.tcs.NextTrainingTime()
         if n==0:
+            await self.clear_m1()
             await self.m2_text(msg05_tren0(tt))
         else:
             await self.m1_sticker(sticker06_tren0(n))
             await self.m2_text(msg06_tren0(n), self.create_buttons())
-            
 
-        if n<self.cfg.max_cards_for_trening: #fixme: het config
+        if n<self.cfg.max_cards_for_trening: #fixme: таймер на время когда след слово подойдет
             self.timer_run(timedelta(minutes=5),"tmr:t0")
         self.state_prev = UI.States.TREN0
         return False
@@ -478,7 +495,7 @@ class UI:
             ae_path=tc.GetAudioExample()
             if ae_path is not None:
                 with open(ae_path, 'rb') as f:
-                    ma=InputMediaAudio(f, filename=tc.GetForeign(), performer="lsbot", title=tc.GetForeign(), caption=f"<i>{tc.GetExample()}</i>" )
+                    ma=InputMediaAudio(f, filename=tc.GetForeign(), performer="LingoLink", title=tc.GetForeign(), caption=f"<i>{tc.GetExample()}</i>" )
                 await self.m1_audio(media=ma)
             await self.m2_voice(txt=f"<u>{tc.GetForeign()}</u> = {tc.GetNative()}", kbd=self.create_buttons())
         
@@ -732,6 +749,13 @@ class UI:
         await self.context.bot.send_message(chat_id=self.chat_id, text="word progress reset", disable_notification=True, )
 
     @staticmethod
+    async def help_cmd_(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        global ui_set
+        await context.bot.delete_message(update.effective_chat.id, update.effective_message.id)
+        ui=get_ui(update.effective_user.id, update.effective_chat.id, context)
+        await ui.process_ev("cmd:help")
+
+    @staticmethod
     async def edit_cmd_(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         global ui_set
         await context.bot.delete_message(update.effective_chat.id, update.effective_message.id)
@@ -809,12 +833,6 @@ async def start_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     ui.context=context
     logger.info(f"uid: {user_id}. Start UI")
     await ui.process_ev("cmd:start")
-
-async def help_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    global chat_id, user_id, tcs
-    if update is not None:
-        chat_id=update.effective_chat.id
-    await context.bot.send_message(chat_id=chat_id, text="Здесь будет help")
 
 async def settings_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     global chat_id, user_id, tcs
@@ -895,7 +913,7 @@ def main() -> None:
     application.add_handler(CommandHandler("start", start_cmd))
     application.add_handler(CommandHandler("add", UI.add_cmd_))
     application.add_handler(CommandHandler("show", UI.show_cmd_))
-    application.add_handler(CommandHandler("help", help_cmd))
+    application.add_handler(CommandHandler("help", UI.help_cmd_))
     application.add_handler(CommandHandler("edit", UI.edit_cmd_))
     application.add_handler(CommandHandler("stat", UI.stat_cmd_))
     application.add_handler(CommandHandler("stat2", UI.stat_cmd2_))
