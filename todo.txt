@@ -15,10 +15,14 @@ TODO:
 +добавление слов из наборов не для новых пользователей.
 +поиск  предложений у гпт чата
 +выложить на продакшен
++улучшить перевод (гугл)
++статистка
++начальные стикеры
 
-улучшить перевод
+
+еще стикеры?
+проверка на дупликаты при добавлении новых слов
 виртуальное окружение
-проверка прогресса
 стикеры после ответов?
 Лого, какртинка дескрипшена
 добавление слов из наборов пошутчно
@@ -29,4 +33,37 @@ TODO:
 в начальном наборе нужно меньше слов (30)
   File "Lib\site-packages\telegram\request\_baserequest.py", line 328, in _request_wrapper raise BadRequest(message) telegram.error.BadRequest: Query is too old and response timeout expired or query id is invalid
 http2
+Новые слова брать только если нет других слов на обучение
+почему тормозит когда добавлятся слова из набора?
 веб хуки?
+режим 6 слов. 
+добавлять картыв режиме показа карт
+
+
+=============================
+
+стикеры -
+good
+    драночик ok
+    'CAACAgIAAxkBAAIXG2R7uMd7vi7G6PN5iAns6r9IZLX_AAJBAAN4qOYP-J7xorhFu34vBA'
+
+    дракон - язык (техобслуж)
+    'CAACAgIAAxkBAAIXPmR7xS_plWDjwkD-bwPqRq6srRrsAAI3AAN4qOYPfx9FB5_gW6QvBA'
+
+    белка сила
+    'CAACAgIAAxkBAAIXHWR7umqAobh7yIO-X8uti1gcdGhgAAKyAAP3AsgPM6si_fBflFgvBA'
+
+    белка сердце
+    'CAACAgIAAxkBAAIXOGR7wC3Ah7VhjESk8pkEalL2CWY6AAKiAAP3AsgP6IpjE3w1YuQvBA'    
+
+    белка - ok
+    'CAACAgIAAxkBAAIXOWR7whX9msA0yrg-cHnUthQQ83ccAAKgAAP3AsgPw0cdAaCbwBovBA'
+
+    белка устал
+    'CAACAgIAAxkBAAIXOmR7wn-o6JVS_jJadmfp8_4q-FzNAAKwAAP3AsgPaPTiywxGfiQvBA'
+
+    белка - стыд! 
+    'CAACAgIAAxkBAAIXO2R7wswCmWrf_gXN8vLKohPJxFHZAAKbAAP3AsgPrzt-1MHh05gvBA'
+
+    белка - хлопать в ладоши
+    'CAACAgIAAxkBAAIXPGR7wwkk33s4b-vMY0JQRTqw7QLUAAKvAAP3AsgPrAmN36vGr4kvBA'

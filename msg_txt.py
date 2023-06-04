@@ -47,6 +47,9 @@ def msg05_tren0(tt: datetime):
 def msg06_tren0(n):
     return f"🏄🏼 Пора начинать!\n{n}-карточек для повторения"
 
+def sticker06_tren0(n): #белка сила
+    return 'CAACAgIAAxkBAAIXHWR7umqAobh7yIO-X8uti1gcdGhgAAKyAAP3AsgPM6si_fBflFgvBA'
+
 def get_next(tt):
     now = datetime.now()
     delta_days = (tt.date() - now.date()).days

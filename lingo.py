@@ -426,12 +426,14 @@ class UI:
             else:
                 return False
 
-        await self.clear_m2()
+        await self.clear_m1()
         tt, n=self.tcs.NextTrainingTime()
         if n==0:
-            await self.m1_text(msg05_tren0(tt))
+            await self.m2_text(msg05_tren0(tt))
         else:
-            await self.m1_text(msg06_tren0(n), self.create_buttons())
+            await self.m1_sticker(sticker06_tren0(n))
+            await self.m2_text(msg06_tren0(n), self.create_buttons())
+            
 
         if n<self.cfg.max_cards_for_trening: #fixme: het config
             self.timer_run(timedelta(minutes=5),"tmr:t0")
@@ -605,12 +607,14 @@ class UI:
                 return True
             elif data=='kbd:cancel':
                 self.state=self.states_q.pop() #goto back
+                await self.clear_m2()
                 return True
             elif data=='kbd:ok':
                 if self.selected_button is not None:
                     n=cards_add_words_by_topic(self.user_id, self.selected_button, flang=self.cfg.foreign_lang, nlang=self.cfg.native_lang)
                     logger.info(f"{self.user_id}: added {n} words from word_set[{self.selected_button}]")
                 self.state=self.states_q.pop() #goto back
+                await self.clear_m2()
                 return True
             elif data.startswith('kbd:'):
                 self.selected_button = data.split('kbd:', 1)[1]
