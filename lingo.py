@@ -109,9 +109,12 @@ class UI:
 
     async def m1_sticker(self, stick):
         if self.m1 is not None:
+            if self.m1_type=="sticker" and self.m1_txt==stick:
+                return
             await self.clear_m1()
         self.m1 = await self.context.bot.send_sticker(chat_id=self.chat_id, sticker=stick)
         self.m1_type="sticker"
+        self.m1_txt=stick
 
     async def m2_text(self, txt:str=None, kbd:InlineKeyboardMarkup=None):
         if self.m2_type!="txt":
@@ -483,7 +486,6 @@ class UI:
         return False
 
     async def tren3(self, data=None) -> None:
-        #decoding inside state events:
         self.timer_stop()
         tt, n=self.tcs.NextTrainingTime()
 
@@ -496,12 +498,12 @@ class UI:
             else:
                 return False
 
-        await self.clear_m2()
+        await self.m1_sticker(sticker04_tren3())
         if n>0:
-            await self.m1_text(msg04_tren3(tt,n), kbd=self.create_buttons())
+            await self.m2_text(msg04_tren3(tt,n), kbd=self.create_buttons())
             self.timer_run(timedelta(minutes=5), "tmr:t3")
         else:
-            await self.m1_text(msg04_tren3(tt,0))
+            await self.m2_text(msg04_tren3(tt,0))
             self.timer_run(tt, "tmr:tt")
             self.state=UI.States.TREN0 #goto tren0, когда стработает таймер tt
 

@@ -37,6 +37,9 @@ def msg04_tren3(tt:datetime, n:int):
             m1+=f"\nПродолжить сейчас ({n} карт)?"
     return m1
 
+def sticker04_tren3(): #драночик ok!
+    return 'CAACAgIAAxkBAAIXG2R7uMd7vi7G6PN5iAns6r9IZLX_AAJBAAN4qOYP-J7xorhFu34vBA'
+
 def msg05_tren0(tt: datetime):
     w=get_next(tt)
     if w is not None:
