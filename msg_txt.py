@@ -96,5 +96,5 @@ def msg12_select_card():
 def msg11_total_stat(n: int):
     return f"<b>Статистика:</b><pre>\nВ базе всего {n} слов\n\u28ffСлово            повтор через\n===============================\n</pre>"
 
-def msg12_add_new_card():
+def msg12_add_from_lib():
     return "Для добавления набора слов, выберите тему и нажмите «Добавить»"

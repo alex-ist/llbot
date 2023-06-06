@@ -20,13 +20,15 @@ def get_hash(input_string):
     return hashlib.md5(input_string.encode()).hexdigest()[:10]
 
 class Card:
-    def __init__(self, user_id, foreign_lang, foreign_w, native_lang, native_w, example="", card_id=-1):
+    def __init__(self, user_id, foreign_lang, foreign_w, native_lang, native_w, example=None, card_id=-1):
         self.user_id=user_id
         self.card_id=card_id
         self.native_lang=native_lang
         self.foreign_lang=foreign_lang
         self.foreign_w=foreign_w
         self.native_w=native_w
+        if example=="":
+            example=None
         self.example=example
         self.audio=None
         self.audio_example=None
@@ -47,6 +49,8 @@ class Card:
         self.native_w=new_nw
 
     def ChangeExample(self, new_ex):
+        if new_ex=="":
+            new_ex=None
         self.example=new_ex
     
     #сохраняет карту в базе
@@ -82,7 +86,7 @@ class Card:
 
     #audio: data/{foreign_lang}/audio_examples/{hash}.m4a
     async def SetAudioExample(self):
-        if self.example is not None and self.example!="":
+        if self.example is not None:
             hash=get_hash(self.example)
             p=f"data/{self.foreign_lang}/audio_examples/{hash}.ogg"
             if os.path.isfile(p):

@@ -151,7 +151,7 @@ class UI:
             self.m1_txt=None
             self.m1_kbd=None
         else:
-            await self.m1.edit_media(media=media)  
+            await self.m1.edit_media(media=media)
 
     async def m2_voice(self, voice=None, txt:str=None, kbd:InlineKeyboardMarkup=None):
         if self.m2_type!="vo":
@@ -235,7 +235,7 @@ class UI:
                 next_step=await self.edit_card(data)
             elif self.state is UI.States.ADD_WORD:
                 next_step=await self.add_word(data)
-            elif self.state is UI.States.UI.States.ADD_WORDS_FROM_LIB:
+            elif self.state is UI.States.ADD_WORDS_FROM_LIB:
                 next_step=await self.add_from_lib(data)
             elif self.state is UI.States.SHOW_STAT:
                 next_step=await self.show_stat(data)
@@ -504,14 +504,33 @@ class UI:
             return True
 
         if self.sub_state=="q":
-            await self.m1_audio(get_empty_InputMediaAudio())
-            await self.m2_voice(voice=tc.GetAudio(), txt=tc.GetA(), kbd=self.create_buttons())
-        else: #self.sub_state=="a":
             ae_path=tc.GetAudioExample()
+            self.txt_ex=tc.GetExample()
+            if self.txt_ex=="":
+                self.txt_ex=None
+            self.ma_ex=None
+
             if ae_path is not None:
                 with open(ae_path, 'rb') as f:
-                    ma=InputMediaAudio(f, filename=tc.GetForeign(), performer="LingoLink", title=tc.GetForeign(), caption=f"<i>{tc.GetExample()}</i>" )
-                await self.m1_audio(media=ma)
+                    self.ma_ex=InputMediaAudio(f, filename=tc.GetForeign(), performer="LingoLink", title="Пример", caption="<i>Пример использования</i>")
+            
+            if self.ma_ex is not None:
+                await self.m1_audio(media=self.ma_ex)
+            else:
+                if self.txt_ex is not None:
+                    await self.m1_text(f"<i>{self.txt_ex}</i>")
+                else:
+                    await self.clear_m1()
+            await self.m2_voice(voice=tc.GetAudio(), txt=tc.GetA(), kbd=self.create_buttons())
+        else: #self.sub_state=="a":
+            if self.ma_ex is not None:
+                ae_path=tc.GetAudioExample()
+                with open(ae_path, 'rb') as f:
+                    self.ma_ex=InputMediaAudio(f, filename=tc.GetForeign(), performer="LingoLink", title=tc.GetForeign(), caption=f"<i>{self.txt_ex}</i>")
+                await self.m1_audio(media=self.ma_ex)
+            else:
+                if self.txt_ex is not None:
+                    await self.m1_text(f"<i>{self.txt_ex}</i>")
             await self.m2_voice(txt=f"<u>{tc.GetForeign()}</u> = {tc.GetNative()}", kbd=self.create_buttons())
         
         self.state_prev = UI.States.TREN1
@@ -683,7 +702,7 @@ class UI:
             else:
                 return False
 
-        await self.m2_text(msg10_add_new_card(), kbd=self.kbd)
+        await self.m2_text(msg12_add_from_lib(), kbd=self.kbd)
         self.state_prev = UI.States.ADD_WORDS_FROM_LIB
         return False            
 
