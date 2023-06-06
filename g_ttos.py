@@ -1,33 +1,65 @@
 #google text to speach
 
 import os
-os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "keys/bamboo-antler-386512-4ce534dff745.json"
-from google.cloud import texttospeech
-client = texttospeech.TextToSpeechClient()
+from google.cloud import texttospeech_v1
 
-
+gtts_async_client = None  
 #extension defines file format OGG, MP3, WAV.
-def google_speach(text, lang, file_name):
-    synthesis_input = texttospeech.SynthesisInput(ssml=f'<speak><prosody rate="85%">{text}</prosody></speak>')
-    voice = texttospeech.VoiceSelectionParams(language_code=lang, ssml_gender=texttospeech.SsmlVoiceGender.NEUTRAL)
-
+async def google_speach(text, lang, file_name):
     ac=None
     _, format = os.path.splitext(file_name)
     if format==".mp3":
-        ac=texttospeech.AudioEncoding.MP3
-    elif format==".wav":
-        ac=texttospeech.AudioEncoding.LINEAR16
+        ac="MP3"
+    elif format==".ogg":
+        ac="OGG_OPUS"
     else:
-        ac=texttospeech.AudioEncoding.OGG_OPUS
+        ac="LINEAR16"
 
-    audio_config = texttospeech.AudioConfig(audio_encoding=ac)
-    response = client.synthesize_speech(input=synthesis_input, voice=voice, audio_config=audio_config)
+    input = texttospeech_v1.SynthesisInput()
+    #input.ssml = f'<speak><prosody rate="85%">{text}</prosody></speak>'
+    input.text = text
 
+    voice = texttospeech_v1.VoiceSelectionParams()
+    voice.language_code = lang
+
+    audio_config = texttospeech_v1.AudioConfig()
+    audio_config.audio_encoding = ac
+    if (len(text)>32):
+        audio_config.speaking_rate=0.83
+
+    request = texttospeech_v1.SynthesizeSpeechRequest(
+        input=input,
+        voice=voice,
+        audio_config=audio_config,
+    )
+
+    global gtts_async_client
+    if gtts_async_client is None:
+        gtts_async_client = texttospeech_v1.TextToSpeechAsyncClient()
+    response = await gtts_async_client.synthesize_speech(request=request)
+    
     dir_name = os.path.dirname(file_name)  # получить имя директории из полного пути файла
-    if not os.path.exists(dir_name):  # проверить, существует ли уже директория
-        os.makedirs(dir_name)  # создать директорию, если ее еще нет
+    if dir_name != '' and not os.path.exists(dir_name):  # проверить, существует ли уже директория
+         os.makedirs(dir_name)  # создать директорию, если ее еще нет
 
     with open(file_name, "wb") as out:
-        out.write(response.audio_content)
+         out.write(response.audio_content)
 
-#google_speach("Провешћу следећи викенд у Бостону.","sr", "file.wav")
+# import asyncio
+# import time
+# #w="Провешћу следећи викенд у Бостону."
+# w="Get Code Suggestions in real-time, right in your 'IDE'"
+# #w="Suggestion"
+# async def f():
+#     start_time = time.time()
+#     await google_speach (w, "en", "file.ogg")
+#     elapsed_time = time.time() - start_time
+#     print(f"Function took {elapsed_time} seconds to complete.")
+
+#     start_time = time.time()
+#     await google_speach (w, "en", "file.ogg")
+#     elapsed_time = time.time() - start_time
+#     print(f"Function took {elapsed_time} seconds to complete.")
+# #    print (f"{tr}" )
+
+# asyncio.run(f())

@@ -10,7 +10,7 @@ from telegram import InputFile
 from telegram import ForceReply
 from telegram.ext import Application, CallbackQueryHandler, CommandHandler, ContextTypes, MessageHandler, filters, Defaults
 import telegram 
-from trans import make_trans
+from trans import translate_text
 
 
 from card import Card, TrainingCard, TrainingCardSet
@@ -65,6 +65,7 @@ class UI:
         self.timer_job= None
         self.context=None
         self.states_q=[]
+        self.list_pos=0
 
     async def clear_screan(self):
         await self.clear_m1()
@@ -464,7 +465,7 @@ class UI:
         if self.state_prev is UI.States.EDIT_CARD or self.state_prev is UI.States.ADD_CARD or self.state_prev is UI.States.SHOW_CARDS:
             self.sub_state="q"
         elif self.state_prev is UI.States.TREN0 or self.state_prev is UI.States.TREN3:
-            self.tcs.Create()
+            await self.tcs.Create()
             self.sub_state="q"
         elif self.state_prev is UI.States.TREN1 and data is not None:
             if data=="kbd:?":
@@ -618,7 +619,7 @@ class UI:
             if data.startswith('msg:'):
                 data = data.split('msg:', 1)[1]
                 data=data.lower().strip()
-                f,n = make_trans(self.cfg.foreign_lang, self.cfg.native_lang, data)
+                f,n = await translate_text(self.cfg.foreign_lang, self.cfg.native_lang, data)
                 ex=oai_get_example(self.user_id, f)
                 self.edited_card=Card(self.user_id, self.cfg.foreign_lang, f, self.cfg.native_lang, n, ex)
                 self.states_q.append(self.state)

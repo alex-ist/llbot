@@ -6,7 +6,6 @@ from botlog import logger
 from g_ttos import google_speach
 from datetime import *
 from user_config import *
-from trans import make_trans
 
 DB='data/ll.db'
 
@@ -60,29 +59,29 @@ class Card:
             self.card_id=card_add(self.user_id, self.foreign_w, self.native_w, self.foreign_lang, self.native_lang, self.example)
 
     @staticmethod
-    def ReadFromDb(user_id:int, card_id:int) -> 'Card':
+    async def ReadFromDb(user_id:int, card_id:int) -> 'Card':
         foreign_w, native_w, foreign_lang, native_lang, example=card_read(user_id, card_id)
         card=Card(user_id, foreign_lang, foreign_w, native_lang, native_w, example, card_id)
-        card.SetAudio()
-        card.SetAudioExample()
+        await card.SetAudio()
+        await card.SetAudioExample()
         return card
 
 
 
     #Устанавливает Аудио файл для записи в наборе. Проеверяет есть ли на локальном хранилище этот файл, если нет, то пытается его получить из сети.
     #audio: data/{foreign_lang}/audio_words
-    def SetAudio(self):
+    async def SetAudio(self):
         p=f"data/{self.foreign_lang}/audio_words/{self.foreign_w}.ogg"
         if os.path.isfile(p):
             self.audio=p
         else:
             #now only google:
             #fixme check errors
-            google_speach(self.foreign_w, self.foreign_lang, p)
+            await google_speach(self.foreign_w, self.foreign_lang, p)
             self.audio=p
 
     #audio: data/{foreign_lang}/audio_examples/{hash}.m4a
-    def SetAudioExample(self):
+    async def SetAudioExample(self):
         if self.example is not None and self.example!="":
             hash=get_hash(self.example)
             p=f"data/{self.foreign_lang}/audio_examples/{hash}.ogg"
@@ -98,7 +97,7 @@ class Card:
                     f.write(f"{hash};{self.example}\n")
                 #now only google:
                 #fixme check errors
-                google_speach(self.example, self.foreign_lang, p)
+                await google_speach(self.example, self.foreign_lang, p)
                 self.audio_example=p
 
     def GetAudio(self):
@@ -420,7 +419,7 @@ class TrainingCardSet:
 
     #берет из базы тренировочные карты у которых next_training_t минимальное.
     #апдейтит текущий набор
-    def Create(self):
+    async def Create(self):
         #сколько всего тренировочных карт?
         tt, n =self.NextTrainingTime()
         if n<1: 
@@ -462,7 +461,7 @@ class TrainingCardSet:
                 if tc.card_id in cards_dict:
                     tc.card = cards_dict[tc.card_id]
                 else:
-                    tc.card=Card.ReadFromDb(self.user_id, tc.card_id)
+                    tc.card = await Card.ReadFromDb(self.user_id, tc.card_id)
                     cards_dict[tc.card_id] = tc.card
 
         #выясним есть ли в наборе IsTextExample, IsAudioExample,IsAudioWord
