@@ -42,7 +42,8 @@ class UI:
         TREN1 ="tren1_st"
         TREN3 ="tren2_st"
         EDIT_CARD ="edit_card_st"
-        ADD_CARD ="add_card_st"
+        ADD_WORD ="add_word_st"
+        ADD_WORDS_FROM_LIB="add_from_lib_st"
         SHOW_STAT ="show_card_st"
         SHOW_CARDS="show_cards_st"
         HELP_CMD="help_cmd_st"
@@ -182,11 +183,18 @@ class UI:
                 self.timer_stop()
                 self.state_prev = UI.States.ST_UNDEF
             elif data=="cmd:add":
-                if self.state==UI.States.ADD_CARD:
+                if self.state==UI.States.ADD_WORD:
                     return
                 self.timer_stop()
                 self.states_q.append(self.state)
-                self.state=UI.States.ADD_CARD
+                self.state=UI.States.ADD_WORD
+                data=None
+            elif data=="cmd:lib":
+                if self.state==UI.States.ADD_WORDS_FROM_LIB:
+                    return
+                self.timer_stop()
+                self.states_q.append(self.state)
+                self.state=UI.States.ADD_WORDS_FROM_LIB
                 data=None
             elif data=="cmd:stat":
                 if self.state==UI.States.SHOW_STAT:
@@ -225,8 +233,10 @@ class UI:
                 next_step=await self.tren3(data)
             elif self.state is UI.States.EDIT_CARD:
                 next_step=await self.edit_card(data)
-            elif self.state is UI.States.ADD_CARD:
-                next_step=await self.add_card(data)
+            elif self.state is UI.States.ADD_WORD:
+                next_step=await self.add_word(data)
+            elif self.state is UI.States.UI.States.ADD_WORDS_FROM_LIB:
+                next_step=await self.add_from_lib(data)
             elif self.state is UI.States.SHOW_STAT:
                 next_step=await self.show_stat(data)
             elif self.state is UI.States.SHOW_CARDS:
@@ -327,13 +337,17 @@ class UI:
                 ]]
             if self.sub_state == "edit_old":
                 kbd.append([
-                    InlineKeyboardButton("Удалить карту", callback_data="kbd:delete"),
+                    InlineKeyboardButton("Удалить слово", callback_data="kbd:delete"),
                     InlineKeyboardButton("Сброс прогресса", callback_data="kbd:reset")])
             kbd.append([
                     InlineKeyboardButton("Отменить", callback_data="kbd:cancel"),
                     InlineKeyboardButton("Сохранить", callback_data="kbd:save")])
 
-        elif self.state is UI.States.ADD_CARD:
+        elif self.state is UI.States.ADD_WORD:
+            kbd = [[
+                        InlineKeyboardButton("Назад ↩️", callback_data="kbd:back"),
+                    ]]
+        elif self.state is UI.States.ADD_WORDS_FROM_LIB:
             kbd = [[
                         InlineKeyboardButton("Школа", callback_data="kbd:school"),
                         InlineKeyboardButton("Соседи", callback_data="kbd:neighbours"),
@@ -462,7 +476,7 @@ class UI:
         return False
 
     async def tren1(self, data=None) -> None:
-        if self.state_prev is UI.States.EDIT_CARD or self.state_prev is UI.States.ADD_CARD or self.state_prev is UI.States.SHOW_CARDS:
+        if self.state_prev is UI.States.EDIT_CARD or self.state_prev is UI.States.ADD_WORD or self.state_prev is UI.States.SHOW_CARDS:
             self.sub_state="q"
         elif self.state_prev is UI.States.TREN0 or self.state_prev is UI.States.TREN3:
             await self.tcs.Create()
@@ -545,7 +559,7 @@ class UI:
             self.selected_button=None
             if self.state_prev is UI.States.TREN1:
                 self.sub_state="edit_old"
-            elif self.state_prev is UI.States.ADD_CARD:
+            elif self.state_prev is UI.States.ADD_WORD:
                 self.sub_state="edit_new"
             elif self.state_prev is UI.States.SHOW_CARDS:
                 self.sub_state="edit_old"
@@ -610,12 +624,39 @@ class UI:
         self.state_prev = UI.States.EDIT_CARD
         return False
 
-    async def add_card(self, data:str=None) -> None:
-        if self.state_prev is not UI.States.ADD_CARD:
+    async def add_word(self, data:str=None) -> None:
+        if self.state_prev is not UI.States.ADD_WORD:
             await self.clear_m1()
             self.selected_button=None
             self.kbd=self.create_buttons()
-        elif self.state_prev is UI.States.ADD_CARD and data is not None:
+        elif self.state_prev is UI.States.ADD_WORD and data is not None:
+            if data.startswith('msg:'):
+                data = data.split('msg:', 1)[1]
+                data=data.lower().strip()
+                f,n = await translate_text(self.cfg.foreign_lang, self.cfg.native_lang, data)
+                ex=oai_get_example(self.user_id, f)
+                self.edited_card=Card(self.user_id, self.cfg.foreign_lang, f, self.cfg.native_lang, n, ex)
+                self.states_q.append(self.state)
+                self.state = UI.States.EDIT_CARD
+                return True
+            elif data=='kbd:back':
+                self.state=self.states_q.pop() #goto back
+                await self.clear_m2()
+                return True
+            else:
+                return False
+
+        await self.m2_text(msg10_add_new_card(), kbd=self.kbd)
+        self.state_prev = UI.States.ADD_WORD
+        return False            
+
+
+    async def add_from_lib(self, data:str=None) -> None:
+        if self.state_prev is not UI.States.ADD_WORDS_FROM_LIB:
+            await self.clear_m1()
+            self.selected_button=None
+            self.kbd=self.create_buttons()
+        elif self.state_prev is UI.States.ADD_WORDS_FROM_LIB and data is not None:
             if data.startswith('msg:'):
                 data = data.split('msg:', 1)[1]
                 data=data.lower().strip()
@@ -643,8 +684,9 @@ class UI:
                 return False
 
         await self.m2_text(msg10_add_new_card(), kbd=self.kbd)
-        self.state_prev = UI.States.ADD_CARD
+        self.state_prev = UI.States.ADD_WORDS_FROM_LIB
         return False            
+
 
     async def show_stat(self, data:str=None) -> None:
         if self.state_prev is not UI.States.SHOW_STAT:
@@ -793,6 +835,13 @@ class UI:
         await ui.process_ev("cmd:add")
 
     @staticmethod
+    async def lib_cmd_(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        global ui_set
+        await context.bot.delete_message(update.effective_chat.id, update.effective_message.id)
+        ui=get_ui(update.effective_user.id, update.effective_chat.id, context)
+        await ui.process_ev("cmd:lib")
+
+    @staticmethod
     async def show_cmd_(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         global ui_set
         await context.bot.delete_message(update.effective_chat.id, update.effective_message.id)
@@ -847,10 +896,11 @@ async def post_init(context):
     commands_en = [
         BotCommand('start', 'Begin work'),
         BotCommand('help',  'Help'),
-        BotCommand('edit',  'Edit cards'),
-        BotCommand('add' ,  'Add cards'),
-        BotCommand('show' , 'Show all cards'),
-        BotCommand('stat',  'статистика'),
+        BotCommand('edit',  'Edit word'),
+        BotCommand('add' ,  'Add a word'),
+        BotCommand('lib',   'Add words from lib'),
+        BotCommand('show' , 'Show all words'),
+        BotCommand('stat',  'stat'),
     ]
     await context.bot.delete_my_commands(language_code='')
     await context.bot.set_my_commands(commands_en, language_code=None)
@@ -860,11 +910,12 @@ async def post_init(context):
     
     commands_ru = [
         BotCommand('start', 'Начать общение с ботом'),
-        BotCommand('help',  'Получить помощь'),
-        BotCommand('edit',  'Редактировать карту'),
-        BotCommand('add',   'Добавить карты'),
-        BotCommand('show' , 'Показать все карты'),
-        BotCommand('stat',  'статистика'),
+        BotCommand('help',  'Помощь'),
+        BotCommand('edit',  'Редактировать слово'),
+        BotCommand('add',   'Добавить слово'),
+        BotCommand('lib',   'Добавить набор слов'),
+        BotCommand('show' , 'Показать все слова'),
+        BotCommand('stat',  'Статистика'),
         #BotCommand('reset', 'сброс прогресса'),
         ]
         
@@ -913,6 +964,7 @@ def main() -> None:
     application = Application.builder().token(token).post_init(post_init).post_stop(post_stop).defaults(bot_def).build()
     application.add_handler(CommandHandler("start", start_cmd))
     application.add_handler(CommandHandler("add", UI.add_cmd_))
+    application.add_handler(CommandHandler("lib", UI.lib_cmd_))
     application.add_handler(CommandHandler("show", UI.show_cmd_))
     application.add_handler(CommandHandler("help", UI.help_cmd_))
     application.add_handler(CommandHandler("edit", UI.edit_cmd_))
