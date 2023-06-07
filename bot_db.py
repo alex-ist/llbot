@@ -172,9 +172,9 @@ def cards_stat(user_id:int, len, offset=0):
             sec = abs(sec)
             h = int(sec // 3600)
             m = int((sec % 3600) // 60)
-            r+=f"{p}{w[:30].ljust(20)}:{sign}{h:02}:{m:02}\n"
+            r+=f"{p}{w[:24].ljust(24)}:{sign}{h:02}:{m:02}\n"
         else:
-            r+=f"{p}{w[:30].ljust(20)}:new\n"
+            r+=f"{p}{w[:24].ljust(24)}:new\n"
     return r
 
 def cards_remove(user_id:int):
