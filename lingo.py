@@ -226,15 +226,15 @@ class UI:
                     self.state = UI.States.TREN0
 
             if self.state is UI.States.TREN0:
-                next_step=await self.tren0(data)
+                next_step=await self.tren0_state(data)
             elif self.state is UI.States.TREN1:
-                next_step=await self.tren1(data)
+                next_step=await self.tren1_state(data)
             elif self.state is UI.States.TREN3:
-                next_step=await self.tren3(data)
+                next_step=await self.tren3_state(data)
             elif self.state is UI.States.EDIT_CARD:
-                next_step=await self.edit_card(data)
+                next_step=await self.edit_card_state(data)
             elif self.state is UI.States.ADD_WORD:
-                next_step=await self.add_word(data)
+                next_step=await self.add_word_state(data)
             elif self.state is UI.States.ADD_WORDS_FROM_LIB:
                 next_step=await self.add_from_lib(data)
             elif self.state is UI.States.SHOW_STAT:
@@ -453,7 +453,7 @@ class UI:
         return False
 
     #state tren0 => inviting to learn cards
-    async def tren0(self, data=None) -> None:
+    async def tren0_state(self, data=None) -> None:
         if self.state_prev is UI.States.TREN0 and data is not None:
             if data=="kbd:satrt":
                 self.timer_stop()
@@ -475,7 +475,7 @@ class UI:
         self.state_prev = UI.States.TREN0
         return False
 
-    async def tren1(self, data=None) -> None:
+    async def tren1_state(self, data=None) -> None:
         if self.state_prev is UI.States.EDIT_CARD or self.state_prev is UI.States.ADD_WORD or self.state_prev is UI.States.SHOW_CARDS:
             self.sub_state="q"
         elif self.state_prev is UI.States.TREN0 or self.state_prev is UI.States.TREN3:
@@ -492,6 +492,9 @@ class UI:
                 self.edited_card=self.tcs.GetCurrentTCard().card
                 self.states_q.append(self.state)
                 self.state=UI.States.EDIT_CARD #goto edit_cards
+                return True
+            elif data.startswith('msg:'):
+                await self.add_word(data)
                 return True
             else:
                 return False
@@ -536,7 +539,7 @@ class UI:
         self.state_prev = UI.States.TREN1
         return False
 
-    async def tren3(self, data=None) -> None:
+    async def tren3_state(self, data=None) -> None:
         self.timer_stop()
         tt, n=self.tcs.NextTrainingTime()
 
@@ -571,7 +574,7 @@ class UI:
         
         self.edited_card=None
 
-    async def edit_card(self, data:str=None) -> None:
+    async def edit_card_state(self, data:str=None) -> None:
         #decoding inside state events:
         if self.state_prev is not UI.States.EDIT_CARD:
             await self.clear_screan()
@@ -643,20 +646,28 @@ class UI:
         self.state_prev = UI.States.EDIT_CARD
         return False
 
-    async def add_word(self, data:str=None) -> None:
+    async def add_word(self, data:str):
+        data = data.split('msg:', 1)[1]
+        data=data.lower().strip()
+        f,n = await translate_text(self.cfg.foreign_lang, self.cfg.native_lang, data)
+        if f==n: #вероятно не смогли первести, может абракадабра была вместо слова
+            ex=None
+        else:
+            ex=oai_get_example(self.user_id, f)
+        self.edited_card=Card(self.user_id, self.cfg.foreign_lang, f, self.cfg.native_lang, n, ex)
+        self.states_q.append(self.state)
+        self.state = UI.States.EDIT_CARD
+        return True
+
+
+    async def add_word_state(self, data:str=None) -> None:
         if self.state_prev is not UI.States.ADD_WORD:
             await self.clear_m1()
             self.selected_button=None
             self.kbd=self.create_buttons()
-        elif self.state_prev is UI.States.ADD_WORD and data is not None:
+        elif self.state_prev==self.state and data is not None:
             if data.startswith('msg:'):
-                data = data.split('msg:', 1)[1]
-                data=data.lower().strip()
-                f,n = await translate_text(self.cfg.foreign_lang, self.cfg.native_lang, data)
-                ex=oai_get_example(self.user_id, f)
-                self.edited_card=Card(self.user_id, self.cfg.foreign_lang, f, self.cfg.native_lang, n, ex)
-                self.states_q.append(self.state)
-                self.state = UI.States.EDIT_CARD
+                await self.add_word(data)
                 return True
             elif data=='kbd:back':
                 self.state=self.states_q.pop() #goto back
@@ -677,13 +688,7 @@ class UI:
             self.kbd=self.create_buttons()
         elif self.state_prev is UI.States.ADD_WORDS_FROM_LIB and data is not None:
             if data.startswith('msg:'):
-                data = data.split('msg:', 1)[1]
-                data=data.lower().strip()
-                f,n = await translate_text(self.cfg.foreign_lang, self.cfg.native_lang, data)
-                ex=oai_get_example(self.user_id, f)
-                self.edited_card=Card(self.user_id, self.cfg.foreign_lang, f, self.cfg.native_lang, n, ex)
-                self.states_q.append(self.state)
-                self.state = UI.States.EDIT_CARD
+                await self.add_word(data)
                 return True
             elif data=='kbd:cancel':
                 self.state=self.states_q.pop() #goto back
