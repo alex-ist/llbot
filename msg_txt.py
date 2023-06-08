@@ -48,7 +48,15 @@ def msg05_tren0(tt: datetime):
         return "🤷‍♂️ Нет слов для повторения 💤"
 
 def msg06_tren0(n):
-    return f"🏄🏼 Пора начинать!\n{n} слов для повторения"
+    if n==24 or n==23 or n==22 or n==2 or n==3 or n==4:
+        w=f"{n} слова"
+    elif n==21 or n==1:
+        w=f"{n} слово"
+    else:
+        w=f"{n} слов"
+    
+    return f"🏄🏼 Пора начинать!\n{w} для повторения"
+
 
 def sticker06_tren0(n): #белка сила
     return 'CAACAgIAAxkBAAIXHWR7umqAobh7yIO-X8uti1gcdGhgAAKyAAP3AsgPM6si_fBflFgvBA'
