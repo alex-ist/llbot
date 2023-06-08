@@ -515,7 +515,7 @@ class UI:
 
             if ae_path is not None:
                 with open(ae_path, 'rb') as f:
-                    self.ma_ex=InputMediaAudio(f, filename=tc.GetForeign(), performer="LingoLink", title="Пример", caption="<i>Пример использования</i>")
+                    self.ma_ex=InputMediaAudio(f, filename=tc.GetForeign(), performer="LingoLink", title="Пример", caption="|\n|")
             
             if self.ma_ex is not None:
                 await self.m1_audio(media=self.ma_ex)
