@@ -47,15 +47,16 @@ def msg05_tren0(tt: datetime):
     else:
         return "🤷‍♂️ Нет слов для повторения 💤"
 
-def msg06_tren0(n):
+def msg_word(n):
     if n==24 or n==23 or n==22 or n==2 or n==3 or n==4:
-        w=f"{n} слова"
+        return f"{n} слова"
     elif n==21 or n==1:
-        w=f"{n} слово"
+        return f"{n} слово"
     else:
-        w=f"{n} слов"
-    
-    return f"🏄🏼 Пора начинать!\n{w} для повторения"
+        return f"{n} слов"
+
+def msg06_tren0(n):
+    return f"🏄🏼 Пора начинать!\n{msg_word(n)} для повторения"
 
 
 def sticker06_tren0(n): #белка сила
@@ -101,8 +102,8 @@ def sticker11_t_o(): #'Hedgehog_Ned язык с телефоном'
 def msg12_select_card():
     return "<pre>Выберите слово:</pre>\n"
 
-def msg11_total_stat(n: int):
-    return f"<b>Статистика:</b><pre>\nВ базе всего {n} слов\n\u28ffСлово            повтор через\n===============================\n</pre>"
+def msg11_total_stat(n: int, forg_r):
+    return f"<b>Статистика:</b><pre>\nВ списке для изучения {msg_word(n)}\nТекущий % забывания: {round(forg_r*100)}%\n\u28ffСлово            повтор через\n===============================\n</pre>"
 
 def msg12_add_from_lib():
     return "Для добавления набора слов, выберите тему и нажмите «Добавить»"

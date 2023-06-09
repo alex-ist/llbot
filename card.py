@@ -174,6 +174,7 @@ class TrainingCard:
         if correct==False:
             self.incorrect_answer=True
 
+
     def Complete(self):
         if self.last_training_t is not None:
             last_req_interval=self.next_training_t-self.last_training_t
@@ -184,9 +185,10 @@ class TrainingCard:
             last_real_interval=datetime.now()-self.last_training_t
         else:
             last_real_interval=self.cfg.first_interval
+        
+        #расчитывает -> current_forget_rate  irr фильтр, окно 100
+        self.cfg.CalcCurreentForgetRate(self.incorrect_answer)
 
-        #fixme: расчитать -> forgetting_rate используя self.incorrect_answer (), скользящее окно? irr фильтр?
-    
         if self.incorrect_answer:
             #если не запомнили, то надо вязть меньший из двух интервалов - фактический или требуемый.
             i=min(last_req_interval, last_real_interval)

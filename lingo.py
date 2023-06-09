@@ -503,6 +503,8 @@ class UI:
         
         tc=self.tcs.GetCurrentTCard()  
         if tc is None: #нет карт для запоминания
+            #fixme: найти еще место где выключается, и там тоже сохранить
+            self.cfg.SaveUserData()
             self.state=UI.States.TREN3 #goto tren3
             return True
 
@@ -734,7 +736,7 @@ class UI:
             else:
                 return False
         
-        t=msg11_total_stat(self.list_sz)
+        t=msg11_total_stat(self.list_sz, self.cfg.current_forget_rate)
         t+=f"<pre>{cards_stat(self.user_id, 30, offset=self.list_pos)}</pre>"
         await self.m2_text(t, kbd=self.create_buttons())
         self.state_prev = UI.States.SHOW_STAT

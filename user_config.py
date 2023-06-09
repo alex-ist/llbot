@@ -4,6 +4,7 @@ from botlog import logger
 
 
 class UserConfig:
+    OPTIMAL_FORGET_RATE=0.1 #доля забытых слов, к которому нужно стремиться 
     def __init__(self, user_id, chat_id):
         self.user_id=user_id
         self.set_default()
@@ -21,8 +22,10 @@ class UserConfig:
         self.chat_id=-1
 
         self.native_lang="ru"
-        self.forgetting_rate = 0.1  #процент неправильных ответов, к которому стремимся 
         self.first_interval=timedelta(minutes=60) #черз сколько повторять первое слов
+        
+        self.current_forget_rate = 0.1  #фактическая доля забытых слов
+        self.shown_words_count=0
 
     def Get_o_param(self):
         return self.o_param
@@ -36,7 +39,7 @@ class UserConfig:
 
     def read_from_db(self) ->bool:
         cursor=open_db()
-        cursor.execute("""SELECT foreign_lang, min_trening_interval, min_cards_for_trening, max_cards_for_trening, o_param, chat_id
+        cursor.execute("""SELECT foreign_lang, min_trening_interval, min_cards_for_trening, max_cards_for_trening, o_param, chat_id, shown_words_count, current_forget_rate
                           FROM user_config 
                           WHERE user_id = ?""",
                     (self.user_id,))
@@ -54,7 +57,22 @@ class UserConfig:
         if self.chat_id!=old_chat_id:
             logger.warn("new chat id!=chat_id from config")
         
+        self.shown_words_count = r[6]
+        if self.shown_words_count==None:
+            self.shown_words_count = 0
+        
+        self.current_forget_rate = r[7]
+        if self.current_forget_rate==None:
+            self.current_forget_rate=0.0
+        
         return True
+    
+    def update_in_db(self):
+        cursor=open_db()
+        cursor.execute("UPDATE user_config SET shown_words_count = ?, current_forget_rate = ?  WHERE  user_id = ?",
+             (self.shown_words_count, self.current_forget_rate, self.user_id))
+        close_db(commit=True)
+
 
     def create_in_db(self):
         cursor=open_db()
@@ -78,6 +96,16 @@ class UserConfig:
         
         cfg.SetLastAccess()
         return cfg
+    
+    def CalcCurreentForgetRate(self, incorrect): #если слово забыто incorrect=1, если вспомнено incorrect=0
+        self.shown_words_count+=1
+        before=self.current_forget_rate
+        self.current_forget_rate += (incorrect - self.current_forget_rate) / min(self.shown_words_count, 100)
+        logger.info(f"forget rate n={self.shown_words_count}, before={before}, after={self.current_forget_rate}")
+    
+    def SaveUserData(self):
+        self.update_in_db()
+
 
 
 
