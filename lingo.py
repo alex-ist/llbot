@@ -971,15 +971,17 @@ async def post_stop(a):
 
 
 def main() -> None:
+
+    use_web_hook=update_dns() #dns updated, there is free dns key -> work on server
     try:
         with open("keys/tg-token.txt", 'r') as f:
             token = f.readline()
-            logger.info("Running LL test")
+            logger.info("Running LL test bot")
     except FileNotFoundError:
         try:
             with open("keys/lingolink.txt", 'r') as f:
                 token = f.readline()
-                logger.info("Running LL production")
+                logger.info("Running LL production bot")
         except FileNotFoundError:
             logger.error("No telegram token found")
             
@@ -1002,7 +1004,19 @@ def main() -> None:
     # application.add_handler(CommandHandler("settings", settings_cmd))
     application.add_handler(MessageHandler(None, callback=UI.rx_msg_))
     application.add_handler(CallbackQueryHandler(UI.process_buttons_))
-    application.run_polling()
+
+    if use_web_hook:
+        application.run_webhook(
+            listen='0.0.0.0',
+            port=8443,
+#            url_path='1',
+            #secret_token=token,
+            key='keys/private.key',
+            cert='keys/cert.pem',
+            webhook_url='https://lingolink.bot.nu:8443'
+        )
+    else:
+        application.run_polling()
 
 if __name__ == "__main__":
     main()

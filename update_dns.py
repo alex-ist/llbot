@@ -12,7 +12,11 @@ def update_dns():
         url = f"https://freedns.afraid.org/dynamic/update.php?{freedns_key}"
         response = requests.get(url)
         logger.info(f"Updating freedns: {response}.")
+        return True
     else:
         logger.info(f"Freedns key {file_path} does not exist")
+        return False
 
-update_dns()
+
+if __name__ == "__main__":
+    update_dns()
