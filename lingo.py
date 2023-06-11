@@ -11,7 +11,7 @@ from telegram import ForceReply
 from telegram.ext import Application, CallbackQueryHandler, CommandHandler, ContextTypes, MessageHandler, filters, Defaults
 import telegram 
 from trans import translate_text
-
+from update_dns import update_dns
 
 from card import Card, TrainingCard, TrainingCardSet
 from msg_txt import *
@@ -797,7 +797,7 @@ class UI:
                 return False
             elif data.startswith('kbd:'):
                 data = data.split('kbd:', 1)[1] #card_id
-                self.edited_card=Card.ReadFromDb(self.user_id, int(data))
+                self.edited_card=await Card.ReadFromDb(self.user_id, int(data))
                 self.states_q.append(self.state)
                 self.state = UI.States.EDIT_CARD
                 return True
