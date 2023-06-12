@@ -10,6 +10,8 @@ from telegram import InputFile
 from telegram import ForceReply
 from telegram.ext import Application, CallbackQueryHandler, CommandHandler, ContextTypes, MessageHandler, filters, Defaults
 import telegram 
+import secrets
+
 from trans import translate_text
 from update_dns import update_dns
 
@@ -1010,7 +1012,7 @@ def main() -> None:
             listen='0.0.0.0',
             port=8443,
 #            url_path='1',
-            #secret_token=token,
+            secret_token=secrets.token_urlsafe(16),
             key='keys/private.key',
             cert='keys/cert.pem',
             webhook_url='https://lingolink.bot.nu:8443'
