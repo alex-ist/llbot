@@ -1,11 +1,6 @@
 PRAGMA foreign_keys = 0;
 
-CREATE TABLE sqlitestudio_temp_table AS SELECT *
-                                          FROM user_config;
-
-DROP TABLE user_config;
-
-CREATE TABLE user_config (
+CREATE TABLE users (
     user_id               INTEGER     PRIMARY KEY,
     chat_id               INTEGER,
     state                 INTEGER,
@@ -23,38 +18,40 @@ CREATE TABLE user_config (
     current_forget_rate   REAL
 );
 
-INSERT INTO user_config (
-                            user_id,
-                            chat_id,
-                            state,
-                            m1_msg_id,
-                            o_param,
-                            foreign_lang,
-                            use_audio_examples,
-                            use_examples,
-                            min_trening_interval,
-                            min_cards_for_trening,
-                            max_cards_for_trening,
-                            first_access,
-                            last_access,
-                            current_forget_rate
-                        )
-                        SELECT user_id,
-                               chat_id,
-                               state,
-                               m1_msg_id,
-                               o_param,
-                               foreign_lang,
-                               use_audio_examples,
-                               use_examples,
-                               min_trening_interval,
-                               min_cards_for_trening,
-                               max_cards_for_trening,
-                               first_access,
-                               last_access,
-                               forgetting_rate
-                          FROM sqlitestudio_temp_table;
+INSERT INTO users (
+                      user_id,
+                      chat_id,
+                      state,
+                      m1_msg_id,
+                      o_param,
+                      foreign_lang,
+                      use_audio_examples,
+                      use_examples,
+                      min_trening_interval,
+                      min_cards_for_trening,
+                      max_cards_for_trening,
+                      first_access,
+                      last_access,
+                      shown_words_count,
+                      current_forget_rate
+                  )
+                  SELECT user_id,
+                         chat_id,
+                         state,
+                         m1_msg_id,
+                         o_param,
+                         foreign_lang,
+                         use_audio_examples,
+                         use_examples,
+                         min_trening_interval,
+                         min_cards_for_trening,
+                         max_cards_for_trening,
+                         first_access,
+                         last_access,
+                         shown_words_count,
+                         current_forget_rate
+                    FROM user_config;
 
-DROP TABLE sqlitestudio_temp_table;
+DROP TABLE user_config;
 
 PRAGMA foreign_keys = 1;

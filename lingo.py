@@ -472,7 +472,7 @@ class UI:
             await self.m1_sticker(sticker06_tren0(n))
             await self.m2_text(msg06_tren0(n), self.create_buttons())
 
-        if n<self.cfg.max_cards_for_trening: #fixme: таймер на время когда след слово подойдет
+        if n<self.cfg.max_cards_for_training: #fixme: таймер на время когда след слово подойдет
             self.timer_run(timedelta(minutes=5),"tmr:t0")
         self.state_prev = UI.States.TREN0
         return False
@@ -813,7 +813,7 @@ class UI:
         return False
 
     async def stat2(self) -> None:
-        await self.context.bot.send_message(chat_id=self.chat_id, text=f"<pre>trening set, pos={self.tcs.current_pos}:\n{self.tcs.get_word_stat2()}</pre>", disable_notification=True)
+        await self.context.bot.send_message(chat_id=self.chat_id, text=f"<pre>training set, pos={self.tcs.current_pos}:\n{self.tcs.get_word_stat2()}</pre>", disable_notification=True)
 
     async def reset(self) -> None:
         self.tcs.reset_progress()

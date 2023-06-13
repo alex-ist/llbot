@@ -352,7 +352,7 @@ class TrainingCardSet:
             l=len(self.tcard_set)
             if l==0 : 
                 return None           
-            if self.current_pos>=l or self.current_pos>self.cfg.min_cards_for_trening:
+            if self.current_pos>=l or self.current_pos>self.cfg.min_cards_for_training:
                 self.current_pos=0
 
             return self.tcard_set[self.current_pos]
@@ -371,7 +371,7 @@ class TrainingCardSet:
         n = cursor.fetchone()[0]
         while 1:
             # 1) есть больше слов чем минимальный набор. - сейчас
-            if n>=self.cfg.min_cards_for_trening:
+            if n>=self.cfg.min_cards_for_training:
                 tt=tn
                 break
 
@@ -398,14 +398,14 @@ class TrainingCardSet:
                 break
 
             #4) вычисляем когда наберется хотя бы 12 карт в будущем не позднее te.
-            cursor.execute(f"SELECT next_training_t FROM training_cards WHERE user_id = {self.user_id} AND next_training_t <= ? ORDER BY next_training_t ASC LIMIT ?", (t_to_DB(te), self.cfg.min_cards_for_trening))
+            cursor.execute(f"SELECT next_training_t FROM training_cards WHERE user_id = {self.user_id} AND next_training_t <= ? ORDER BY next_training_t ASC LIMIT ?", (t_to_DB(te), self.cfg.min_cards_for_training))
             r=cursor.fetchall()
             tt=t_from_DB(r[-1][0])
             n_t=len(r)
             break
 
-        if n>self.cfg.max_cards_for_trening:
-            n=self.cfg.max_cards_for_trening
+        if n>self.cfg.max_cards_for_training:
+            n=self.cfg.max_cards_for_training
 
         cursor.execute(f"SELECT MAX(last_training_t) FROM training_cards WHERE user_id = {self.user_id}") #хотя бы одна карта в базе есть.
         r=cursor.fetchone()
@@ -416,8 +416,8 @@ class TrainingCardSet:
             if last_tr_end_t>tn:
                 logger.info("last_tr_end_t in the future!: %s", last_tr_end_t.strftime("%Y-%m-%d %H:%M:%S"))
             #тренинг не чаще чем раз в час(self.cfg.min_trening_interval)
-            if tt<last_tr_end_t+self.cfg.min_trening_interval: 
-                tt=last_tr_end_t+self.cfg.min_trening_interval
+            if tt<last_tr_end_t+self.cfg.min_training_interval: 
+                tt=last_tr_end_t+self.cfg.min_training_interval
 
         conn.close()
         return tt, n #предполагаемое время след тренинга, N=колличество карт для обучения прямо сейчас
