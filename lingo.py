@@ -493,6 +493,7 @@ class UI:
             elif data=="cmd:edit":
                 self.edited_card=self.tcs.GetCurrentTCard().card
                 self.states_q.append(self.state)
+                self.sub_state="edit_old"
                 self.state=UI.States.EDIT_CARD #goto edit_cards
                 return True
             elif data.startswith('msg:'):
@@ -511,7 +512,7 @@ class UI:
             return True
 
         if self.sub_state=="q":
-            ae_path=tc.GetAudioExample()
+            ae_path=await tc.GetAudioExample()
             self.txt_ex=tc.GetExample()
             if self.txt_ex=="":
                 self.txt_ex=None
@@ -528,10 +529,11 @@ class UI:
                     await self.m1_text(f"<i>{self.txt_ex}</i>")
                 else:
                     await self.clear_m1()
-            await self.m2_voice(voice=tc.GetAudio(), txt=tc.GetA(), kbd=self.create_buttons())
+            a = await tc.GetAudio()
+            await self.m2_voice(voice=a, txt=tc.GetA(), kbd=self.create_buttons())
         else: #self.sub_state=="a":
             if self.ma_ex is not None:
-                ae_path=tc.GetAudioExample()
+                ae_path = await tc.GetAudioExample()
                 with open(ae_path, 'rb') as f:
                     self.ma_ex=InputMediaAudio(f, filename=tc.GetForeign(), performer="LingoLink", title=tc.GetForeign(), caption=f"<i>{self.txt_ex}</i>")
                 await self.m1_audio(media=self.ma_ex)
@@ -582,15 +584,10 @@ class UI:
         #decoding inside state events:
         if self.state_prev is not UI.States.EDIT_CARD:
             await self.clear_screan()
+            if self.state_prev!=UI.States.TREN1 and self.state_prev!=UI.States.ADD_WORD and self.state_prev!=UI.States.SHOW_CARDS:
+                logger.warning("edit_card: unknown state_prev: " + self.state_prev)
+                return False
             self.selected_button=None
-            if self.state_prev is UI.States.TREN1:
-                self.sub_state="edit_old"
-            elif self.state_prev is UI.States.ADD_WORD:
-                self.sub_state="edit_new"
-            elif self.state_prev is UI.States.SHOW_CARDS:
-                self.sub_state="edit_old"
-            else:
-                logger.warning("edit_card: unknown state_prev:"+self.state_prev)
             self.kbd=self.create_buttons()
 
         elif self.state_prev is UI.States.EDIT_CARD and data is not None:
@@ -667,6 +664,7 @@ class UI:
             ex=oai_get_example(self.user_id, f)
         self.edited_card=Card(self.user_id, self.cfg.foreign_lang, f, self.cfg.native_lang, n, ex)
         self.states_q.append(self.state)
+        self.sub_state="edit_new"
         self.state = UI.States.EDIT_CARD
         return True
 
@@ -808,6 +806,7 @@ class UI:
                 data = data.split('kbd:', 1)[1] #card_id
                 self.edited_card=await Card.ReadFromDb(self.user_id, int(data))
                 self.states_q.append(self.state)
+                self.sub_state="edit_old"
                 self.state = UI.States.EDIT_CARD
                 return True
             else:

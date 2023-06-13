@@ -44,6 +44,7 @@ class Card:
 
     def ChangeForeign(self, new_fw):
         self.foreign_w=new_fw
+        self.audio=None
 
     def ChangeNative(self, new_nw):
         self.native_w=new_nw
@@ -52,15 +53,17 @@ class Card:
         if new_ex=="":
             new_ex=None
         self.example=new_ex
+        self.audio_example=None
     
     #восстанавливает карту по данным из базы
     def ReloadFromDb(self):
         foreign_w, native_w, foreign_lang, native_lang, example=card_read(self.user_id, self.card_id)
         self.native_lang=native_lang
         self.foreign_lang=foreign_lang
-        self.foreign_w=foreign_w
-        self.native_w=native_w
-        self.example=example
+        self.ChangeNative(native_w)
+        self.ChangeForeign(foreign_w)
+        self.ChangeExample(example)
+            
 
     #сохраняет карту в базе
     #если self.card_id==-1 (новая карта) то insert
@@ -75,13 +78,9 @@ class Card:
     async def ReadFromDb(user_id:int, card_id:int) -> 'Card':
         foreign_w, native_w, foreign_lang, native_lang, example=card_read(user_id, card_id)
         card=Card(user_id, foreign_lang, foreign_w, native_lang, native_w, example, card_id)
-        await card.SetAudio()
-        await card.SetAudioExample()
+        #await card.SetAudio()
+        #await card.SetAudioExample()
         return card
-
-
-
-
 
     #Устанавливает Аудио файл для записи в наборе. Проеверяет есть ли на локальном хранилище этот файл, если нет, то пытается его получить из сети.
     #audio: data/{foreign_lang}/audio_words
@@ -115,10 +114,14 @@ class Card:
                 await google_speach(self.example, self.foreign_lang, p)
                 self.audio_example=p
 
-    def GetAudio(self):
+    async def GetAudio(self):
+        if self.audio is None:
+            await self.SetAudio()
         return self.audio
 
-    def GetAudioExample(self):
+    async def GetAudioExample(self):
+        if self.audio_example is None:
+            await self.SetAudioExample()
         return self.audio_example
 
 def training_card_read_by_id(user_id:int, training_card_id:int):
@@ -239,17 +242,17 @@ class TrainingCard:
         else:
             return self.card.GetForeign()
         
-    def GetAudio(self):
+    async def GetAudio(self):
         if self.card is None:
             return None
         
-        return self.card.GetAudio()
+        return await self.card.GetAudio()
     
-    def GetAudioExample(self):
+    async def GetAudioExample(self):
         if self.card is None:
             return None
         
-        return self.card.GetAudioExample()
+        return await self.card.GetAudioExample()
 
     def GetForeign(self):
         if self.card is None:
@@ -482,24 +485,24 @@ class TrainingCardSet:
                     cards_dict[tc.card_id] = tc.card
 
         #выясним есть ли в наборе IsTextExample, IsAudioExample,IsAudioWord
-        self.text_examples=False
-        self.audio_words=False
-        self.audio_examples=False
-        for c in cards_dict.values():
-            e=c.GetExample()
-            if e is not None and e!="":
-                self.text_examples=True
-                break
-        for c in cards_dict.values():
-            a=c.GetAudio()
-            if a is not None and a!="":
-                self.audio_words=True
-                break
-        for c in cards_dict.values():
-            ae=c.GetAudioExample()
-            if ae is not None and ae!="":
-                self.audio_examples=True
-                break
+        # self.text_examples=False
+        # self.audio_words=False
+        # self.audio_examples=False
+        # for c in cards_dict.values():
+        #     e=c.GetExample()
+        #     if e is not None and e!="":
+        #         self.text_examples=True
+        #         break
+        # for c in cards_dict.values():
+        #     a=c.GetAudio()
+        #     if a is not None and a!="":
+        #         self.audio_words=True
+        #         break
+        # for c in cards_dict.values():
+        #     ae=c.GetAudioExample()
+        #     if ae is not None and ae!="":
+        #         self.audio_examples=True
+        #         break
         
         self.cfg.SetLastAccess()
 
@@ -563,15 +566,15 @@ class TrainingCardSet:
         conn.commit()
         conn.close()
 
-    #есть хотя бы в одой из записей текстовый пример
-    def IsTextExamples(self):
-        return self.text_examples 
+    # #есть хотя бы в одой из записей текстовый пример
+    # def IsTextExamples(self):
+    #     return self.text_examples 
 
-    #есть хотя бы в одой из записей аудио пример? , смотрим ближайшую ротацию +12 карт.
-    def IsAudioExamples(self):
-        return self.audio_examples
+    # #есть хотя бы в одой из записей аудио пример? , смотрим ближайшую ротацию +12 карт.
+    # def IsAudioExamples(self):
+    #     return self.audio_examples
     
-    #есть хотя бы в одой из записей озвучка слова? , смотрим ближайшую ротацию +12 карт.
-    def IsAudioWords(self):
-        return self.audio_words
+    # #есть хотя бы в одой из записей озвучка слова? , смотрим ближайшую ротацию +12 карт.
+    # def IsAudioWords(self):
+    #     return self.audio_words
     
