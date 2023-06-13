@@ -601,7 +601,11 @@ class UI:
                 self.selected_button="nw"
                 self.kbd=self.create_buttons("kbd:nw", "✏️")
             elif data=='kbd:ex':
-                self.selected_button="ex"
+                if self.selected_button!="ex":
+                    self.selected_button="ex"
+                else: #create new examle
+                    ex=oai_get_example(self.user_id, self.edited_card.GetForeign())
+                    self.edited_card.ChangeExample(ex)
                 self.kbd=self.create_buttons("kbd:ex", "✏️")
             elif data=='kbd:reset'and self.sub_state=="edit_old":
                 self.selected_button="reset"
@@ -609,7 +613,10 @@ class UI:
             elif data=='kbd:delete' and self.sub_state=="edit_old":
                 self.selected_button="delete"
                 self.kbd=self.create_buttons("kbd:delete")
-            elif data=='kbd:cancel':
+            elif data=='kbd:cancel':                
+                if self.sub_state=="edit_old":
+                    self.edited_card.ReloadFromDb() #restore vals from the base.
+                    #fixme restore progress?
                 self.state=self.states_q.pop() #goto back
                 return True
             elif data=='kbd:save':

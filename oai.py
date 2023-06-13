@@ -49,17 +49,18 @@ def oai_get_example2(fw, fw2=None):
 
 def oai_get_example(user_id, fword, fw2=None):
     ex=None
-    if random.randint(1, 2) == 2: #каждый втрой пример через text-davinci-002
-        ex, rsp=oai_get_example2(fword)
+    #if random.randint(1, 2) == 2: #каждый втрой пример через text-davinci-002
+    mode="chat"
+    ex, rsp=oai_get_example2(fword)
     
     if ex is None:
         ex, rsp=oai_get_example1(fword)
-        ex=". "+ex
+        mode="davinci-002"
 
     pt=rsp['usage']["prompt_tokens"]
     ct=rsp['usage']["completion_tokens"]
     model=rsp['model']
-    logger.info(f"{user_id}: {model}: pt={pt}, ct={ct}: {fword}  : {ex}")
+    logger.info(f"{user_id}: {model}: pt={pt}, ct={ct}: mode={mode}: {fword} : {ex}")
     return ex
 
 #init_oai()

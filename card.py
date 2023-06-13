@@ -53,6 +53,15 @@ class Card:
             new_ex=None
         self.example=new_ex
     
+    #восстанавливает карту по данным из базы
+    def ReloadFromDb(self):
+        foreign_w, native_w, foreign_lang, native_lang, example=card_read(self.user_id, self.card_id)
+        self.native_lang=native_lang
+        self.foreign_lang=foreign_lang
+        self.foreign_w=foreign_w
+        self.native_w=native_w
+        self.example=example
+
     #сохраняет карту в базе
     #если self.card_id==-1 (новая карта) то insert
     #если self.card_id!=-1 (старая карта) то update
@@ -69,6 +78,8 @@ class Card:
         await card.SetAudio()
         await card.SetAudioExample()
         return card
+
+
 
 
 
