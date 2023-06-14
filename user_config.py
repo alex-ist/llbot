@@ -3,99 +3,55 @@ from bot_db import *
 from botlog import logger
 
 
-class UserConfig:
+class User:
     OPTIMAL_FORGET_RATE=0.1 #доля забытых слов, к которому нужно стремиться 
-    def __init__(self, user_id, chat_id):
+    def __init__(self, user_id, new_user):
+        
         self.user_id=user_id
-        self.set_default()
-        self.chat_id=chat_id
-        self.new_user=False
-
-    def set_default(self):
-        self.foreign_lang="en"
-        self.min_training_interval=timedelta(minutes=60)
-        self.min_cards_for_training=12
-        self.max_cards_for_training=24
-        # o_param - насколько нужно увеличить интервал, после удачного ответа. по дефолту в 2 раза.
-        # В идеале параметр должен стремиться к тому что бы коэфф забывания был равен 10% (self.forgetting_rate)
-        self.o_param=2.0
-        self.chat_id=-1
-
-        self.native_lang="ru"
-        self.first_interval=timedelta(minutes=60) #черз сколько повторять первое слов
-        
-        self.current_forget_rate = 0.1  #фактическая доля забытых слов
-        self.shown_words_count=0
-
-    def Get_o_param(self):
-        return self.o_param
-
-    def SetLastAccess(self):
         cursor=open_db()
-        cursor.execute("UPDATE users SET last_access = ?  WHERE  user_id = ?",
-             (t_to_DB(datetime.now()), self.user_id))
-        close_db(commit=True)
-        
-
-    def read_from_db(self) ->bool:
-        cursor=open_db()
-        cursor.execute("""SELECT foreign_lang, min_trening_interval, min_cards_for_trening, max_cards_for_trening, o_param, chat_id, shown_words_count, current_forget_rate
+        cursor.execute("""SELECT foreign_lang, min_trening_interval, min_cards_for_trening, max_cards_for_trening, o_param, shown_words_count, current_forget_rate, username
                           FROM users 
                           WHERE user_id = ?""",
                     (self.user_id,))
         r = cursor.fetchone()
-        close_db()
-        if r is None: #нет конфига
-            return False
-        
+
         self.foreign_lang=r[0]
         self.min_training_interval=timedelta(seconds=r[1])
         self.min_cards_for_training=r[2]
         self.max_cards_for_training=r[3]
         self.o_param=r[4]
-        old_chat_id=r[5]
-        if self.chat_id!=old_chat_id:
-            logger.warn("new chat id!=chat_id from config")
         
-        self.shown_words_count = r[6]
+        self.shown_words_count = r[5]
         if self.shown_words_count==None:
             self.shown_words_count = 0
         
-        self.current_forget_rate = r[7]
+        self.current_forget_rate = r[6]
         if self.current_forget_rate==None:
-            self.current_forget_rate=0.0
-        
-        return True
-    
-    def update_in_db(self):
-        cursor=open_db()
-        cursor.execute("UPDATE users SET shown_words_count = ?, current_forget_rate = ?  WHERE  user_id = ?",
-             (self.shown_words_count, self.current_forget_rate, self.user_id))
-        close_db(commit=True)
+            self.current_forget_rate=User.OPTIMAL_FORGET_RATE
+
+        self.username = r[7]
+        close_db()
+        self.new_user=new_user
 
 
-    def create_in_db(self):
-        cursor=open_db()
-        cursor.execute("""INSERT INTO users (user_id, chat_id, foreign_lang, min_trening_interval, min_cards_for_trening, max_cards_for_trening, o_param, first_access)
-                          VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
-                          (self.user_id, self.chat_id, self.foreign_lang, self.min_training_interval.total_seconds(), self.min_cards_for_training, self.max_cards_for_training, self.o_param, t_to_DB(datetime.now())))
+    def Get_o_param(self):
+        return self.o_param
 
-        close_db(commit=True)
-
+    def SetLastAccess(self):
+        user_update_last_access(self.user_id)
 
     @staticmethod
-    def GetUserConfig(user_id, chat_id) ->'UserConfig': 
-        #считываем конфиг из базы если он там есть.
-        #если конфига нет, то создаем дефолтовый и возвращаем
-        cfg=UserConfig(user_id, chat_id)
-        if not cfg.read_from_db():
-            cfg.create_in_db()
-            cfg.new_user=True
+    def Update(user_id, chat_id, username, first_name, lang_code, is_premium):
+        if user_exist(user_id):
+            user_update(user_id, chat_id, username, first_name, lang_code, is_premium)
+            return False
         else:
-            cfg.new_user=False
-        
-        cfg.SetLastAccess()
-        return cfg
+            # o_param - насколько нужно увеличить интервал, после удачного ответа. по дефолту в 2 раза.
+            # В идеале параметр должен стремиться к тому что бы коэфф забывания был равен 10% (self.forgetting_rate)
+            # fixme : native_lang="ru"
+            user_registration(user_id, chat_id, username, first_name, lang_code, is_premium,
+                              foreign_lang="en", min_t_interval=timedelta(minutes=60).total_seconds(), min_cards_for_t=12, max_cards_for_t=24, o_param=2.0)
+            return True
     
     def CalcCurreentForgetRate(self, incorrect): #если слово забыто incorrect=1, если вспомнено incorrect=0
         self.shown_words_count+=1
@@ -103,8 +59,8 @@ class UserConfig:
         self.current_forget_rate += (incorrect - self.current_forget_rate) / min(self.shown_words_count, 100)
         logger.info(f"forget rate n={self.shown_words_count}, before={before}, after={self.current_forget_rate}")
     
-    def SaveUserData(self):
-        self.update_in_db()
+    def UpdateStat(self):
+        user_update_stat(self.user_id, self.shown_words_count, self.current_forget_rate)
 
 
 

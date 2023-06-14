@@ -153,7 +153,7 @@ def training_card_update_by_id(training_card_id, user_id, next_training_t, last_
 
 
 class TrainingCard:
-    def __init__(self, training_card_id, user_id, card_id, direction, next_training_t, last_training_t, cfg:UserConfig=None ):
+    def __init__(self, training_card_id, user_id, card_id, direction, next_training_t, last_training_t, u:User=None ):
         self.training_card_id=training_card_id
         self.card=None
         self.user_id=user_id
@@ -162,19 +162,19 @@ class TrainingCard:
         self.incorrect_answer=False        
         self.next_training_t=next_training_t 
         self.last_training_t=last_training_t #вообще бывают апдейты? или ролмьл заменгяем и все?
-        self.cfg=cfg
+        self.u=u
     
     #создает новую tcard без записи в базе. После окончания редактирования запишем в базу
     @staticmethod
-    def CreateNewTCard(user_id, cfg:UserConfig, foreign_w, native_w="", example="") -> 'TrainingCard':
-        tc=TrainingCard(training_card_id=-1, user_id=user_id, card_id=-1, direction=-1, next_training_t=None, last_training_t=None, cfg=cfg)
-        tc.card=Card(user_id, cfg.foreign_lang, foreign_w, cfg.native_lang, native_w, example)
+    def CreateNewTCard(user_id, u:User, foreign_w, native_w="", example="") -> 'TrainingCard':
+        tc=TrainingCard(training_card_id=-1, user_id=user_id, card_id=-1, direction=-1, next_training_t=None, last_training_t=None, u=u)
+        tc.card=Card(user_id, u.foreign_lang, foreign_w, u.native_lang, native_w, example)
         return tc        
 
     @staticmethod
-    def ReadTcardFromDb_by_card_id(user_id:int, cfg, card_id, direction) -> 'TrainingCard':
+    def ReadTcardFromDb_by_card_id(user_id:int, u, card_id, direction) -> 'TrainingCard':
         training_card_id, next_training_t, last_training_t=training_card_read_by_card_id(user_id, card_id, direction)
-        return TrainingCard(training_card_id, user_id, card_id, direction, next_training_t, last_training_t, cfg)
+        return TrainingCard(training_card_id, user_id, card_id, direction, next_training_t, last_training_t, u)
     
   
     def SaveToDb(self):
@@ -193,32 +193,32 @@ class TrainingCard:
         if self.last_training_t is not None:
             last_req_interval=self.next_training_t-self.last_training_t
         else:
-            last_req_interval=self.cfg.first_interval
+            last_req_interval=self.u.first_interval
 
         if self.last_training_t is not None:
             last_real_interval=datetime.now()-self.last_training_t
         else:
-            last_real_interval=self.cfg.first_interval
+            last_real_interval=self.u.first_interval
         
         #расчитывает -> current_forget_rate  irr фильтр, окно 100
-        self.cfg.CalcCurreentForgetRate(self.incorrect_answer)
+        self.u.CalcCurreentForgetRate(self.incorrect_answer)
 
         if self.incorrect_answer:
             #если не запомнили, то надо вязть меньший из двух интервалов - фактический или требуемый.
             i=min(last_req_interval, last_real_interval)
             #но интервал не может быть меньше начального
-            i=max(self.cfg.first_interval, i)
+            i=max(self.u.first_interval, i)
             #полученный результат уменьшаем
             self.last_training_t=datetime.now()
-            self.next_training_t=datetime.now() + i/self.cfg.o_param
+            self.next_training_t=datetime.now() + i/self.u.o_param
         else:
             #если фактический интервал больше требуемого - берем фактический.
             if last_real_interval>last_req_interval:
-                new_i=self.cfg.o_param*last_real_interval
+                new_i=self.u.o_param*last_real_interval
             else:
                 #а если фактический интервал меньше требуемого? тогда линейно меняем 
                 # FIXME:  нужно поисследовать функцию, сделать без перегиба в точке last_req_interval
-                new_i=last_req_interval + (self.cfg.o_param-1)*last_real_interval
+                new_i=last_req_interval + (self.u.o_param-1)*last_real_interval
 
             self.last_training_t=datetime.now()
             self.next_training_t=self.last_training_t + new_i
@@ -290,14 +290,14 @@ class TrainingCard:
 
 
 class TrainingCardSet:
-    def __init__(self, user_id, cfg:UserConfig):
+    def __init__(self, user_id, u:User):
         self.user_id=user_id
         self.tcard_set=[]
         self.current_pos=0
         self.audio_words=False
         self.text_examples=False
         self.audio_examples=False
-        self.cfg=cfg
+        self.u=u
 
     
     #возвращает текущую карту или ноне
@@ -366,7 +366,7 @@ class TrainingCardSet:
             l=len(self.tcard_set)
             if l==0 : 
                 return None           
-            if self.current_pos>=l or self.current_pos>self.cfg.min_cards_for_training:
+            if self.current_pos>=l or self.current_pos>self.u.min_cards_for_training:
                 self.current_pos=0
 
             return self.tcard_set[self.current_pos]
@@ -385,7 +385,7 @@ class TrainingCardSet:
         n = cursor.fetchone()[0]
         while 1:
             # 1) есть больше слов чем минимальный набор. - сейчас
-            if n>=self.cfg.min_cards_for_training:
+            if n>=self.u.min_cards_for_training:
                 tt=tn
                 break
 
@@ -406,20 +406,20 @@ class TrainingCardSet:
 
             #3) tn>t0+2ч (self.cfg.first_interval*oparam) - сейчас
             #   самую старую карту уже пора учить, и прошел доп интервал ожидания чтобы карта была не одна
-            te=t0+self.cfg.first_interval*self.cfg.o_param
+            te=t0+self.u.first_interval*self.u.o_param
             if tn>te:
                 tt=tn
                 break
 
             #4) вычисляем когда наберется хотя бы 12 карт в будущем не позднее te.
-            cursor.execute(f"SELECT next_training_t FROM training_cards WHERE user_id = {self.user_id} AND next_training_t <= ? ORDER BY next_training_t ASC LIMIT ?", (t_to_DB(te), self.cfg.min_cards_for_training))
+            cursor.execute(f"SELECT next_training_t FROM training_cards WHERE user_id = {self.user_id} AND next_training_t <= ? ORDER BY next_training_t ASC LIMIT ?", (t_to_DB(te), self.u.min_cards_for_training))
             r=cursor.fetchall()
             tt=t_from_DB(r[-1][0])
             n_t=len(r)
             break
 
-        if n>self.cfg.max_cards_for_training:
-            n=self.cfg.max_cards_for_training
+        if n>self.u.max_cards_for_training:
+            n=self.u.max_cards_for_training
 
         cursor.execute(f"SELECT MAX(last_training_t) FROM training_cards WHERE user_id = {self.user_id}") #хотя бы одна карта в базе есть.
         r=cursor.fetchone()
@@ -430,8 +430,8 @@ class TrainingCardSet:
             if last_tr_end_t>tn:
                 logger.info("last_tr_end_t in the future!: %s", last_tr_end_t.strftime("%Y-%m-%d %H:%M:%S"))
             #тренинг не чаще чем раз в час(self.cfg.min_trening_interval)
-            if tt<last_tr_end_t+self.cfg.min_training_interval: 
-                tt=last_tr_end_t+self.cfg.min_training_interval
+            if tt<last_tr_end_t+self.u.min_training_interval: 
+                tt=last_tr_end_t+self.u.min_training_interval
 
         conn.close()
         return tt, n #предполагаемое время след тренинга, N=колличество карт для обучения прямо сейчас
@@ -469,7 +469,7 @@ class TrainingCardSet:
             nt=t_from_DB(row[3])
             lt=t_from_DB(row[4])
             training_card_id=row[0]
-            self.tcard_set.append(TrainingCard(training_card_id, self.user_id, row[1], row[2], nt, lt, self.cfg))
+            self.tcard_set.append(TrainingCard(training_card_id, self.user_id, row[1], row[2], nt, lt, self.u))
 
         #сразу отсортируем список - чтобы сначала шли только четные dir, а затем нечетн dir. Чтобы одна и таже карта в разных направлениях не повторялась сама за собой
         self.tcard_set.sort(key=lambda t: t.direction)
@@ -504,7 +504,7 @@ class TrainingCardSet:
         #         self.audio_examples=True
         #         break
         
-        self.cfg.SetLastAccess()
+        self.u.SetLastAccess()
 
 
     # для отладки статистику вывеедем по словам. слово > через сколько повторять

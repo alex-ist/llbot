@@ -109,11 +109,10 @@ WHERE topic = ? and f_lang= '{flang}' AND NOT EXISTS
     return n
 
 def cards_count(user_id:int):
-    conn = sqlite3.connect(DB)
-    cursor = conn.cursor()
-    cursor.execute("SELECT COUNT(*) FROM training_cards WHERE user_id = ?", (user_id,))
-    n = cursor.fetchone()[0]
-    conn.close()
+    c = open_db()
+    c.execute("SELECT COUNT(*) FROM training_cards WHERE user_id = ?", (user_id,))
+    n = c.fetchone()[0]
+    close_db()
     return n
 
 def get_progr (t:int ):
@@ -181,3 +180,47 @@ def cards_remove(user_id:int):
     c=open_db()
     c.execute("DELETE FROM cards WHERE user_id = ?", (user_id,))
     close_db(True)
+
+
+def user_exist(user_id:int):
+    c=open_db()
+    c.execute(f"SELECT user_id FROM users WHERE user_id = {user_id}")
+    r = c.fetchone()
+    close_db()
+    if r is None: #нет конфига
+        return False
+    else:
+        return True
+
+def user_update(user_id:int, chat_id, username, first_name, lang_code, is_premium):
+    c=open_db()
+    t=t_to_DB(datetime.now())
+    c.execute(f"UPDATE users SET chat_id = ?, username = ?, first_name = ?, lang_code = ?, is_premium = ?, last_access = ? WHERE user_id = {user_id}",
+             (chat_id, username, first_name, lang_code, is_premium, t))
+    close_db(commit=True)
+
+
+def user_registration(user_id:int, chat_id, username, first_name, lang_code, is_premium,
+                      foreign_lang, min_t_interval, min_cards_for_t, max_cards_for_t, o_param):
+    c=open_db()
+    t=t_to_DB(datetime.now())
+    c.execute(f"""INSERT INTO users (user_id, chat_id, username, first_name, lang_code, is_premium, 
+              foreign_lang, min_trening_interval, min_cards_for_trening, max_cards_for_trening, o_param, first_access, last_access)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+             (user_id, chat_id, username, first_name, lang_code, is_premium,
+              foreign_lang, min_t_interval, min_cards_for_t, max_cards_for_t, o_param, t, t ))
+    close_db(commit=True)
+
+
+def user_update_last_access(user_id:int):
+    c=open_db()
+    c.execute("UPDATE users SET last_access = ?  WHERE  user_id = ?",
+            (t_to_DB(datetime.now()), user_id))
+    close_db(commit=True)
+
+
+def user_update_stat(user_id:int, shown_words_count, forget_rate):
+    cursor=open_db()
+    cursor.execute("UPDATE users SET shown_words_count = ?, current_forget_rate = ?  WHERE  user_id = ?",
+            (shown_words_count, forget_rate, user_id))
+    close_db(commit=True)

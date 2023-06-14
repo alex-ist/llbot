@@ -50,7 +50,7 @@ class UI:
         SHOW_CARDS="show_cards_st"
         HELP_CMD="help_cmd_st"
 
-    def __init__(self, user_id:int, chat_id:int):
+    def __init__(self, user_id:int, chat_id:int, username, first_name, lang_code, is_premium):
         self.m1=None
         self.m2=None
         self.m1_type=None
@@ -58,8 +58,10 @@ class UI:
         self.kbd=None
         self.user_id=user_id
         self.chat_id=chat_id
-        self.cfg=UserConfig.GetUserConfig(user_id, chat_id)
-        self.tcs=TrainingCardSet(user_id, self.cfg)
+        new_user=User.Update(self.user_id, chat_id, username, first_name, lang_code, is_premium)
+        self.u=User(user_id, new_user)
+
+        self.tcs=TrainingCardSet(user_id, self.u)
         self.edited_card=None
         self.state= UI.States.ST_UNDEF  
         self.state_prev= UI.States.ST_UNDEF
@@ -222,7 +224,7 @@ class UI:
 
             if self.state_prev is UI.States.ST_UNDEF:
                 #cn=cards_count(self.user_id) #проверка на нового пользователя.
-                if self.cfg.new_user:
+                if self.u.new_user:
                     self.state = UI.States.NEW_USER
                 else:
                     self.state = UI.States.TREN0
@@ -403,7 +405,7 @@ class UI:
         #decoding inside state events:
         if self.state_prev is UI.States.CFG_LANG and data is not None:
             if data=='kbd:ok':
-                if self.cfg.foreign_lang is not None:
+                if self.u.foreign_lang is not None:
                     self.state=UI.States.FIRST_SET
                     return True
                 else:
@@ -415,8 +417,8 @@ class UI:
                     logger.info("select lang error: %s", data)
                     return False
                 lang=parts[1]
-                #self.cfg.foreign_lang=lang #fixme
-                self.cfg.foreign_lang="en"
+                #self.u.foreign_lang=lang #fixme
+                self.u.foreign_lang="en"
 
         await self.m1_text(msg02_cfg_lang(), kbd=self.create_buttons(data))
         self.state_prev = UI.States.CFG_LANG
@@ -438,7 +440,7 @@ class UI:
             if data=='kbd:ok':
                 if self.sub_state is not None:
                     #add words to base 
-                    cards_add_words_by_topic(self.user_id, self.sub_state, flang=self.cfg.foreign_lang, nlang=self.cfg.native_lang)
+                    cards_add_words_by_topic(self.user_id, self.sub_state, flang=self.u.foreign_lang, nlang=self.u.native_lang)
                     self.state=UI.States.TREN0
                     return True
                 else:
@@ -472,7 +474,7 @@ class UI:
             await self.m1_sticker(sticker06_tren0(n))
             await self.m2_text(msg06_tren0(n), self.create_buttons())
 
-        if n<self.cfg.max_cards_for_training: #fixme: таймер на время когда след слово подойдет
+        if n<self.u.max_cards_for_training: #fixme: таймер на время когда след слово подойдет
             self.timer_run(timedelta(minutes=5),"tmr:t0")
         self.state_prev = UI.States.TREN0
         return False
@@ -507,7 +509,7 @@ class UI:
         tc=self.tcs.GetCurrentTCard()  
         if tc is None: #нет карт для запоминания
             #fixme: найти еще место где выключается, и там тоже сохранить
-            self.cfg.SaveUserData()
+            self.u.UpdateStat()
             self.state=UI.States.TREN3 #goto tren3
             return True
 
@@ -657,12 +659,12 @@ class UI:
     async def add_word(self, data:str):
         data = data.split('msg:', 1)[1]
         data=data.lower().strip()
-        f,n = await translate_text(self.cfg.foreign_lang, self.cfg.native_lang, data)
+        f,n = await translate_text(self.u.foreign_lang, self.u.native_lang, data)
         if f==n: #вероятно не смогли первести, может абракадабра была вместо слова
             ex=None
         else:
             ex=oai_get_example(self.user_id, f)
-        self.edited_card=Card(self.user_id, self.cfg.foreign_lang, f, self.cfg.native_lang, n, ex)
+        self.edited_card=Card(self.user_id, self.u.foreign_lang, f, self.u.native_lang, n, ex)
         self.states_q.append(self.state)
         self.sub_state="edit_new"
         self.state = UI.States.EDIT_CARD
@@ -705,7 +707,7 @@ class UI:
                 return True
             elif data=='kbd:ok':
                 if self.selected_button is not None:
-                    n=cards_add_words_by_topic(self.user_id, self.selected_button, flang=self.cfg.foreign_lang, nlang=self.cfg.native_lang)
+                    n=cards_add_words_by_topic(self.user_id, self.selected_button, flang=self.u.foreign_lang, nlang=self.u.native_lang)
                     logger.info(f"{self.user_id}: added {n} words from word_set[{self.selected_button}]")
                 self.state=self.states_q.pop() #goto back
                 await self.clear_m2()
@@ -743,7 +745,7 @@ class UI:
             else:
                 return False
         
-        t=msg11_total_stat(self.list_sz, self.cfg.current_forget_rate)
+        t=msg11_total_stat(self.list_sz, self.u.current_forget_rate)
         t+=f"<pre>{cards_stat(self.user_id, 30, offset=self.list_pos)}</pre>"
         await self.m2_text(t, kbd=self.create_buttons())
         self.state_prev = UI.States.SHOW_STAT
@@ -903,7 +905,11 @@ async def start_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     global ui_set
     chat_id=update.effective_chat.id
     user_id=update.effective_user.id
-    msg_id=update.effective_message.id
+    #msg_id=update.effective_message.id
+    username=update.effective_user.first_name
+    first_name=update.effective_user.first_name
+    lang_code=update.effective_user.language_code
+    is_premium=update.effective_user.is_premium
 
     #await context.bot.delete_message(chat_id, msg_id)
     #перезапуск UI
@@ -912,7 +918,7 @@ async def start_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         del ui_set[user_id]
         logger.info(f"uid: {user_id}. Stop UI")
 
-    ui=UI(user_id, chat_id)
+    ui=UI(user_id, chat_id, username, first_name, lang_code, is_premium)
     ui_set[user_id]=ui
     ui.context=context
     logger.info(f"uid: {user_id}. Start UI")
@@ -923,7 +929,6 @@ async def settings_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     if update is not None:
         chat_id=update.effective_chat.id
     await context.bot.send_message(chat_id=chat_id, text="Здесь будут настройки")
-
 
 #установка меню
 async def post_init(context):

@@ -1,5 +1,10 @@
 PRAGMA foreign_keys = 0;
 
+CREATE TABLE sqlitestudio_temp_table AS SELECT *
+                                          FROM users;
+
+DROP TABLE users;
+
 CREATE TABLE users (
     user_id               INTEGER     PRIMARY KEY,
     chat_id               INTEGER,
@@ -14,8 +19,12 @@ CREATE TABLE users (
     max_cards_for_trening INTEGER,
     first_access          INTEGER,
     last_access           INTEGER,
-    shown_words_count     INTEGER,
-    current_forget_rate   REAL
+    shown_words_count     INTEGER     DEFAULT (0),
+    current_forget_rate   REAL        DEFAULT (0.1),
+    username              TEXT,
+    first_name            TEXT,
+    lang_code             TEXT,
+    is_premium            INTEGER (1) 
 );
 
 INSERT INTO users (
@@ -50,8 +59,8 @@ INSERT INTO users (
                          last_access,
                          shown_words_count,
                          current_forget_rate
-                    FROM user_config;
+                    FROM sqlitestudio_temp_table;
 
-DROP TABLE user_config;
+DROP TABLE sqlitestudio_temp_table;
 
 PRAGMA foreign_keys = 1;
