@@ -33,7 +33,7 @@ class User:
         close_db()
         self.new_user=new_user
         self.first_interval=timedelta(minutes=60) #черз сколько повторять первое слов
-
+        self.native_lang="ru"
 
     def Get_o_param(self):
         return self.o_param

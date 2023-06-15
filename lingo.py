@@ -607,7 +607,8 @@ class UI:
                 if self.selected_button!="ex":
                     self.selected_button="ex"
                 else: #create new examle
-                    ex=oai_get_example(self.user_id, self.edited_card.GetForeign())
+                    #ex=oai_get_example(self.user_id, self.edited_card.GetForeign())
+                    ex=await oai_aget_example(self.user_id, self.edited_card.GetForeign())
                     self.edited_card.ChangeExample(ex)
                 self.kbd=self.create_buttons("kbd:ex", "✏️")
             elif data=='kbd:reset'and self.sub_state=="edit_old":
@@ -667,7 +668,9 @@ class UI:
         if f==n: #вероятно не смогли первести, может абракадабра была вместо слова
             ex=None
         else:
-            ex=oai_get_example(self.user_id, f)
+            #ex=oai_get_example(self.user_id, f)
+            ex=await oai_aget_example(self.user_id, f)
+
         self.edited_card=Card(self.user_id, self.u.foreign_lang, f, self.u.native_lang, n, ex)
         self.states_q.append(self.state)
         self.sub_state="edit_new"

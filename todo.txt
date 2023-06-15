@@ -32,6 +32,7 @@ TODO:
 +замена примера при поаторном нажатии на кнопку примера
 +озвучку выполнять только когда она реально нужна
 +Запоминать имена пользователей, язык, premioum при регистрации
++чат гпт - асинхронный.
 
 Добавить инструкции
 добавить удаление инструкций для опытных пользователей
@@ -40,8 +41,6 @@ TODO:
 добавление слов из наборов пошутчно
 конфиги пользователей редактировать
 source для inbound rules 149.154.160.0/20 and 91.108.4.0/22.?
-
-чат гпт - асинхронный.
 
 в начальном наборе нужно меньше слов (30)
   File "Lib\site-packages\telegram\request\_baserequest.py", line 328, in _request_wrapper raise BadRequest(message) telegram.error.BadRequest: Query is too old and response timeout expired or query id is invalid
@@ -53,7 +52,8 @@ http2
 настрока разных синтезаторов голоса.
 heating battary  - не знает. Прверить
     I'm sorry, "heating battery" is not a commonly used English word or idiom. Can you please provide another one?
-
+поиграться с промптом: You are American native speaker?
+подумать над ситуацией, что примеры одни и те же генерятся. сделать доп промпт? слово для проверки: затягивается
 
 =======================================================
 
