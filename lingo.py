@@ -50,7 +50,7 @@ class UI:
         SHOW_CARDS="show_cards_st"
         HELP_CMD="help_cmd_st"
 
-    def __init__(self, user_id:int, chat_id:int, username, first_name, lang_code, is_premium):
+    def __init__(self, user_id:int, chat_id:int, new_user=False):
         self.m1=None
         self.m2=None
         self.m1_type=None
@@ -58,7 +58,6 @@ class UI:
         self.kbd=None
         self.user_id=user_id
         self.chat_id=chat_id
-        new_user=User.Update(self.user_id, chat_id, username, first_name, lang_code, is_premium)
         self.u=User(user_id, new_user)
 
         self.tcs=TrainingCardSet(user_id, self.u)
@@ -71,6 +70,11 @@ class UI:
         self.context=None
         self.states_q=[]
         self.list_pos=0
+
+    @staticmethod
+    def CreateUI_in_start(user_id:int, chat_id:int, username, first_name, lang_code, is_premium, name):
+        new_user=User.Update(user_id, chat_id, username, first_name, lang_code, is_premium, name)
+        return UI(user_id, chat_id, new_user)
 
     async def clear_screan(self):
         await self.clear_m1()
@@ -910,6 +914,7 @@ async def start_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     first_name=update.effective_user.first_name
     lang_code=update.effective_user.language_code
     is_premium=update.effective_user.is_premium
+    name=update.effective_user.name
 
     #await context.bot.delete_message(chat_id, msg_id)
     #перезапуск UI
@@ -918,7 +923,7 @@ async def start_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         del ui_set[user_id]
         logger.info(f"uid: {user_id}. Stop UI")
 
-    ui=UI(user_id, chat_id, username, first_name, lang_code, is_premium)
+    ui=UI.CreateUI_in_start(user_id, chat_id, username, first_name, lang_code, is_premium, name)
     ui_set[user_id]=ui
     ui.context=context
     logger.info(f"uid: {user_id}. Start UI")

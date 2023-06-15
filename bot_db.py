@@ -192,21 +192,21 @@ def user_exist(user_id:int):
     else:
         return True
 
-def user_update(user_id:int, chat_id, username, first_name, lang_code, is_premium):
+def user_update(user_id:int, chat_id, username, first_name, lang_code, is_premium, name):
     c=open_db()
     t=t_to_DB(datetime.now())
-    c.execute(f"UPDATE users SET chat_id = ?, username = ?, first_name = ?, lang_code = ?, is_premium = ?, last_access = ? WHERE user_id = {user_id}",
-             (chat_id, username, first_name, lang_code, is_premium, t))
+    c.execute(f"UPDATE users SET chat_id = ?, username = ?, first_name = ?, lang_code = ?, is_premium = ?, name = ?, last_access = ? WHERE user_id = {user_id}",
+             (chat_id, username, first_name, lang_code, is_premium, name, t))
     close_db(commit=True)
 
 
-def user_registration(user_id:int, chat_id, username, first_name, lang_code, is_premium,
+def user_registration(user_id:int, chat_id, username, first_name, lang_code, is_premium, name,
                       foreign_lang, min_t_interval, min_cards_for_t, max_cards_for_t, o_param):
     c=open_db()
     t=t_to_DB(datetime.now())
-    c.execute(f"""INSERT INTO users (user_id, chat_id, username, first_name, lang_code, is_premium, 
+    c.execute(f"""INSERT INTO users (user_id, chat_id, username, first_name, lang_code, is_premium, name 
               foreign_lang, min_trening_interval, min_cards_for_trening, max_cards_for_trening, o_param, first_access, last_access)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
              (user_id, chat_id, username, first_name, lang_code, is_premium,
               foreign_lang, min_t_interval, min_cards_for_t, max_cards_for_t, o_param, t, t ))
     close_db(commit=True)

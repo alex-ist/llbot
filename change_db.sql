@@ -8,8 +8,11 @@ DROP TABLE users;
 CREATE TABLE users (
     user_id               INTEGER     PRIMARY KEY,
     chat_id               INTEGER,
-    state                 INTEGER,
-    m1_msg_id             INTEGER,
+    username              TEXT,
+    first_name            TEXT,
+    name                  TEXT,
+    lang_code             TEXT,
+    is_premium            INTEGER (1),
     o_param               INTEGER     DEFAULT (2),
     foreign_lang          TEXT (2)    NOT NULL,
     use_audio_examples    INTEGER (1) DEFAULT (1),
@@ -19,19 +22,17 @@ CREATE TABLE users (
     max_cards_for_trening INTEGER,
     first_access          INTEGER,
     last_access           INTEGER,
-    shown_words_count     INTEGER     DEFAULT (0),
-    current_forget_rate   REAL        DEFAULT (0.1),
-    username              TEXT,
-    first_name            TEXT,
-    lang_code             TEXT,
-    is_premium            INTEGER (1) 
+    shown_words_count     INTEGER,
+    current_forget_rate   REAL
 );
 
 INSERT INTO users (
                       user_id,
                       chat_id,
-                      state,
-                      m1_msg_id,
+                      username,
+                      first_name,
+                      lang_code,
+                      is_premium,
                       o_param,
                       foreign_lang,
                       use_audio_examples,
@@ -46,8 +47,10 @@ INSERT INTO users (
                   )
                   SELECT user_id,
                          chat_id,
-                         state,
-                         m1_msg_id,
+                         username,
+                         first_name,
+                         lang_code,
+                         is_premium,
                          o_param,
                          foreign_lang,
                          use_audio_examples,

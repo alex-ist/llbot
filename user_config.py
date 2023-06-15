@@ -32,6 +32,7 @@ class User:
         self.username = r[7]
         close_db()
         self.new_user=new_user
+        self.first_interval=timedelta(minutes=60) #черз сколько повторять первое слов
 
 
     def Get_o_param(self):
@@ -41,15 +42,15 @@ class User:
         user_update_last_access(self.user_id)
 
     @staticmethod
-    def Update(user_id, chat_id, username, first_name, lang_code, is_premium):
+    def Update(user_id, chat_id, username, first_name, lang_code, is_premium, name):
         if user_exist(user_id):
-            user_update(user_id, chat_id, username, first_name, lang_code, is_premium)
+            user_update(user_id, chat_id, username, first_name, lang_code, is_premium, name)
             return False
         else:
             # o_param - насколько нужно увеличить интервал, после удачного ответа. по дефолту в 2 раза.
             # В идеале параметр должен стремиться к тому что бы коэфф забывания был равен 10% (self.forgetting_rate)
             # fixme : native_lang="ru"
-            user_registration(user_id, chat_id, username, first_name, lang_code, is_premium,
+            user_registration(user_id, chat_id, username, first_name, lang_code, is_premium, name,
                               foreign_lang="en", min_t_interval=timedelta(minutes=60).total_seconds(), min_cards_for_t=12, max_cards_for_t=24, o_param=2.0)
             return True
     
