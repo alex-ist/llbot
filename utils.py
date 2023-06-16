@@ -20,13 +20,17 @@ def get_empty_InputMediaAudio()->InputMediaAudio:
 from typing import List
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 
-def select_button(kbd, selected: str, sel_symb:str) -> InlineKeyboardMarkup:
+def select_button(kbd, selected: str, sel_symb:str, after=False) -> InlineKeyboardMarkup:
     if selected is not None:
         for i, row in enumerate(kbd):
             for j, button in enumerate(row):
                 if button.callback_data == selected:
-                    s="✅ " if sel_symb is None else sel_symb
-                    new_txt = s + button.text
+                    if after == True:
+                        s=" ▶️" if sel_symb is None else sel_symb
+                        new_txt = button.text + s
+                    else:
+                        s="✅ " if sel_symb is None else sel_symb
+                        new_txt = s + button.text
                     kbd[i][j] = InlineKeyboardButton(new_txt, callback_data=button.callback_data)
                     return
                 

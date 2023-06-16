@@ -46,7 +46,7 @@ class UI:
         EDIT_CARD ="edit_card_st"
         ADD_WORD ="add_word_st"
         ADD_WORDS_FROM_LIB="add_from_lib_st"
-        SHOW_STAT ="show_card_st"
+        SHOW_STAT ="show_stat_st"
         SHOW_CARDS="show_cards_st"
         HELP_CMD="help_cmd_st"
 
@@ -484,7 +484,7 @@ class UI:
         return False
 
     async def tren1_state(self, data=None) -> None:
-        if self.state_prev is UI.States.EDIT_CARD or self.state_prev is UI.States.ADD_WORD or self.state_prev is UI.States.SHOW_CARDS:
+        if self.state_prev is UI.States.EDIT_CARD or self.state_prev is UI.States.ADD_WORD or self.state_prev is UI.States.SHOW_CARDS or self.state_prev is UI.States.SHOW_STAT: 
             self.sub_state="q"
         elif self.state_prev is UI.States.TREN0 or self.state_prev is UI.States.TREN3:
             await self.tcs.Create()

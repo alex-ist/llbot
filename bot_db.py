@@ -108,12 +108,20 @@ WHERE topic = ? and f_lang= '{flang}' AND NOT EXISTS
     close_db(commit=True)
     return n
 
-def cards_count(user_id:int):
+def tcards_count(user_id:int):
     c = open_db()
     c.execute("SELECT COUNT(*) FROM training_cards WHERE user_id = ?", (user_id,))
     n = c.fetchone()[0]
     close_db()
     return n
+
+def cards_count(user_id:int):
+    c = open_db()
+    c.execute("SELECT COUNT(*) FROM cards WHERE user_id = ?", (user_id,))
+    n = c.fetchone()[0]
+    close_db()
+    return n
+
 
 def get_progr (t:int ):
     unicode_symbols = {0:"\u2800",  1: "\u28c0", 2: "\u28e4", 3: "\u28f6", 4: "\u28ff"}
@@ -204,10 +212,10 @@ def user_registration(user_id:int, chat_id, username, first_name, lang_code, is_
                       foreign_lang, min_t_interval, min_cards_for_t, max_cards_for_t, o_param):
     c=open_db()
     t=t_to_DB(datetime.now())
-    c.execute(f"""INSERT INTO users (user_id, chat_id, username, first_name, lang_code, is_premium, name 
+    c.execute(f"""INSERT INTO users (user_id, chat_id, username, first_name, lang_code, is_premium, name, 
               foreign_lang, min_trening_interval, min_cards_for_trening, max_cards_for_trening, o_param, first_access, last_access)
                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-             (user_id, chat_id, username, first_name, lang_code, is_premium,
+             (user_id, chat_id, username, first_name, lang_code, is_premium, name, 
               foreign_lang, min_t_interval, min_cards_for_t, max_cards_for_t, o_param, t, t ))
     close_db(commit=True)
 
