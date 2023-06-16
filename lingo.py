@@ -40,6 +40,8 @@ class UI:
         NEW_USER = "new_user_st"
         CFG_LANG = "cfg_lang_st"
         FIRST_SET = "first_set_st"
+        FIRST_RUN1 = "first_run1_st"
+        FIRST_RUN2 = "first_run2_st"
         TREN0 ="tren0_st"
         TREN1 ="tren1_st"
         TREN3 ="tren2_st"
@@ -227,7 +229,7 @@ class UI:
                 data=None
 
             if self.state_prev is UI.States.ST_UNDEF:
-                #cn=cards_count(self.user_id) #проверка на нового пользователя.
+                #cn=tcards_count(self.user_id) #проверка на нового пользователя.
                 if self.u.new_user:
                     self.state = UI.States.NEW_USER
                 else:
@@ -255,6 +257,10 @@ class UI:
                 next_step=await self.cfg_lang(data)
             elif self.state is UI.States.FIRST_SET:
                 next_step=await self.first_set(data)
+            elif self.state is UI.States.FIRST_RUN1:
+                next_step=await self.first_run1(data)
+            elif self.state is UI.States.FIRST_RUN2:
+                next_step=await self.first_run2(data)
             elif self.state is UI.States.HELP_CMD:
                 next_step=await self.help_cmd(data)
 
@@ -296,7 +302,7 @@ class UI:
         ui, user_data =job.data
         await ui.process_ev(user_data)
 
-    def create_buttons(self, selected=None, sel_symb=None):
+    def create_buttons(self, selected=None, sel_symb=None, selected2=None, sel_symb2=None):
         if self.state is UI.States.TREN0:
             kbd = [[InlineKeyboardButton("   Start  ", callback_data="kbd:satrt")]]
         elif self.state is UI.States.TREN1:
@@ -322,7 +328,7 @@ class UI:
                     #     InlineKeyboardButton("Deutsche", callback_data="kbd:de"),
                     #     InlineKeyboardButton("Français", callback_data="kbd:fr"),
                     # ],[
-                        InlineKeyboardButton("Начать 🌐", callback_data="kbd:ok"),
+                        InlineKeyboardButton("Начать", callback_data="kbd:ok"),
                         ]]
         elif self.state is UI.States.FIRST_SET: 
             kbd = [[
@@ -332,7 +338,7 @@ class UI:
                         # InlineKeyboardButton("медецина", callback_data="kbd:med"),
                         # InlineKeyboardButton("дети", callback_data="kbd:kids"),
                         ],[
-                        InlineKeyboardButton("Начать ▶️", callback_data="kbd:ok"),
+                        InlineKeyboardButton("Начать", callback_data="kbd:ok"),
                     ]]
         elif self.state is UI.States.EDIT_CARD:
             ex=self.edited_card.GetExample()
@@ -377,26 +383,33 @@ class UI:
             kbd = [[left, InlineKeyboardButton("Назад ↩️", callback_data="kbd:cancel"), right]]
         elif self.state is UI.States.HELP_CMD:
             kbd = [[InlineKeyboardButton("Ok", callback_data="kbd:ok")]]
+        elif self.state is UI.States.FIRST_RUN1 or self.state is UI.States.FIRST_RUN2:
+            kbd = [[InlineKeyboardButton("Продолжить ▶️", callback_data="kbd:ok")]]
         else:
             return None
         
         if selected is not None:
             select_button(kbd, selected, sel_symb)
+
+        if selected2 is not None:
+            select_button(kbd, selected2, sel_symb2, after=True)
         
         return InlineKeyboardMarkup(kbd)
 
     async def stop_chat(self) -> None:
-        await self.m1_sticker(sticker11_t_o())
-        await self.m2_text(msg11_t_o())
+        m1_id=None if self.m1 is None else self.m1.message_id
+        m2_id=None if self.m2 is None else self.m2.message_id
+        await self.clear_screan()
+        #await self.m1_sticker(sticker11_t_o())
+        #await self.m2_text(msg11_t_o())
         #сохранить в базе chat_id, msg_id у m1, что бы при запуске удалить его. 
-        save_maintenance_data(self.user_id, self.m1.chat_id, self.m1.message_id, self.m2.message_id, self.state)
+        save_maintenance_data(self.user_id, self.chat_id, m1_id, m2_id, self.state)
 
 
     async def new_user(self, data=None) -> None:
         self.state = UI.States.NEW_USER
         if self.state_prev is UI.States.NEW_USER and data=="kbd:satrt":
             await self.m1_text(msg01_welcom())
-            self.m1=None
             self.state=UI.States.CFG_LANG
             return True        
         await self.clear_screan()
@@ -405,11 +418,13 @@ class UI:
         return False
 
     async def cfg_lang(self, data=None) -> None:
-        lang=None
-        #decoding inside state events:
-        if self.state_prev is UI.States.CFG_LANG and data is not None:
+        if self.state_prev is not UI.States.CFG_LANG:
+            self.selected_button=None
+            self.kbd=self.create_buttons()
+        elif data is not None:
             if data=='kbd:ok':
-                if self.u.foreign_lang is not None:
+                if self.selected_button is not None:
+                    self.u.foreign_lang="en" #=self.selected_button
                     self.state=UI.States.FIRST_SET
                     return True
                 else:
@@ -420,11 +435,10 @@ class UI:
                     #fixme: че делать?
                     logger.info("select lang error: %s", data)
                     return False
-                lang=parts[1]
-                #self.u.foreign_lang=lang #fixme
-                self.u.foreign_lang="en"
+                self.kbd=self.create_buttons(selected=data, selected2='kbd:ok')
+                self.selected_button=parts[1]
 
-        await self.m1_text(msg02_cfg_lang(), kbd=self.create_buttons(data))
+        await self.m1_text(msg02_cfg_lang(), kbd=self.kbd)
         self.state_prev = UI.States.CFG_LANG
         return False
 
@@ -439,26 +453,55 @@ class UI:
 
     async def first_set(self, data=None) -> None:
         if self.state_prev is not UI.States.FIRST_SET:
-            self.sub_state=None
-        elif self.state_prev is UI.States.FIRST_SET and data is not None:
+            self.selected_button=None            
+        elif data is not None:
             if data=='kbd:ok':
-                if self.sub_state is not None:
-                    #add words to base 
-                    cards_add_words_by_topic(self.user_id, self.sub_state, flang=self.u.foreign_lang, nlang=self.u.native_lang)
-                    self.state=UI.States.TREN0
+                if self.selected_button is not None:
+                    cards_add_words_by_topic(self.user_id, self.selected_button[4:], flang=self.u.foreign_lang, nlang=self.u.native_lang)
+                    self.state=UI.States.FIRST_RUN1
+                    return True
+                elif cards_count(self.user_id)>0:
+                    self.state=UI.States.FIRST_RUN1
                     return True
                 else:
                     return False
+            elif self.selected_button==data: #second press the same button
+                self.selected_button=None
+            elif data.startswith('kbd:'):
+                self.selected_button=data
             else:
-                parts = data.split(':')
-                if len(parts) != 2 or parts[0] != 'kbd':
-                    logger.error("select word set error: %s", data)
-                    return False
-                self.sub_state=parts[1]
+                return False
 
-        await self.m1_text(msg03_first_set(), kbd=self.create_buttons(data))
+        if self.selected_button is not None:
+            self.kbd=self.create_buttons(selected=self.selected_button, selected2='kbd:ok')
+        elif cards_count(self.user_id)>0:
+            self.kbd=self.create_buttons(selected2='kbd:ok')
+        else:
+            self.kbd=self.create_buttons()
+        await self.m1_text(msg03_first_set(), kbd=self.kbd)
         self.state_prev = UI.States.FIRST_SET
         return False
+
+    async def first_run1(self, data=None) -> None:
+        if self.state_prev==UI.States.FIRST_RUN1 and data=='kbd:ok':
+            self.state=UI.States.TREN1
+            self.sub_state="q"
+            return True
+        await self.m1_text(msg03_first_run1(cards_count(self.user_id)), kbd=self.create_buttons())
+        self.state_prev = UI.States.FIRST_RUN1
+        return False
+
+    async def first_run2(self, data=None) -> None:
+        if self.state_prev!=UI.States.FIRST_RUN2:
+            await self.clear_m2()
+        elif data=='kbd:ok':
+            self.state=UI.States.TREN1
+            self.sub_state="a"
+            return True
+        await self.m1_text(msg03_first_run2(), kbd=self.create_buttons())
+        self.state_prev = UI.States.FIRST_RUN2
+        return False
+
 
     #state tren0 => inviting to learn cards
     async def tren0_state(self, data=None) -> None:
@@ -486,12 +529,18 @@ class UI:
     async def tren1_state(self, data=None) -> None:
         if self.state_prev is UI.States.EDIT_CARD or self.state_prev is UI.States.ADD_WORD or self.state_prev is UI.States.SHOW_CARDS or self.state_prev is UI.States.SHOW_STAT: 
             self.sub_state="q"
-        elif self.state_prev is UI.States.TREN0 or self.state_prev is UI.States.TREN3:
+        elif self.state_prev is UI.States.FIRST_RUN2:
+            self.sub_state="a"
+        elif self.state_prev is UI.States.TREN0 or self.state_prev is UI.States.TREN3 or self.state_prev is UI.States.FIRST_RUN1:
             await self.tcs.Create()
             self.sub_state="q"
         elif self.state_prev is UI.States.TREN1 and data is not None:
             if data=="kbd:?":
                 self.sub_state="a"
+                if self.u.new_user:
+                    self.u.new_user=False
+                    self.state=UI.States.FIRST_RUN2
+                    return True
             elif data=='kbd:+' or data=='kbd:-':
                 answer = True if data=='kbd:+' else False
                 self.tcs.SetAnswer(answer)
@@ -734,7 +783,7 @@ class UI:
         if self.state_prev is not UI.States.SHOW_STAT:
             await self.clear_m1()
             self.list_pos=0
-            self.list_sz=cards_count(self.user_id)
+            self.list_sz=tcards_count(self.user_id)
             self.selected_button=None
         elif self.state_prev is UI.States.SHOW_STAT and data is not None:
             if data=='kbd:cancel':
@@ -828,11 +877,11 @@ class UI:
         return False
 
     async def stat2(self) -> None:
-        await self.context.bot.send_message(chat_id=self.chat_id, text=f"<pre>training set, pos={self.tcs.current_pos}:\n{self.tcs.get_word_stat2()}</pre>", disable_notification=True)
+        await self.context.bot.send_message(chat_id=self.chat_id, text=f"<pre>training set, pos={self.tcs.current_pos}:\n{self.tcs.get_word_stat2()}</pre>")
 
     async def reset(self) -> None:
         self.tcs.reset_progress()
-        await self.context.bot.send_message(chat_id=self.chat_id, text="word progress reset", disable_notification=True, )
+        await self.context.bot.send_message(chat_id=self.chat_id, text="word progress reset")
 
     @staticmethod
     async def help_cmd_(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -977,11 +1026,18 @@ async def post_init(context):
             chat_id=u[1]
             msg_id1=u[2]
             msg_id2=u[3]
-            
+
             if msg_id2 is not None:
-                await context.bot.delete_message(chat_id, msg_id2)
+                try:
+                    await context.bot.delete_message(chat_id, msg_id2)
+                except telegram.error.BadRequest as e:
+                    logger.error(f"uid: {user_id}: m2: {e.message}")
+
             if msg_id1 is not None:
-                await context.bot.delete_message(chat_id, msg_id1)
+                try:
+                    await context.bot.delete_message(chat_id, msg_id1)
+                except telegram.error.BadRequest as e:
+                    logger.error(f"uid: {user_id}: m1: {e.message}")
 
             ui=get_ui(user_id, chat_id, context)
             await ui.process_ev("cmd:start")
@@ -1020,7 +1076,7 @@ def main() -> None:
     application.add_handler(CommandHandler("stat", UI.stat_cmd_))
     application.add_handler(CommandHandler("stat2", UI.stat_cmd2_))
     application.add_handler(CommandHandler("reset",UI.reset_cmd_))
-    application.add_handler(CommandHandler("del_words",UI.del_words))
+    application.add_handler(CommandHandler("del_words",UI.del_words)) #delete all words
     # application.add_handler(CommandHandler("edit", edit_cmd))
     # application.add_handler(CommandHandler("settings", settings_cmd))
     application.add_handler(MessageHandler(None, callback=UI.rx_msg_))
