@@ -531,7 +531,8 @@ class UI:
             else:
                 if self.txt_ex is not None:
                     await self.m1.text(f"<i>{self.txt_ex}</i>")
-            await self.m2.voice(txt=f"<u>{tc.GetForeign()}</u> = {tc.GetNative()}", kbd=self.create_buttons())
+            a = await tc.GetAudio()
+            await self.m2.voice(voice=a, txt=f"<u>{tc.GetForeign()}</u> = {tc.GetNative()}", kbd=self.create_buttons())
         
         self.state_prev = UI.States.TREN1
         return False
