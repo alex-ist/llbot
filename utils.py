@@ -35,23 +35,6 @@ def select_button(kbd, selected: str, sel_symb:str, after=False) -> InlineKeyboa
                     return
                 
 
-def kbd_eq(k1:InlineKeyboardMarkup, k2:InlineKeyboardMarkup) -> bool:
-    if k1 is None or k2 is None:
-        return False
-
-    if len(k1.inline_keyboard) != len(k2.inline_keyboard):
-        return False
-
-    for row_k1, row_k2 in zip(k1.inline_keyboard, k2.inline_keyboard):
-        if len(row_k1) != len(row_k2):
-            return False
-
-        for btn_k1, btn_k2 in zip(row_k1, row_k2):
-            if btn_k1.text != btn_k2.text:
-                return False
-
-    return True
-
 
 def format_button_text(txt:str, max_l:int):
     l=len(txt)

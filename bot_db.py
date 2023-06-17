@@ -40,7 +40,7 @@ def save_maintenance_data(user_id:int, chat_id:int, msg_id1:int, msg_id2:int, st
 
 def load_maintenance_data():
     c=open_db()
-    c.execute("SELECT user_id, chat_id, msg_id1, msg_id2 FROM maintenance_data")
+    c.execute("SELECT user_id, chat_id, msg_id1, msg_id2, state FROM maintenance_data")
     rows=c.fetchall()
     c.execute("DELETE FROM maintenance_data")
     close_db(commit=True)

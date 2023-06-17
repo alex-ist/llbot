@@ -22,16 +22,17 @@ from utils import *
 from user_config import *
 from datetime import *
 from oai import *
+from bot_msg import BotMsg
 
 
 ui_set={}
 def get_ui(user_id, chat_id, context):
     if user_id in ui_set:
         ui=ui_set[user_id]
+        ui.UpdateContext(context)
     else:
-        ui=UI(user_id, chat_id)
+        ui=UI(user_id, chat_id, context)
         ui_set[user_id]=ui
-    ui.context=context
     return ui
 
 class UI:
@@ -52,14 +53,12 @@ class UI:
         SHOW_CARDS="show_cards_st"
         HELP_CMD="help_cmd_st"
 
-    def __init__(self, user_id:int, chat_id:int, new_user=False):
-        self.m1=None
-        self.m2=None
-        self.m1_type=None
-        self.m2_type=None
-        self.kbd=None
+    def __init__(self, user_id:int, chat_id:int, context, new_user=False):
         self.user_id=user_id
         self.chat_id=chat_id
+        self.context=context
+        self.m1=BotMsg(self.context.bot, chat_id, pos=1)
+        self.m2=BotMsg(self.context.bot, chat_id, pos=2)
         self.u=User(user_id, new_user)
 
         self.tcs=TrainingCardSet(user_id, self.u)
@@ -69,117 +68,23 @@ class UI:
         self.sub_state=None
         self.selected_button=None
         self.timer_job= None
-        self.context=None
         self.states_q=[]
         self.list_pos=0
 
+    def UpdateContext(self, context):
+        self.context=context
+        self.m1.SetBot(context.bot)
+        self.m2.SetBot(context.bot)
+
     @staticmethod
-    def CreateUI_in_start(user_id:int, chat_id:int, username, first_name, lang_code, is_premium, name):
+    def CreateUI_in_start(user_id:int, chat_id:int, context, username, first_name, lang_code, is_premium, name):
         new_user=User.Update(user_id, chat_id, username, first_name, lang_code, is_premium, name)
-        return UI(user_id, chat_id, new_user)
+        return UI(user_id, chat_id, context, new_user)
 
     async def clear_screan(self):
-        await self.clear_m1()
-        await self.clear_m2()
-
-    async def clear_m2(self):
-        if self.m2 is not None:
-            await self.m2.delete()
-            self.m2=None
-        self.m2_txt=None
-        self.m2_kbd=None
-        self.m2_type=None
-
-    async def clear_m1(self):
-        if self.m1 is not None:
-            await self.m1.delete()
-            self.m1=None
-        self.m1_txt=None
-        self.m1_kbd=None
-        self.m1_type=None
-
-    async def m1_text(self, txt:str=None, kbd:InlineKeyboardMarkup=None):        
-        if self.m1_type!="txt":
-            await self.clear_m1()
-
-        if self.m1 is None: #1) new message
-            self.m1_txt=txt
-            self.m1_kbd=kbd
-            self.m1_type="txt"
-            self.m1 = await self.context.bot.send_message(chat_id=self.chat_id, text=txt, reply_markup=kbd)
-        elif txt is None: #2)замена кнопок
-            self.m1_kbd=kbd
-            await self.m1.edit_text(text=self.m1_txt, reply_markup=kbd)
-        elif self.m1_txt!=txt: #3) замена текста
-            self.m1_kbd=kbd
-            self.m1_txt=txt
-            await self.m1.edit_text(text=txt, reply_markup=kbd)
-        else: #self.m1_txt==txt: надо проверить кнопки одни и теже?
-            if not kbd_eq(self.m1_kbd, kbd):
-                self.m1_txt=txt
-                self.m1_kbd=kbd
-                await self.m1.edit_text(text=txt, reply_markup=kbd)
-
-    async def m1_sticker(self, stick):
-        if self.m1 is not None:
-            if self.m1_type=="sticker" and self.m1_txt==stick:
-                return
-            await self.clear_m1()
-        self.m1 = await self.context.bot.send_sticker(chat_id=self.chat_id, sticker=stick)
-        self.m1_type="sticker"
-        self.m1_txt=stick
-
-    async def m2_text(self, txt:str=None, kbd:InlineKeyboardMarkup=None):
-        if self.m2_type!="txt":
-            await self.clear_m2()
-
-        if self.m2 is None: #1) new message
-            self.m2_txt=txt
-            self.m2_kbd=kbd
-            self.m2_type="txt"            
-            self.m2 = await self.context.bot.send_message(chat_id=self.chat_id, text=txt, reply_markup=kbd)
-        elif txt is None: #2)замена кнопок
-            self.m2_kbd=kbd
-            await self.m2.edit_text(text=self.m2_txt, reply_markup=kbd)
-        elif self.m2_txt!=txt: #3) замена текста
-            self.m2_kbd=kbd
-            self.m2_txt=txt
-            await self.m2.edit_text(text=txt, reply_markup=kbd)
-        else: #self.m2_txt==txt: надо проверить кнопки одни и теже?
-            if not kbd_eq(self.m2_kbd, kbd):
-                await self.m2.edit_text(text=txt, reply_markup=kbd)
-                self.m2_txt=txt
-                self.m2_kbd=kbd
-
-    async def m1_audio(self, media:InputMediaAudio):
-        if self.m1_type!="au":
-            await self.clear_m1()
-
-        if self.m1 is None:
-            self.m1=(await self.context.bot.send_media_group(chat_id=self.chat_id, media=[media]))[0]
-            self.m1_type="au"            
-            self.m1_txt=None
-            self.m1_kbd=None
-        else:
-            await self.m1.edit_media(media=media)
-
-    async def m2_voice(self, voice=None, txt:str=None, kbd:InlineKeyboardMarkup=None):
-        if self.m2_type!="vo":
-            await self.clear_m2()
-        elif  self.m2_type=="vo" and voice is not None:
-            await self.clear_m2() #нельязя редактировать войс
-        
-        if self.m2 is None:
-            self.m2_type="vo"
-            self.m2_kbd=kbd
-            self.m2_txt=txt
-            if voice is not None:
-                self.m2_prev_vo=voice
-            self.m2=await self.context.bot.send_voice(chat_id=self.chat_id, voice=self.m2_prev_vo, caption=txt, reply_markup=kbd)
-        elif voice is None:
-            await self.m2.edit_caption(txt, reply_markup=kbd)
-
-    
+        await self.m1.clear()
+        await self.m2.clear()
+   
     async def process_ev(self, data:str):
         #self.context=context #fixme?
         while True:
@@ -188,8 +93,12 @@ class UI:
                 await self.stop_chat()
                 return
 
-            #cmd_add не работатет в режиме добавления
-            if data=="cmd:start":
+            if data == "cmd:restart_after_maintenance":
+                self.timer_stop()
+                await self.tren0_run_after_maintenance()
+                break
+
+            elif data=="cmd:start":
                 self.timer_stop()
                 self.state_prev = UI.States.ST_UNDEF
             elif data=="cmd:add":
@@ -397,23 +306,24 @@ class UI:
         return InlineKeyboardMarkup(kbd)
 
     async def stop_chat(self) -> None:
-        m1_id=None if self.m1 is None else self.m1.message_id
-        m2_id=None if self.m2 is None else self.m2.message_id
-        await self.clear_screan()
-        #await self.m1_sticker(sticker11_t_o())
-        #await self.m2_text(msg11_t_o())
+        m1_id=self.m1.id
+        m2_id=self.m2.id
+        if self.state!=UI.States.TREN0:
+            await self.clear_screan()
+            
+        #await self.m1.sticker(sticker11_t_o())
+        #await self.m2.text(msg11_t_o())
         #сохранить в базе chat_id, msg_id у m1, что бы при запуске удалить его. 
         save_maintenance_data(self.user_id, self.chat_id, m1_id, m2_id, self.state)
-
 
     async def new_user(self, data=None) -> None:
         self.state = UI.States.NEW_USER
         if self.state_prev is UI.States.NEW_USER and data=="kbd:satrt":
-            await self.m1_text(msg01_welcom())
+            await self.m1.text(msg01_welcom())
             self.state=UI.States.CFG_LANG
             return True        
         await self.clear_screan()
-        await self.m1_text(msg01_welcom(), self.create_buttons())
+        await self.m1.text(msg01_welcom(), self.create_buttons())
         self.state_prev = UI.States.NEW_USER
         return False
 
@@ -438,7 +348,7 @@ class UI:
                 self.kbd=self.create_buttons(selected=data, selected2='kbd:ok')
                 self.selected_button=parts[1]
 
-        await self.m1_text(msg02_cfg_lang(), kbd=self.kbd)
+        await self.m1.text(msg02_cfg_lang(), kbd=self.kbd)
         self.state_prev = UI.States.CFG_LANG
         return False
 
@@ -447,7 +357,7 @@ class UI:
             self.state=self.states_q.pop() #goto back
             return True
         await self.clear_screan()
-        await self.m1_text('<a href="https://telegra.ph/Lingo-Link-06-04">О LingoLink</a>', self.create_buttons())
+        await self.m1.text('<a href="https://telegra.ph/Lingo-Link-06-04">О LingoLink</a>', self.create_buttons())
         self.state_prev = UI.States.HELP_CMD
         return False
 
@@ -478,7 +388,7 @@ class UI:
             self.kbd=self.create_buttons(selected2='kbd:ok')
         else:
             self.kbd=self.create_buttons()
-        await self.m1_text(msg03_first_set(), kbd=self.kbd)
+        await self.m1.text(msg03_first_set(), kbd=self.kbd)
         self.state_prev = UI.States.FIRST_SET
         return False
 
@@ -487,21 +397,47 @@ class UI:
             self.state=UI.States.TREN1
             self.sub_state="q"
             return True
-        await self.m1_text(msg03_first_run1(cards_count(self.user_id)), kbd=self.create_buttons())
+        await self.m1.text(msg03_first_run1(cards_count(self.user_id)), kbd=self.create_buttons())
         self.state_prev = UI.States.FIRST_RUN1
         return False
 
     async def first_run2(self, data=None) -> None:
         if self.state_prev!=UI.States.FIRST_RUN2:
-            await self.clear_m2()
+            await self.m2.clear()
         elif data=='kbd:ok':
             self.state=UI.States.TREN1
             self.sub_state="a"
             return True
-        await self.m1_text(msg03_first_run2(), kbd=self.create_buttons())
+        await self.m1.text(msg03_first_run2(), kbd=self.create_buttons())
         self.state_prev = UI.States.FIRST_RUN2
         return False
 
+
+    async def tren0_run_after_maintenance(self) -> None:
+        self.state = UI.States.TREN0
+        tt, n=self.tcs.NextTrainingTime()
+        if n==0:
+            if self.m1.id is not None:
+                self.m1.clear()
+            if self.m2.id is not None:
+                self.m2.txt=msg05_tren0(tt)
+                self.m2.kbd=None
+                self.m2.type="txt"            
+        else:
+            if self.m1.id is not None:
+                self.m2.txt=msg06_tren0(n)
+                self.m2.kbd=None
+                self.m2.type='sticker'
+
+            if self.m2.id is not None:
+                self.m2.type=msg06_tren0(n)
+                self.m2.kbd=self.create_buttons()
+                self.m2.txt='txt'
+        
+        if n<self.u.max_cards_for_training: #fixme: таймер на время когда след слово подойдет
+            self.timer_run(timedelta(minutes=5),"tmr:t0")
+        self.state_prev = UI.States.TREN0
+        return False
 
     #state tren0 => inviting to learn cards
     async def tren0_state(self, data=None) -> None:
@@ -515,11 +451,11 @@ class UI:
 
         tt, n=self.tcs.NextTrainingTime()
         if n==0:
-            await self.clear_m1()
-            await self.m2_text(msg05_tren0(tt))
+            await self.m1.clear()
+            await self.m2.text(msg05_tren0(tt))
         else:
-            await self.m1_sticker(sticker06_tren0(n))
-            await self.m2_text(msg06_tren0(n), self.create_buttons())
+            await self.m1.sticker(sticker06_tren0(n))
+            await self.m2.text(msg06_tren0(n), self.create_buttons())
 
         if n<self.u.max_cards_for_training: #fixme: таймер на время когда след слово подойдет
             self.timer_run(timedelta(minutes=5),"tmr:t0")
@@ -578,24 +514,24 @@ class UI:
                     self.ma_ex=InputMediaAudio(f, filename=tc.GetForeign(), performer="LingoLink", title="Пример", caption="|\n|")
             
             if self.ma_ex is not None:
-                await self.m1_audio(media=self.ma_ex)
+                await self.m1.audio(media=self.ma_ex)
             else:
                 if self.txt_ex is not None:
-                    await self.m1_text(f"<i>{self.txt_ex}</i>")
+                    await self.m1.text(f"<i>{self.txt_ex}</i>")
                 else:
-                    await self.clear_m1()
+                    await self.m1.clear()
             a = await tc.GetAudio()
-            await self.m2_voice(voice=a, txt=tc.GetA(), kbd=self.create_buttons())
+            await self.m2.voice(voice=a, txt=tc.GetA(), kbd=self.create_buttons())
         else: #self.sub_state=="a":
             if self.ma_ex is not None:
                 ae_path = await tc.GetAudioExample()
                 with open(ae_path, 'rb') as f:
                     self.ma_ex=InputMediaAudio(f, filename=tc.GetForeign(), performer="LingoLink", title=tc.GetForeign(), caption=f"<i>{self.txt_ex}</i>")
-                await self.m1_audio(media=self.ma_ex)
+                await self.m1.audio(media=self.ma_ex)
             else:
                 if self.txt_ex is not None:
-                    await self.m1_text(f"<i>{self.txt_ex}</i>")
-            await self.m2_voice(txt=f"<u>{tc.GetForeign()}</u> = {tc.GetNative()}", kbd=self.create_buttons())
+                    await self.m1.text(f"<i>{self.txt_ex}</i>")
+            await self.m2.voice(txt=f"<u>{tc.GetForeign()}</u> = {tc.GetNative()}", kbd=self.create_buttons())
         
         self.state_prev = UI.States.TREN1
         return False
@@ -613,12 +549,12 @@ class UI:
             else:
                 return False
 
-        await self.m1_sticker(sticker04_tren3())
+        await self.m1.sticker(sticker04_tren3())
         if n>0:
-            await self.m2_text(msg04_tren3(tt,n), kbd=self.create_buttons())
+            await self.m2.text(msg04_tren3(tt,n), kbd=self.create_buttons())
             self.timer_run(timedelta(minutes=5), "tmr:t3")
         else:
-            await self.m2_text(msg04_tren3(tt,0))
+            await self.m2.text(msg04_tren3(tt,0))
             self.timer_run(tt, "tmr:tt")
             self.state=UI.States.TREN0 #goto tren0, когда стработает таймер tt
 
@@ -706,7 +642,7 @@ class UI:
             txt=msg07_edit_card()+txt2
 
                             
-        await self.m2_text(txt, kbd=self.kbd)
+        await self.m2.text(txt, kbd=self.kbd)
         self.state_prev = UI.States.EDIT_CARD
         return False
 
@@ -729,7 +665,7 @@ class UI:
 
     async def add_word_state(self, data:str=None) -> None:
         if self.state_prev is not UI.States.ADD_WORD:
-            await self.clear_m1()
+            await self.m1.clear()
             self.selected_button=None
             self.kbd=self.create_buttons()
         elif self.state_prev==self.state and data is not None:
@@ -738,19 +674,19 @@ class UI:
                 return True
             elif data=='kbd:back':
                 self.state=self.states_q.pop() #goto back
-                await self.clear_m2()
+                await self.m2.clear()
                 return True
             else:
                 return False
 
-        await self.m2_text(msg10_add_new_card(), kbd=self.kbd)
+        await self.m2.text(msg10_add_new_card(), kbd=self.kbd)
         self.state_prev = UI.States.ADD_WORD
         return False            
 
 
     async def add_from_lib(self, data:str=None) -> None:
         if self.state_prev is not UI.States.ADD_WORDS_FROM_LIB:
-            await self.clear_m1()
+            await self.m1.clear()
             self.selected_button=None
             self.kbd=self.create_buttons()
         elif self.state_prev is UI.States.ADD_WORDS_FROM_LIB and data is not None:
@@ -759,14 +695,14 @@ class UI:
                 return True
             elif data=='kbd:cancel':
                 self.state=self.states_q.pop() #goto back
-                await self.clear_m2()
+                await self.m2.clear()
                 return True
             elif data=='kbd:ok':
                 if self.selected_button is not None:
                     n=cards_add_words_by_topic(self.user_id, self.selected_button, flang=self.u.foreign_lang, nlang=self.u.native_lang)
                     logger.info(f"{self.user_id}: added {n} words from word_set[{self.selected_button}]")
                 self.state=self.states_q.pop() #goto back
-                await self.clear_m2()
+                await self.m2.clear2()
                 return True
             elif data.startswith('kbd:'):
                 self.selected_button = data.split('kbd:', 1)[1]
@@ -774,14 +710,14 @@ class UI:
             else:
                 return False
 
-        await self.m2_text(msg12_add_from_lib(), kbd=self.kbd)
+        await self.m2.text(msg12_add_from_lib(), kbd=self.kbd)
         self.state_prev = UI.States.ADD_WORDS_FROM_LIB
         return False            
 
 
     async def show_stat(self, data:str=None) -> None:
         if self.state_prev is not UI.States.SHOW_STAT:
-            await self.clear_m1()
+            await self.m1.clear()
             self.list_pos=0
             self.list_sz=tcards_count(self.user_id)
             self.selected_button=None
@@ -803,7 +739,7 @@ class UI:
         
         t=msg11_total_stat(self.list_sz, self.u.current_forget_rate)
         t+=f"<pre>{cards_stat(self.user_id, 30, offset=self.list_pos)}</pre>"
-        await self.m2_text(t, kbd=self.create_buttons())
+        await self.m2.text(t, kbd=self.create_buttons())
         self.state_prev = UI.States.SHOW_STAT
         return False
 
@@ -871,8 +807,8 @@ class UI:
                 return False
 
 
-        await self.clear_m1()
-        await self.m2_text(msg12_select_card(), kbd=self.create_show_cards_buttons())
+        await self.m1.clear()
+        await self.m2.text(msg12_select_card(), kbd=self.create_show_cards_buttons())
         self.state_prev = UI.States.SHOW_CARDS
         return False
 
@@ -975,9 +911,8 @@ async def start_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         del ui_set[user_id]
         logger.info(f"uid: {user_id}. Stop UI")
 
-    ui=UI.CreateUI_in_start(user_id, chat_id, username, first_name, lang_code, is_premium, name)
+    ui=UI.CreateUI_in_start(user_id, chat_id, context, username, first_name, lang_code, is_premium, name)
     ui_set[user_id]=ui
-    ui.context=context
     logger.info(f"uid: {user_id}. Start UI")
     await ui.process_ev("cmd:start")
 
@@ -1026,21 +961,16 @@ async def post_init(context):
             chat_id=u[1]
             msg_id1=u[2]
             msg_id2=u[3]
-
-            if msg_id2 is not None:
-                try:
-                    await context.bot.delete_message(chat_id, msg_id2)
-                except telegram.error.BadRequest as e:
-                    logger.error(f"uid: {user_id}: m2: {e.message}")
-
-            if msg_id1 is not None:
-                try:
-                    await context.bot.delete_message(chat_id, msg_id1)
-                except telegram.error.BadRequest as e:
-                    logger.error(f"uid: {user_id}: m1: {e.message}")
+            state=u[4]
 
             ui=get_ui(user_id, chat_id, context)
-            await ui.process_ev("cmd:start")
+            if state=="tren0_st":
+                ui.m1.id=msg_id1
+                ui.m2.id=msg_id2
+                await ui.process_ev("cmd:restart_after_maintenance")
+            else:
+                await ui.process_ev("cmd:start")
+            
 
 async def post_stop(a):
     for ui in ui_set.values():
@@ -1062,7 +992,6 @@ def main() -> None:
         except FileNotFoundError:
             logger.error("No telegram token found")
             
-    
     init_oai()
 
     bot_def=telegram.ext.Defaults(parse_mode="HTML", disable_notification=True)
