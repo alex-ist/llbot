@@ -1,6 +1,6 @@
 import asyncio
-from telegram import Bot, InlineKeyboardMarkup, InputMediaAudio
-
+from telegram import Bot, InlineKeyboardMarkup, InputMediaAudio, error 
+from botlog import logger
 
 class BotMsg:
     def __init__(self,  bot:Bot, chat_id:int, pos=0):
@@ -18,8 +18,12 @@ class BotMsg:
 
     async def clear(self):
         if self.id is not None:
-            await self.bot.delete_message(self.chat_id, self.id)
+            try:
+                await self.bot.delete_message(self.chat_id, self.id)
+            except error.BadRequest as e:
+                logger.warn(f"chat_id={self.chat_id}: {e}")
             self.id=None
+            
         self.txt=None
         self.kbd=None
         self.type=None
@@ -81,31 +85,28 @@ class BotMsg:
         if self.type!="au":
             await self.clear()
 
+        if self.id is not None:
+            try:
+                await self.bot.edit_message_media(media=media, chat_id=self.chat_id, message_id=self.id)
+            except error.BadRequest as e:
+                logger.warn(f"chat_id={self.chat_id}: {e}")
+                self.id=None
+        
         if self.id is None:
             m=(await self.bot.send_media_group(chat_id=self.chat_id, media=[media]))[0]
             self.id=m.message_id
             self.type="au"            
             self.txt=None
             self.kbd=None
-        else:
-            await self.bot.edit_message_media(media=media, chat_id=self.chat_id, message_id=self.id)
 
 
     async def voice(self, voice=None, txt:str=None, kbd:InlineKeyboardMarkup=None):
-        if self.type!="vo":
-            await self.clear()
-#        elif  self.type=="vo" and voice is not None:
-        elif  voice is not None:
-            await self.clear() #нельязя редактировать войс
-        
-        if self.id is None:
-            self.type="vo"
-            self.kbd=kbd
-            self.txt=txt
-            if voice is not None:
-                self.prev_vo=voice
-            m=await self.bot.send_voice(chat_id=self.chat_id, voice=self.prev_vo, caption=txt, reply_markup=kbd)
-            self.id=m.message_id
-        elif voice is None:
-            await self.bot.edit_message_caption(caption=txt, chat_id=self.chat_id, message_id=self.id, reply_markup=kbd)
+        await self.clear() #нельязя редактировать войс, вроде. Да нам и не надо
+
+        self.type="vo"
+        self.kbd=kbd
+        self.txt=txt
+        self.prev_vo=voice
+        m=await self.bot.send_voice(chat_id=self.chat_id, voice=self.prev_vo, caption=txt, reply_markup=kbd)
+        self.id=m.message_id
 

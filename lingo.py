@@ -43,6 +43,7 @@ class UI:
         FIRST_SET = "first_set_st"
         FIRST_RUN1 = "first_run1_st"
         FIRST_RUN2 = "first_run2_st"
+        FIRST_RUN3 = "first_run3_st"
         TREN0 ="tren0_st"
         TREN1 ="tren1_st"
         TREN3 ="tren2_st"
@@ -170,6 +171,8 @@ class UI:
                 next_step=await self.first_run1(data)
             elif self.state is UI.States.FIRST_RUN2:
                 next_step=await self.first_run2(data)
+            elif self.state is UI.States.FIRST_RUN3:
+                next_step=await self.first_run3(data)
             elif self.state is UI.States.HELP_CMD:
                 next_step=await self.help_cmd(data)
 
@@ -292,7 +295,7 @@ class UI:
             kbd = [[left, InlineKeyboardButton("Назад ↩️", callback_data="kbd:cancel"), right]]
         elif self.state is UI.States.HELP_CMD:
             kbd = [[InlineKeyboardButton("Ok", callback_data="kbd:ok")]]
-        elif self.state is UI.States.FIRST_RUN1 or self.state is UI.States.FIRST_RUN2:
+        elif self.state is UI.States.FIRST_RUN1 or self.state is UI.States.FIRST_RUN2 or self.state is UI.States.FIRST_RUN3:
             kbd = [[InlineKeyboardButton("Продолжить ▶️", callback_data="kbd:ok")]]
         else:
             return None
@@ -397,7 +400,7 @@ class UI:
             self.state=UI.States.TREN1
             self.sub_state="q"
             return True
-        await self.m1.text(msg03_first_run1(cards_count(self.user_id)), kbd=self.create_buttons())
+        await self.m1.text(msg03_first_run1(), kbd=self.create_buttons())
         self.state_prev = UI.States.FIRST_RUN1
         return False
 
@@ -408,8 +411,23 @@ class UI:
             self.state=UI.States.TREN1
             self.sub_state="a"
             return True
-        await self.m1.text(msg03_first_run2(), kbd=self.create_buttons())
+        
+        tc=self.tcs.GetCurrentTCard()
+        await self.m1.text(msg03_first_run2(tc.GetA()), kbd=self.create_buttons())
         self.state_prev = UI.States.FIRST_RUN2
+        return False
+
+    async def first_run3(self, data=None) -> None:
+        if self.state_prev!=UI.States.FIRST_RUN3:
+            await self.m2.clear()
+
+        elif data=='kbd:ok':
+            self.state=UI.States.TREN1
+            self.sub_state="q"
+            return True
+        
+        await self.m1.text(msg03_first_run3(self.last_answer), kbd=self.create_buttons())
+        self.state_prev = UI.States.FIRST_RUN3
         return False
 
 
@@ -463,7 +481,7 @@ class UI:
         return False
 
     async def tren1_state(self, data=None) -> None:
-        if self.state_prev is UI.States.EDIT_CARD or self.state_prev is UI.States.ADD_WORD or self.state_prev is UI.States.SHOW_CARDS or self.state_prev is UI.States.SHOW_STAT: 
+        if self.state_prev is UI.States.EDIT_CARD or self.state_prev is UI.States.ADD_WORD or self.state_prev is UI.States.SHOW_CARDS or self.state_prev is UI.States.SHOW_STAT or self.state_prev is UI.States.FIRST_RUN3: 
             self.sub_state="q"
         elif self.state_prev is UI.States.FIRST_RUN2:
             self.sub_state="a"
@@ -474,13 +492,17 @@ class UI:
             if data=="kbd:?":
                 self.sub_state="a"
                 if self.u.new_user:
-                    self.u.new_user=False
+#                    self.u.new_user=False
                     self.state=UI.States.FIRST_RUN2
                     return True
             elif data=='kbd:+' or data=='kbd:-':
-                answer = True if data=='kbd:+' else False
-                self.tcs.SetAnswer(answer)
+                self.last_answer = True if data=='kbd:+' else False
+                self.tcs.SetAnswer(self.last_answer)
                 self.sub_state="q"
+                if self.u.new_user==True:
+                    self.u.new_user=False
+                    self.state=UI.States.FIRST_RUN3
+                    return True
             elif data=="cmd:edit":
                 self.edited_card=self.tcs.GetCurrentTCard().card
                 self.states_q.append(self.state)
