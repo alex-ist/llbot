@@ -123,13 +123,14 @@ class UI:
                 self.states_q.append(self.state)
                 self.state=UI.States.SHOW_STAT
                 data=None
-            elif data=="cmd:show":
-                if self.state==UI.States.SHOW_CARDS:
+            elif data=="cmd:edit":
+                if self.state==UI.States.SHOW_CARDS or self.state==UI.States.EDIT_CARD:
                     return
-                self.timer_stop()
-                self.states_q.append(self.state)
-                self.state=UI.States.SHOW_CARDS
-                data=None
+                if self.state != UI.States.TREN1:
+                    self.timer_stop()
+                    self.states_q.append(self.state)
+                    self.state=UI.States.SHOW_CARDS
+                    data=None
             elif data=="cmd:help":
                 if self.state==UI.States.HELP_CMD:
                     return
@@ -279,7 +280,7 @@ class UI:
                         InlineKeyboardButton("Соседи", callback_data="kbd:neighbours"),
                     ],[
                         InlineKeyboardButton("Назад ↩️", callback_data="kbd:cancel"),
-                        InlineKeyboardButton("Добавить ▶️", callback_data="kbd:ok"),
+                        InlineKeyboardButton("Добавить", callback_data="kbd:ok"),
                     ]]
         elif self.state is UI.States.SHOW_STAT:
             if self.list_pos>0:
@@ -724,12 +725,14 @@ class UI:
                 if self.selected_button is not None:
                     n=cards_add_words_by_topic(self.user_id, self.selected_button, flang=self.u.foreign_lang, nlang=self.u.native_lang)
                     logger.info(f"{self.user_id}: added {n} words from word_set[{self.selected_button}]")
-                self.state=self.states_q.pop() #goto back
-                await self.m2.clear2()
-                return True
+                    self.state=self.states_q.pop() #goto back
+                    await self.m2.clear()
+                    return True
+                else:
+                    return False
             elif data.startswith('kbd:'):
                 self.selected_button = data.split('kbd:', 1)[1]
-                self.kbd=self.create_buttons(data)
+                self.kbd=self.create_buttons(selected=data, selected2='kbd:ok') 
             else:
                 return False
 
@@ -747,6 +750,7 @@ class UI:
         elif self.state_prev is UI.States.SHOW_STAT and data is not None:
             if data=='kbd:cancel':
                 self.state=self.states_q.pop() #goto back, сбросить список
+                await self.clear_screan()
                 return True
             elif data=="kbd:prev": #продвинуться по списку
                 self.list_pos-=30
@@ -786,13 +790,13 @@ class UI:
             #left=InlineKeyboardButton("«", callback_data="kbd:prev")
             left=InlineKeyboardButton("⏪", callback_data="kbd:prev")
         else:
-            left=InlineKeyboardButton("✖️", callback_data="kbd:x")
+            left=InlineKeyboardButton(" ", callback_data="kbd:x")
 
         if n2<n:
             right=InlineKeyboardButton("⏩", callback_data="kbd:next")
             #right=InlineKeyboardButton("»", callback_data="kbd:next")
         else:
-            right=InlineKeyboardButton("✖️", callback_data="kbd:x")
+            right=InlineKeyboardButton(" ", callback_data="kbd:x")
 
         kbd.append([left, InlineKeyboardButton("Назад ↩️", callback_data="kbd:cancel"), right])
         return InlineKeyboardMarkup(kbd)
@@ -809,6 +813,7 @@ class UI:
                 self.show_cards_list=None
                 self.list_pos=0
                 self.state=self.states_q.pop() #goto back, сбросить список
+                await self.clear_screan()
                 return True
             elif data=="kbd:prev": #продвинуться по списку
                 self.list_pos-=6
@@ -875,6 +880,7 @@ class UI:
     @staticmethod
     async def stat_cmd_(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         global ui_set
+        await context.bot.delete_message(update.effective_chat.id, update.effective_message.id)
         ui=get_ui(update.effective_user.id, update.effective_chat.id, context)
         await ui.process_ev("cmd:stat")
 
@@ -892,14 +898,6 @@ class UI:
         ui=get_ui(update.effective_user.id, update.effective_chat.id, context)
         await ui.process_ev("cmd:lib")
 
-    @staticmethod
-    async def show_cmd_(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-        global ui_set
-        await context.bot.delete_message(update.effective_chat.id, update.effective_message.id)
-        ui=get_ui(update.effective_user.id, update.effective_chat.id, context)
-        await ui.process_ev("cmd:show")
-        
-        
     async def stat_cmd2_(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         global ui_set
         ui=get_ui(update.effective_user.id, update.effective_chat.id, context)
@@ -953,7 +951,6 @@ async def post_init(context):
         BotCommand('edit',  'Edit word'),
         BotCommand('add' ,  'Add a word'),
         BotCommand('lib',   'Add words from lib'),
-        BotCommand('show' , 'Show all words'),
         BotCommand('stat',  'stat'),
     ]
     await context.bot.delete_my_commands(language_code='')
@@ -968,7 +965,6 @@ async def post_init(context):
         BotCommand('edit',  'Редактировать слово'),
         BotCommand('add',   'Добавить слово'),
         BotCommand('lib',   'Добавить набор слов'),
-        BotCommand('show' , 'Показать все слова'),
         BotCommand('stat',  'Статистика'),
         #BotCommand('reset', 'сброс прогресса'),
         ]
@@ -1022,14 +1018,13 @@ def main() -> None:
     application.add_handler(CommandHandler("start", start_cmd))
     application.add_handler(CommandHandler("add", UI.add_cmd_))
     application.add_handler(CommandHandler("lib", UI.lib_cmd_))
-    application.add_handler(CommandHandler("show", UI.show_cmd_))
+    #application.add_handler(CommandHandler("show", UI.show_cmd_))
     application.add_handler(CommandHandler("help", UI.help_cmd_))
     application.add_handler(CommandHandler("edit", UI.edit_cmd_))
     application.add_handler(CommandHandler("stat", UI.stat_cmd_))
-    application.add_handler(CommandHandler("stat2", UI.stat_cmd2_))
+#    application.add_handler(CommandHandler("stat2", UI.stat_cmd2_))
     application.add_handler(CommandHandler("reset",UI.reset_cmd_))
     application.add_handler(CommandHandler("del_words",UI.del_words)) #delete all words
-    # application.add_handler(CommandHandler("edit", edit_cmd))
     # application.add_handler(CommandHandler("settings", settings_cmd))
     application.add_handler(MessageHandler(None, callback=UI.rx_msg_))
     application.add_handler(CallbackQueryHandler(UI.process_buttons_))

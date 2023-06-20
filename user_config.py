@@ -58,7 +58,7 @@ class User:
         self.shown_words_count+=1
         before=self.current_forget_rate
         self.current_forget_rate += (incorrect - self.current_forget_rate) / min(self.shown_words_count, 100)
-        logger.info(f"forget rate n={self.shown_words_count}, before={before}, after={self.current_forget_rate}")
+        logger.info(f"forget rate n={self.shown_words_count}, before={before:.3f}, after={self.current_forget_rate:.3f}")
     
     def UpdateStat(self):
         user_update_stat(self.user_id, self.shown_words_count, self.current_forget_rate)

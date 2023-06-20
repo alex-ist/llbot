@@ -172,6 +172,7 @@ def cards_stat(user_id:int, len, offset=0):
         w=v[0] if d==0 else v[1] #fixme - check dir
         
         t=t_from_DB(nt)
+        r+=f"{p}{w[:20].ljust(20)}:"
         if t is not None:
             td=t-datetime.now()
             sec = td.total_seconds()
@@ -179,9 +180,13 @@ def cards_stat(user_id:int, len, offset=0):
             sec = abs(sec)
             h = int(sec // 3600)
             m = int((sec % 3600) // 60)
-            r+=f"{p}{w[:24].ljust(24)}:{sign}{h:02}:{m:02}\n"
+            if h<48:
+                r+=f"{sign}{h:02}:{m:02}\n"
+            else:
+                d=round(float(sec)/86400)
+                r+=f"{sign}{d:02}д\n"
         else:
-            r+=f"{p}{w[:24].ljust(24)}:new\n"
+            r+="new\n"
     return r
 
 def cards_remove(user_id:int):
