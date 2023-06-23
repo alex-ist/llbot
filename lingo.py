@@ -57,9 +57,10 @@ class UI:
     def __init__(self, user_id:int, chat_id:int, context, new_user=False):
         self.user_id=user_id
         self.chat_id=chat_id
-        self.context=context
-        self.m1=BotMsg(self.context.bot, chat_id, pos=1)
-        self.m2=BotMsg(self.context.bot, chat_id, pos=2)
+        self.bot=context.bot
+        self.jq=context.job_queue
+        self.m1=BotMsg(self.bot, chat_id, pos=1)
+        self.m2=BotMsg(self.bot, chat_id, pos=2)
         self.u=User(user_id, new_user)
 
         self.tcs=TrainingCardSet(user_id, self.u)
@@ -73,9 +74,11 @@ class UI:
         self.list_pos=0
 
     def UpdateContext(self, context):
-        self.context=context
-        self.m1.SetBot(context.bot)
-        self.m2.SetBot(context.bot)
+        if self.bot!=context.bot:
+            logger.error("UpdateContext: new bot")
+        if self.jq !=context.job_queue:
+            logger.error("UpdateContext: new job_queue")
+
 
     @staticmethod
     def CreateUI_in_start(user_id:int, chat_id:int, context, username, first_name, lang_code, is_premium, name):
@@ -87,7 +90,6 @@ class UI:
         await self.m2.clear()
    
     async def process_ev(self, data:str):
-        #self.context=context #fixme?
         while True:
             next_step=False
             if data=="stop:":
@@ -202,17 +204,24 @@ class UI:
 
     def timer_run(self, t, user_data):
         self.timer_stop()
-        self.timer_job=self.context.job_queue.run_once(UI.timer_cb_, t, data=[self, user_data])
+        self.timer_job=self.jq.run_once(UI.timer_cb_, t, data=[self, user_data], user_id=self.user_id)
+        if isinstance(t, timedelta):
+            logger.info(f"{self.user_id}: timer run_once: {int(t.total_seconds()/60)}min data={user_data}" )
+        else:
+            logger.info(f"{self.user_id}: timer run_once at {t} data={user_data}")
+
 
     def timer_stop(self):
-        if self.timer_job is not None and self.timer_job in self.context.job_queue.jobs():
+        if self.timer_job is not None and self.timer_job in self.jq.jobs():
             self.timer_job.schedule_removal()
+            logger.info("%d: timer stop", self.user_id)
         self.timer_job=None
 
     @staticmethod
     async def timer_cb_(context: ContextTypes.DEFAULT_TYPE):
         job = context.job
         ui, user_data =job.data
+        logger.info("%d: timer  run! data=%s", ui.user_id, user_data)
         await ui.process_ev(user_data)
 
     def create_buttons(self, selected=None, sel_symb=None, selected2=None, sel_symb2=None):
@@ -321,6 +330,9 @@ class UI:
         save_maintenance_data(self.user_id, self.chat_id, m1_id, m2_id, self.state)
 
     async def new_user(self, data=None) -> None:
+        if self.state_prev is not UI.States.NEW_USER:
+            logger.info(f"{self.user_id}: state=NEW_USER, prev_st={self.state_prev}")
+
         self.state = UI.States.NEW_USER
         if self.state_prev is UI.States.NEW_USER and data=="kbd:satrt":
             await self.m1.text(msg01_welcom())
@@ -332,6 +344,9 @@ class UI:
         return False
 
     async def cfg_lang(self, data=None) -> None:
+        if self.state_prev is not UI.States.CFG_LANG:
+            logger.info(f"{self.user_id}: state=CFG_LANG, prev_st={self.state_prev}")
+
         if self.state_prev is not UI.States.CFG_LANG:
             self.selected_button=None
             self.kbd=self.create_buttons()
@@ -357,6 +372,9 @@ class UI:
         return False
 
     async def help_cmd(self, data=None) -> None:
+        if self.state_prev is not UI.States.HELP_CMD:
+            logger.info(f"{self.user_id}: state=HELP_CMD, prev_st={self.state_prev}")
+
         if self.state_prev is UI.States.HELP_CMD and data=="kbd:ok":
             self.state=self.states_q.pop() #goto back
             return True
@@ -366,6 +384,9 @@ class UI:
         return False
 
     async def first_set(self, data=None) -> None:
+        if self.state_prev is not UI.States.FIRST_SET:
+            logger.info(f"{self.user_id}: state=FIRST_SET, prev_st={self.state_prev}")
+
         if self.state_prev is not UI.States.FIRST_SET:
             self.selected_button=None            
         elif data is not None:
@@ -397,6 +418,9 @@ class UI:
         return False
 
     async def first_run1(self, data=None) -> None:
+        if self.state_prev is not UI.States.FIRST_RUN1:
+            logger.info(f"{self.user_id}: state=FIRST_RUN1, prev_st={self.state_prev}")
+
         if self.state_prev==UI.States.FIRST_RUN1 and data=='kbd:ok':
             self.state=UI.States.TREN1
             self.sub_state="q"
@@ -406,6 +430,9 @@ class UI:
         return False
 
     async def first_run2(self, data=None) -> None:
+        if self.state_prev is not UI.States.FIRST_RUN2:
+            logger.info(f"{self.user_id}: state=FIRST_RUN2, prev_st={self.state_prev}")
+
         if self.state_prev!=UI.States.FIRST_RUN2:
             await self.m2.clear()
         elif data=='kbd:ok':
@@ -419,6 +446,9 @@ class UI:
         return False
 
     async def first_run3(self, data=None) -> None:
+        if self.state_prev is not UI.States.FIRST_RUN3:
+            logger.info(f"{self.user_id}: state=FIRST_RUN3, prev_st={self.state_prev}")
+
         if self.state_prev!=UI.States.FIRST_RUN3:
             await self.m2.clear()
 
@@ -434,12 +464,12 @@ class UI:
 
     async def tren0_run_after_maintenance(self) -> None:
         self.state = UI.States.TREN0
-        tt, n=self.tcs.NextTrainingTime()
+        ttd, n=self.tcs.NextTrainingTime()
         if n==0:
             if self.m1.id is not None:
                 self.m1.clear()
             if self.m2.id is not None:
-                self.m2.txt=msg05_tren0(tt)
+                self.m2.txt=msg05_tren0(ttd)
                 self.m2.kbd=None
                 self.m2.type="txt"            
         else:
@@ -460,6 +490,9 @@ class UI:
 
     #state tren0 => inviting to learn cards
     async def tren0_state(self, data=None) -> None:
+        if self.state_prev is not UI.States.TREN0:
+            logger.info(f"{self.user_id}: state=TREN0, prev_st=" + self.state_prev)
+
         if self.state_prev is UI.States.TREN0 and data is not None:
             if data=="kbd:satrt":
                 self.timer_stop()
@@ -468,10 +501,10 @@ class UI:
             elif data!="tmr:t0":
                 return False
 
-        tt, n=self.tcs.NextTrainingTime()
+        ttd, n=self.tcs.NextTrainingTime()
         if n==0:
             await self.m1.clear()
-            await self.m2.text(msg05_tren0(tt))
+            await self.m2.text(msg05_tren0(ttd))
         else:
             await self.m1.sticker(sticker06_tren0(n))
             await self.m2.text(msg06_tren0(n), self.create_buttons())
@@ -482,6 +515,9 @@ class UI:
         return False
 
     async def tren1_state(self, data=None) -> None:
+        if self.state_prev is not UI.States.TREN1:
+            logger.info(f"{self.user_id}: state=TREN1, prev_st=" + self.state_prev)
+
         if self.state_prev is UI.States.EDIT_CARD or self.state_prev is UI.States.ADD_WORD or self.state_prev is UI.States.SHOW_CARDS or self.state_prev is UI.States.SHOW_STAT or self.state_prev is UI.States.FIRST_RUN3: 
             self.sub_state="q"
         elif self.state_prev is UI.States.FIRST_RUN2:
@@ -561,8 +597,11 @@ class UI:
         return False
 
     async def tren3_state(self, data=None) -> None:
+        if self.state_prev is not UI.States.TREN3:
+            logger.info(f"{self.user_id}: state=TREN3, prev_st={self.state_prev}")
+            
         self.timer_stop()
-        tt, n=self.tcs.NextTrainingTime()
+        ttd, n=self.tcs.NextTrainingTime()
 
         if self.state_prev is UI.States.TREN3 and data is not None:
             if data=='kbd:enough' or data=='tmr:t3':
@@ -575,11 +614,11 @@ class UI:
 
         await self.m1.sticker(sticker04_tren3())
         if n>0:
-            await self.m2.text(msg04_tren3(tt,n), kbd=self.create_buttons())
+            await self.m2.text(msg04_tren3(ttd, n), kbd=self.create_buttons())
             self.timer_run(timedelta(minutes=5), "tmr:t3")
         else:
-            await self.m2.text(msg04_tren3(tt,0))
-            self.timer_run(tt, "tmr:tt")
+            await self.m2.text(msg04_tren3(ttd,0))
+            self.timer_run(ttd, "tmr:tt")
             self.state=UI.States.TREN0 #goto tren0, когда стработает таймер tt
 
         self.state_prev = UI.States.TREN3
@@ -596,6 +635,9 @@ class UI:
         self.edited_card=None
 
     async def edit_card_state(self, data:str=None) -> None:
+        if self.state_prev is not UI.States.EDIT_CARD:
+            logger.info(f"{self.user_id}: state=EDIT_CARD, prev_st=" + self.state_prev)
+
         #decoding inside state events:
         if self.state_prev is not UI.States.EDIT_CARD:
             await self.clear_screan()
@@ -689,6 +731,9 @@ class UI:
 
     async def add_word_state(self, data:str=None) -> None:
         if self.state_prev is not UI.States.ADD_WORD:
+            logger.info(f"{self.user_id}: state=ADD_WORD, prev_st=" + self.state_prev)
+
+        if self.state_prev is not UI.States.ADD_WORD:
             await self.m1.clear()
             self.selected_button=None
             self.kbd=self.create_buttons()
@@ -709,6 +754,9 @@ class UI:
 
 
     async def add_from_lib(self, data:str=None) -> None:
+        if self.state_prev is not UI.States.ADD_WORDS_FROM_LIB:
+            logger.info(f"{self.user_id}: state=ADD_WORDS_FROM_LIB, prev_st={self.state_prev}")
+
         if self.state_prev is not UI.States.ADD_WORDS_FROM_LIB:
             await self.m1.clear()
             self.selected_button=None
@@ -742,6 +790,9 @@ class UI:
 
 
     async def show_stat(self, data:str=None) -> None:
+        if self.state_prev is not UI.States.SHOW_STAT:
+            logger.info(f"{self.user_id}: state=SHOW_STAT, prev_st={self.state_prev}")
+
         if self.state_prev is not UI.States.SHOW_STAT:
             await self.m1.clear()
             self.list_pos=0
@@ -804,6 +855,9 @@ class UI:
 
     async def show_cards(self, data:str=None) -> None:
         if self.state_prev is not UI.States.SHOW_CARDS:
+            logger.info(f"{self.user_id}: state=SHOW_CARDS, prev_st={self.state_prev}")
+
+        if self.state_prev is not UI.States.SHOW_CARDS:
             self.show_cards_list=cards_read(self.user_id)
             #сохранить  позицию при выходе из редактирования
             if self.state_prev is not UI.States.EDIT_CARD or self.list_pos>=len (self.show_cards_list):
@@ -841,11 +895,11 @@ class UI:
         return False
 
     async def stat2(self) -> None:
-        await self.context.bot.send_message(chat_id=self.chat_id, text=f"<pre>training set, pos={self.tcs.current_pos}:\n{self.tcs.get_word_stat2()}</pre>")
+        await self.bot.send_message(chat_id=self.chat_id, text=f"<pre>training set, pos={self.tcs.current_pos}:\n{self.tcs.get_word_stat2()}</pre>")
 
     async def reset(self) -> None:
         self.tcs.reset_progress()
-        await self.context.bot.send_message(chat_id=self.chat_id, text="word progress reset")
+        await self.bot.send_message(chat_id=self.chat_id, text="word progress reset")
 
     @staticmethod
     async def help_cmd_(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -912,12 +966,15 @@ class UI:
         if text is None:
             logger.warning("rx_msg text is None!")
         else:
+            logger.info(f"{ui.user_id}: rx_msg: {text}")
             await ui.process_ev("msg:"+text)
 
 async def start_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     global ui_set
     chat_id=update.effective_chat.id
     user_id=update.effective_user.id
+    logger.info(f"{user_id}: start_cmd")
+
     #msg_id=update.effective_message.id
     username=update.effective_user.first_name
     first_name=update.effective_user.first_name
@@ -1044,3 +1101,13 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
+
+#current_jobs=job_queue.get_jobs_by_name(name)
+#for job in current_jobs:
+#        job.schedule_removal()
+
+#job_queue.run_once(alarm, due, chat_id=chat_id, name=str(chat_id), data=due)
+
+
+

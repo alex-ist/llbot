@@ -55,14 +55,14 @@ def msg03_first_run3(result):
 
 #"Совершенно нормально, если вы не можете вспомнить слово. Я просто покажу его вам в следующий раз немного раньше. Некоторые слова могут запоминаться труднее, это тоже нормально.")
 
-def msg04_tren3(tt:datetime, n:int):
+def msg04_tren3(ttd:timedelta, n:int):
     g=["👍","👏", "✌️", "🔥"]
     r=g[random.randint(0, 3)]
     m1=f"Выучено! молодец! {r}"
 
-    w=get_next(tt)
+    w=get_next(ttd)
     if w is not None:
-        m1+=f"\Следующая тренировка {w}"
+        m1+=f"\nСледующая тренировка {w}"
         if n>0:
             m1+=f"\nПродолжить сейчас ({n} слов)?"
     return m1
@@ -70,8 +70,8 @@ def msg04_tren3(tt:datetime, n:int):
 def sticker04_tren3(): #драночик ok!
     return 'CAACAgIAAxkBAAIXG2R7uMd7vi7G6PN5iAns6r9IZLX_AAJBAAN4qOYP-J7xorhFu34vBA'
 
-def msg05_tren0(tt: datetime):
-    w=get_next(tt)
+def msg05_tren0(ttd: timedelta):
+    w=get_next(ttd)
     if w is not None:
         return f"🤷‍♂️ Пока нет слов для повторения, следующий тренировка {w}"
     else:
@@ -92,17 +92,17 @@ def msg06_tren0(n):
 def sticker06_tren0(n): #белка сила
     return 'CAACAgIAAxkBAAIXHWR7umqAobh7yIO-X8uti1gcdGhgAAKyAAP3AsgPM6si_fBflFgvBA'
 
-def get_next(tt):
-    now = datetime.now()
-    delta_days = (tt.date() - now.date()).days
-    hh = tt.hour
-    mm=tt.minute
-    
+def get_next(ttd:timedelta):
+    delta_days = ttd.days
+    total_seconds = int (ttd.total_seconds()+30)
+    hh = total_seconds // 3600  # floor division to get whole hours
+    mm = (total_seconds % 3600) // 60
+
     w=None
     if delta_days < 0:
         w="сейчас"
     elif delta_days == 0:
-        w=f"через {(tt - now).seconds // 3600:02d}:{(tt - now).seconds % 3600 // 60:02d}"
+        w=f"через {total_seconds // 3600:02d}:{total_seconds % 3600 // 60:02d}"
     elif delta_days == 1:
         w=f"завтра в {hh:02d}:{mm:02d}"
     elif delta_days == 2:
