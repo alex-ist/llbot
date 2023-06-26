@@ -14,6 +14,7 @@ def log_init():
         format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO
     )
     logging.getLogger('httpx').setLevel(logging.WARNING)
+    logging.getLogger('apscheduler').setLevel(logging.WARNING)
     return logging.getLogger("LL")
 
 
