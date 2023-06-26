@@ -55,27 +55,19 @@ def msg03_first_run3(result):
 
 #"Совершенно нормально, если вы не можете вспомнить слово. Я просто покажу его вам в следующий раз немного раньше. Некоторые слова могут запоминаться труднее, это тоже нормально.")
 
-def msg04_tren3(ttd:timedelta, n:int):
+def msg04_tren3(n:int):
     g=["👍","👏", "✌️", "🔥"]
     r=g[random.randint(0, 3)]
     m1=f"Выучено! молодец! {r}"
-
-    w=get_next(ttd)
-    if w is not None:
-        m1+=f"\nСледующая тренировка {w}"
-        if n>0:
-            m1+=f"\nПродолжить сейчас ({n} слов)?"
+    if n>0:
+        m1+=f"\nПродолжить сейчас ({msg_word(n)})?"
     return m1
 
 def sticker04_tren3(): #драночик ok!
     return 'CAACAgIAAxkBAAIXG2R7uMd7vi7G6PN5iAns6r9IZLX_AAJBAAN4qOYP-J7xorhFu34vBA'
 
-def msg05_tren0(ttd: timedelta):
-    w=get_next(ttd)
-    if w is not None:
-        return f"🤷‍♂️ Пока нет слов для повторения, следующий тренировка {w}"
-    else:
-        return "🤷‍♂️ Нет слов для повторения 💤"
+def msg05_tren0():
+        return "🤷‍♂️ Пока, нет слов для повторения 💤"
 
 def msg_word(n):
     if n==24 or n==23 or n==22 or n==2 or n==3 or n==4:

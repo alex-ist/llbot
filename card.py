@@ -372,75 +372,54 @@ class TrainingCardSet:
             return self.tcard_set[self.current_pos]
         else:
             return None
-            
-    #Возвращает 
-    #       1) предполагаемый интервал до очередного тренинга, timedelta
-    #       2) N=колличество карт для обучения прямо сейчас
-    # обычно запускается когда набор TrainingCardSet уже пустой.
-    def NextTrainingTime(self):
+
+    #сколько карт готово прямо сейчас.
+    def CardsReadyNow(self):
         cursor = open_db()
         tn = datetime.now()     # tn = текущее время
         cursor.execute(f"SELECT COUNT(*) FROM training_cards WHERE user_id = {self.user_id} AND next_training_t <= ?", (t_to_DB(tn),))        
         n = cursor.fetchone()[0]
         while 1:
-            # 1) есть больше слов чем минимальный набор. - сейчас
+            # 1) есть больше слов чем минимальный набор.
             if n>=self.u.min_cards_for_training:
-                tt=timedelta()
+                if n>self.u.max_cards_for_training:
+                    n=self.u.max_cards_for_training
                 break
-
+            
+            #2) нет слов для изучения
+            if n==0:
+                break
             cursor.execute(f"SELECT MIN(next_training_t) FROM training_cards WHERE user_id = {self.user_id}")
             r=cursor.fetchone()
-            #2) нет слов для изучения
-            if r is None or r[0] is None: #нет слов
-                tt=timedelta(days=370) 
-                n=0
-                close_db()
-                return tt, n #предполагаемое время след тренинга, N=колличество карт для обучения прямо сейчас
-
-            # t0 = минимальное время из всех карт
-            t0 = t_from_DB(r[0])
+            t0 = t_from_DB(r[0]) # t0 = самый ранний след тренинг
             if t0 is None: #есть хоть одна новая карта,  еще не разу непоказывалась  (значение в базе -1)
-                tt=timedelta()
                 break
 
             #3) tn>t0+2ч (self.cfg.first_interval*oparam) - сейчас
-            #   самую старую карту уже пора учить, и прошел доп интервал ожидания чтобы карта была не одна
-            te=t0+self.u.first_interval*self.u.o_param
-            if tn>te:
-                tt=timedelta()
+            #есть карты которые можно учить, но их мало.
+            #Если у самой старой уже прошел доп интервал, то надо учить сколькок есть.
+            #доп инт 2ч (если давно небыло тренинга, увеличивать этот интервал не стоит. 
+            # так как может привести к тому что сначала покажет что надо тренировать неполный комплект, а потом если ничего не делать - что уже не надо.
+            dop_int=self.u.first_interval*self.u.o_param
+
+            te=t0+dop_int
+            if te<=tn:
                 break
 
-            #4) вычисляем когда наберется хотя бы 12 карт в будущем не позднее te.
-            cursor.execute(f"SELECT next_training_t FROM training_cards WHERE user_id = {self.user_id} AND next_training_t <= ? ORDER BY next_training_t ASC LIMIT ?", (t_to_DB(te), self.u.min_cards_for_training))
-            r=cursor.fetchall()
-            tt=t_from_DB(r[-1][0])-tn
-            n_t=len(r)
-            break
-
-        if n>self.u.max_cards_for_training:
-            n=self.u.max_cards_for_training
-
-        cursor.execute(f"SELECT MAX(last_training_t) FROM training_cards WHERE user_id = {self.user_id}") #хотя бы одна карта в базе есть.
-        r=cursor.fetchone()
-        last_tr_end_t=t_from_DB(r[0])
-        if last_tr_end_t is None: #все карты новые (не было ни одного тренинга еще)
-            tt=timedelta()                 #значит начинаем сейчас
-        else:
-            if last_tr_end_t>tn:
-                logger.info("last_tr_end_t in the future!: %s", last_tr_end_t.strftime("%Y-%m-%d %H:%M:%S"))
-            #тренинг не чаще чем раз в час(self.cfg.min_trening_interval)
-            if tn+tt<last_tr_end_t+self.u.min_training_interval: 
-                tt=(last_tr_end_t+self.u.min_training_interval)-tn
+            cursor.execute(f"SELECT COUNT(*) FROM training_cards WHERE user_id = {self.user_id} AND next_training_t <= ?", (t_to_DB(te),))        
+            n2 = cursor.fetchone()[0]
+            if n2>n:
+                n=0 #за доп период появятся еще слова, поэтому пока ждем.
+            #else:  #за доп период не появятся еще слова, показываем сколько ксть
 
         close_db()
-        return tt, n #предполагаемое время след тренинга, N=колличество карт для обучения прямо сейчас
-
-
+        return n  #N=колличество карт для обучения прямо сейчас
+    
     #берет из базы тренировочные карты у которых next_training_t минимальное.
     #апдейтит текущий набор
     async def Create(self):
         #сколько всего тренировочных карт?
-        tt, n =self.NextTrainingTime()
+        n =self.CardsReadyNow()
         if n<1: 
             return
 

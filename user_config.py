@@ -19,6 +19,8 @@ class User:
         self.min_training_interval=timedelta(seconds=r[1])
         self.min_cards_for_training=r[2]
         self.max_cards_for_training=r[3]
+        #self.min_cards_for_training=2
+        #self.max_cards_for_training=4
         self.o_param=r[4]
         
         self.shown_words_count = r[5]
@@ -58,7 +60,7 @@ class User:
         self.shown_words_count+=1
         before=self.current_forget_rate
         self.current_forget_rate += (incorrect - self.current_forget_rate) / min(self.shown_words_count, 100)
-        logger.info(f"forget rate n={self.shown_words_count}, before={before:.3f}, after={self.current_forget_rate:.3f}")
+        logger.info(f"{self.user_id}: forget rate n={self.shown_words_count}, before={before:.3f}, after={self.current_forget_rate:.3f}")
     
     def UpdateStat(self):
         user_update_stat(self.user_id, self.shown_words_count, self.current_forget_rate)
