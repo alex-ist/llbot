@@ -9,12 +9,6 @@ from user_config import *
 
 DB='data/ll.db'
 
-def card_remove(user_id:int, foreign_w):
-    conn = sqlite3.connect(DB) 
-    cursor = conn.cursor()
-    cursor.execute("DELETE FROM cards WHERE user_id = ? AND foreign_w = ?", (user_id, foreign_w,))
-    conn.commit()
-    conn.close()
 
 def get_hash(input_string):
     return hashlib.md5(input_string.encode()).hexdigest()[:10]
@@ -124,34 +118,6 @@ class Card:
             await self.SetAudioExample()
         return self.audio_example
 
-def training_card_read_by_id(user_id:int, training_card_id:int):
-    conn = sqlite3.connect(DB)
-    cursor = conn.cursor()
-    cursor.execute("SELECT card_id, direction, next_training_t, last_training_t FROM training_cards WHERE training_card_id = ? AND user_id = ?",
-                    (training_card_id, user_id))
-    row = cursor.fetchone()
-    conn.close()
-    return row[0],row[1],t_from_DB(row[2]),t_from_DB(row[3])
-
-
-def training_card_read_by_card_id(user_id:int, card_id:int, direction:int):
-    conn = sqlite3.connect(DB)
-    cursor = conn.cursor()
-    cursor.execute("SELECT training_card_id, next_training_t, last_training_t FROM training_cards WHERE card_id = ? AND direction = ? AND user_id = ?",
-                    (card_id, direction, user_id))
-    row = cursor.fetchone()
-    conn.close()
-    return row[0],t_from_DB(row[1]),t_from_DB(row[2])
-
-def training_card_update_by_id(training_card_id, user_id, next_training_t, last_training_t):
-    conn = sqlite3.connect(DB)
-    cursor = conn.cursor()
-    cursor.execute("UPDATE training_cards SET next_training_t = ?, last_training_t = ? WHERE training_card_id = ? AND user_id = ?",
-             (t_to_DB(next_training_t), t_to_DB(last_training_t), training_card_id, user_id))
-    conn.commit()
-    conn.close()
-
-
 class TrainingCard:
     def __init__(self, training_card_id, user_id, card_id, direction, next_training_t, last_training_t, u:User=None ):
         self.training_card_id=training_card_id
@@ -171,12 +137,6 @@ class TrainingCard:
         tc.card=Card(user_id, u.foreign_lang, foreign_w, u.native_lang, native_w, example)
         return tc        
 
-    @staticmethod
-    def ReadTcardFromDb_by_card_id(user_id:int, u, card_id, direction) -> 'TrainingCard':
-        training_card_id, next_training_t, last_training_t=training_card_read_by_card_id(user_id, card_id, direction)
-        return TrainingCard(training_card_id, user_id, card_id, direction, next_training_t, last_training_t, u)
-    
-  
     def SaveToDb(self):
         training_card_update_by_id(self.training_card_id, self.user_id, self.next_training_t, self.last_training_t)
 
@@ -424,23 +384,9 @@ class TrainingCardSet:
             return
 
         #нужно извлечь из базы и сформировать список
-        conn = sqlite3.connect(DB)
-        cursor = conn.cursor()
-        #cursor.execute(f"SELECT training_card_id, card_id, direction, next_training_t, last_training_t FROM training_cards WHERE user_id = {self.user_id} ORDER BY next_training_t ASC LIMIT {n}")
-
-        #новые карты у которых next_training_t = -1 выбирает в случайном порядке.
-        cursor.execute(f"""
-    SELECT training_card_id, card_id, direction, next_training_t, last_training_t 
-    FROM training_cards 
-    WHERE user_id = {self.user_id} 
-    ORDER BY (CASE WHEN next_training_t = -1 THEN ABS(RANDOM()) % 16384 ELSE next_training_t END) ASC
-    LIMIT {n}
-        """)
-        rows = cursor.fetchall()
-        conn.close()
+        rows=get_tcards(self.user_id, n)
 
         self.current_pos=0
-        tmp_set=[]
         self.tcard_set.clear()
         #заменяем все  карты, так как новая выборка может быть содержать другие карты
         for row in rows: 
@@ -483,66 +429,6 @@ class TrainingCardSet:
         #         break
         
         self.u.SetLastAccess()
-
-
-    # для отладки статистику вывеедем по словам. слово > через сколько повторять
-    def get_word_stat(self):
-        conn = sqlite3.connect(DB)
-        cursor = conn.cursor()
-        cursor.execute(f"SELECT cards.foreign_w, training_cards.next_training_t, training_cards.direction FROM training_cards INNER JOIN cards ON training_cards.card_id = cards.card_id WHERE training_cards.user_id = {self.user_id} ORDER BY training_cards.next_training_t ASC LIMIT 40")
-        rows=cursor.fetchall()
-        conn.close()
-        now=datetime.now()
-        result=""
-        for r in rows:
-            d='&gt;' if r[2]==0 else '&lt;'
-            w=r[0]
-            n=r[1]
-            t=t_from_DB(n)
-            if t is not None:
-                td=t-now
-                sec = td.total_seconds()
-                sign = '-' if sec < 0 else ' '
-                sec = abs(sec)
-                h = int(sec // 3600)
-                m = int((sec % 3600) // 60)
-                stat_line=f"{d}{w[:24].ljust(20)}:{sign}{h:02}:{m:02}\n"
-            else:
-                stat_line=f"{d}{w[:24].ljust(20)}:new\n"
-            result+=stat_line
-        return result
-
-    # статистику по текущему тренировочному набору
-    def get_word_stat2(self):
-        now=datetime.now()
-        result=""
-        for c in self.tcard_set:
-            d='&gt;' if c.direction==0 else '&lt;'
-            w=c.GetForeign()
-            t=c.last_training_t
-            if t is not None:
-                td=t-now
-                sec = td.total_seconds()
-                sign = '-' if sec < 0 else ' '
-                sec = abs(sec)
-                h = int(sec // 3600)
-                m = int((sec % 3600) // 60)
-                stat_line=f"{d}{w[:24].ljust(20)}:{sign}{h:02}:{m:02}\n"
-            else:
-                stat_line=f"{d}{w[:24].ljust(20)}:new\n"
-            result+=stat_line
-        return result
-
-
-    def reset_progress(self):
-        conn = sqlite3.connect(DB)
-        cursor = conn.cursor()
-        now=datetime.now()
-        cursor.execute("UPDATE training_cards SET next_training_t = ?, last_training_t = ? WHERE  user_id = ?",
-             (t_to_DB(None), t_to_DB(None), self.user_id))
-
-        conn.commit()
-        conn.close()
 
     # #есть хотя бы в одой из записей текстовый пример
     # def IsTextExamples(self):

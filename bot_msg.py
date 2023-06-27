@@ -21,7 +21,7 @@ class BotMsg:
             try:
                 await self.bot.delete_message(self.chat_id, self.id)
             except error.BadRequest as e:
-                logger.warn(f"chat_id={self.chat_id}: {e}")
+                logger.warning(f"chat_id={self.chat_id}: {e}")
             self.id=None
             
         self.txt=None
@@ -89,7 +89,7 @@ class BotMsg:
             try:
                 await self.bot.edit_message_media(media=media, chat_id=self.chat_id, message_id=self.id)
             except error.BadRequest as e:
-                logger.warn(f"chat_id={self.chat_id}: {e}")
+                logger.warning(f"chat_id={self.chat_id}: {e}")
                 self.id=None
         
         if self.id is None:

@@ -66,7 +66,7 @@ class UI:
         self.list_pos=0
     
     def __del__(self):
-        logger.warn(f"{self.user_id}: deleted UI object")
+        logger.warning(f"{self.user_id}: deleted UI object")
 
     async def clear_screan(self):
         await self.m1.clear()
@@ -123,6 +123,9 @@ class UI:
                 self.states_q.append(self.state)
                 self.state=UI.States.HELP_CMD
                 data=None
+            elif data=="tmr:t0":
+                logger.info(f"{self.user_id}: process_ev: tmr:t0 st={self.state}")
+
 
             if self.state_prev is UI.States.ST_UNDEF:
                 #cn=tcards_count(self.user_id) #проверка на нового пользователя.
@@ -867,13 +870,6 @@ class UI:
         self.state_prev = UI.States.SHOW_CARDS
         return False
 
-    async def stat2(self) -> None:
-        await self.bot.send_message(chat_id=self.chat_id, text=f"<pre>training set, pos={self.tcs.current_pos}:\n{self.tcs.get_word_stat2()}</pre>")
-
-    async def reset(self) -> None:
-        self.tcs.reset_progress()
-        await self.bot.send_message(chat_id=self.chat_id, text="word progress reset")
-
     @staticmethod
     async def help_cmd_(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         global ui_set
@@ -890,12 +886,6 @@ class UI:
 
     async def stop_chat_signal(self) -> None:
         await self.process_ev("stop:")
-
-    @staticmethod
-    async def reset_cmd_(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-        global ui_set
-        ui=get_ui(update.effective_user.id, update.effective_chat.id, context)
-        await ui.reset()
 
     @staticmethod
     async def del_words(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -925,11 +915,6 @@ class UI:
         ui=get_ui(update.effective_user.id, update.effective_chat.id, context)
         await ui.process_ev("cmd:lib")
 
-    async def stat_cmd2_(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-        global ui_set
-        ui=get_ui(update.effective_user.id, update.effective_chat.id, context)
-        await ui.stat2()
-
     @staticmethod
     async def rx_msg_(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         global ui_set
@@ -945,7 +930,7 @@ class UI:
     async def stop_ui(self):
         self.timer_stop()
         await self.clear_screan()
-        logger.info(f"{user_id}: Stop UI")
+        logger.info(f"{self.user_id}: Stop UI")
 
 
     @staticmethod
@@ -1084,12 +1069,9 @@ def main() -> None:
     application.add_handler(CommandHandler("start", start_cmd))
     application.add_handler(CommandHandler("add", UI.add_cmd_))
     application.add_handler(CommandHandler("lib", UI.lib_cmd_))
-    #application.add_handler(CommandHandler("show", UI.show_cmd_))
     application.add_handler(CommandHandler("help", UI.help_cmd_))
     application.add_handler(CommandHandler("edit", UI.edit_cmd_))
     application.add_handler(CommandHandler("stat", UI.stat_cmd_))
-#    application.add_handler(CommandHandler("stat2", UI.stat_cmd2_))
-    application.add_handler(CommandHandler("reset",UI.reset_cmd_))
     application.add_handler(CommandHandler("del_words",UI.del_words)) #delete all words
     # application.add_handler(CommandHandler("settings", settings_cmd))
     application.add_handler(MessageHandler(None, callback=UI.rx_msg_))

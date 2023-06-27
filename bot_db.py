@@ -2,12 +2,17 @@
 import sqlite3
 from sqlite3 import Error
 from datetime import *
+from botlog import logger
 
 DB='data/ll.db'
 db_conn=None
 
+
 def open_db():
     global db_conn
+    if db_conn is not None:
+        logger.error("!!!!!DB already oppened!!!!!!!!!!!!!")
+
     db_conn = sqlite3.connect(DB) 
     return db_conn.cursor()
 
@@ -16,7 +21,7 @@ def close_db(commit=False):
     if commit:
         db_conn.commit()
     db_conn.close()
-
+    db_conn = None
 
 def t_from_DB(db_time:int) ->datetime :
     if db_time is None:
@@ -159,7 +164,6 @@ def cards_stat(user_id:int, len, offset=0):
     rows = c.fetchall()
     close_db()
     r=""
-    #prog:word(n,f):    next_t\n
     for v in rows:
         nt=v[2]
         lt=v[3]
@@ -237,3 +241,25 @@ def user_update_stat(user_id:int, shown_words_count, forget_rate):
     cursor.execute("UPDATE users SET shown_words_count = ?, current_forget_rate = ?  WHERE  user_id = ?",
             (shown_words_count, forget_rate, user_id))
     close_db(commit=True)
+
+def training_card_update_by_id(training_card_id, user_id, next_training_t, last_training_t):
+    cursor=open_db()
+    cursor.execute("UPDATE training_cards SET next_training_t = ?, last_training_t = ? WHERE training_card_id = ? AND user_id = ?",
+             (t_to_DB(next_training_t), t_to_DB(last_training_t), training_card_id, user_id))
+    close_db(commit=True)
+
+
+def get_tcards(user_id, n):
+        cursor=open_db()
+        #новые карты у которых next_training_t = -1 выбирает в случайном порядке.
+        cursor.execute(f"""
+    SELECT training_card_id, card_id, direction, next_training_t, last_training_t 
+    FROM training_cards 
+    WHERE user_id = {user_id} 
+    ORDER BY (CASE WHEN next_training_t = -1 THEN ABS(RANDOM()) % 16384 ELSE next_training_t END) ASC
+    LIMIT {n}
+        """)
+        rows = cursor.fetchall()
+        close_db()
+        return rows
+
