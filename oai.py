@@ -1,6 +1,7 @@
 import os
 import openai
 from openai.error import RateLimitError
+from openai.error import APIError
 from botlog import logger
 import random
 
@@ -41,8 +42,12 @@ def oai_get_example2(fw, fw2=None):
             max_tokens=60,
         )
     except RateLimitError as e:
+        logger.error("openAI RateLimitError: "+e)
         return None, None
-
+    except APIError as e:
+        logger.error("openAI APIError: "+e)
+        return None, None 
+   
  
     r=response['choices'][0]['message']['content'].strip()
     return r, response
@@ -91,7 +96,11 @@ async def oai_aget_example2(fw, fw2=None):
             max_tokens=60,
         )
     except RateLimitError as e:
+        logger.error("openAI RateLimitError: "+e)
         return None, None
+    except APIError as e:
+        logger.error("openAI APIError: "+e)
+        return None, None 
 
  
     r=response['choices'][0]['message']['content'].strip()
