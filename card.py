@@ -71,8 +71,6 @@ class Card:
     @staticmethod
     async def ReadFromDb(user_id:int, card_id:int) -> 'Card':
         foreign_w, native_w, foreign_lang, native_lang, example=card_read(user_id, card_id)
-        logger.warning(f"ReadFromDb: {foreign_w}: card_id={card_id} t={type(card_id)}")
-
         card=Card(user_id, foreign_lang, foreign_w, native_lang, native_w, example, card_id)
         #await card.SetAudio()
         #await card.SetAudioExample()
@@ -396,8 +394,6 @@ class TrainingCardSet:
             nt=t_from_DB(row[3])
             lt=t_from_DB(row[4])
             training_card_id=row[0]
-            logger.error(f"{training_card_id} {type(training_card_id)}")
-            logger.error(f"{row[1]} {type(row[1])}")
             self.tcard_set.append(TrainingCard(training_card_id, self.user_id, row[1], row[2], nt, lt, self.u))
 
         #сразу отсортируем список - чтобы сначала шли только четные dir, а затем нечетн dir. Чтобы одна и таже карта в разных направлениях не повторялась сама за собой
@@ -411,7 +407,6 @@ class TrainingCardSet:
                     tc.card = cards_dict[tc.card_id]
                 else:
                     tc.card = await Card.ReadFromDb(self.user_id, tc.card_id)
-                    logger.error(f"22: {tc.card_id} {type(tc.card_id)}")
                     cards_dict[tc.card_id] = tc.card
 
         #выясним есть ли в наборе IsTextExample, IsAudioExample,IsAudioWord

@@ -516,7 +516,6 @@ class UI:
                     self.state=UI.States.FIRST_RUN3
                     return True
             elif data=="cmd:edit":
-                logger.warning(f"{self.user_id}: go to edit: edit_card.card_id={self.edited_card.card_id} t={type(self.edited_card.card_id)}")
                 self.edited_card=self.tcs.GetCurrentTCard().card
                 self.states_q.append(self.state)
                 self.sub_state="edit_old"
@@ -854,9 +853,7 @@ class UI:
                 return False
             elif data.startswith('kbd:'):
                 data = data.split('kbd:', 1)[1] #card_id
-                logger.warning(f"{self.user_id}: go to edit: {data}")
                 self.edited_card=await Card.ReadFromDb(self.user_id, int(data))
-                logger.warning(f"{self.user_id}: go to edit: {data}, edit_card.card_id={self.edited_card.card_id} t={type(self.edited_card.card_id)}")
                 self.states_q.append(self.state)
                 self.sub_state="edit_old"
                 self.state = UI.States.EDIT_CARD
