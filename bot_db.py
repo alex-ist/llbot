@@ -143,6 +143,7 @@ def get_progr (t:int ):
 
 
 def card_get_progress(user_id:int, card_id:int):
+    logger.warning(f"{user_id}: card_get_progress: {card_id} {type(card_id)}")
     if card_id<0:
         return get_progr(0)
 
