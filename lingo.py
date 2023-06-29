@@ -64,6 +64,7 @@ class UI:
         self.timer_job= None
         self.states_q=[]
         self.list_pos=0
+        self.cnt1=0
     
     def __del__(self):
         logger.warning(f"{self.user_id}: deleted UI object")
@@ -630,9 +631,11 @@ class UI:
             elif data=='kbd:ex':
                 if self.selected_button!="ex":
                     self.selected_button="ex"
+                    self.cnt1=0
                 else: #create new examle
                     #ex=oai_get_example(self.user_id, self.edited_card.GetForeign())
-                    ex=await oai_aget_example(self.user_id, self.edited_card.GetForeign())
+                    ex=await oai_aget_example(self.user_id, self.edited_card.GetForeign(), self.cnt1)
+                    self.cnt1+=1
                     self.edited_card.ChangeExample(ex)
                 self.kbd=self.create_buttons("kbd:ex", "✏️")
             elif data=='kbd:reset'and self.sub_state=="edit_old":

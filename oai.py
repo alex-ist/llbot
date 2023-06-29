@@ -42,10 +42,10 @@ def oai_get_example2(fw, fw2=None):
             max_tokens=60,
         )
     except RateLimitError as e:
-        logger.error("openAI RateLimitError: "+e)
+        logger.error("openAI RateLimitError: "+str(e))
         return None, None
     except APIError as e:
-        logger.error("openAI APIError: "+e)
+        logger.error("openAI APIError: "+str(e))
         return None, None 
    
  
@@ -84,7 +84,11 @@ async def oai_aget_example1(fw, fw2=None):
     return r, response
 
 
-async def oai_aget_example2(fw, fw2=None):
+async def oai_aget_example2(fw, n=0, fw2=None):
+    temp=0.75+n*0.05
+    if temp>1.0:
+        temp =1.0
+
     try:
         response = await openai.ChatCompletion.acreate(
             model='gpt-3.5-turbo',
@@ -92,26 +96,27 @@ async def oai_aget_example2(fw, fw2=None):
                 {"role": "system", "content": "You are American native speaker. I give you english word or idiom. You give me an example of english sentence. Max length of example must be 17 words"},
                 {'role': 'user', 'content': fw}
             ],
-            temperature=0.8,
+            temperature=temp,
             max_tokens=60,
         )
     except RateLimitError as e:
-        logger.error("openAI RateLimitError: "+e)
+        logger.error("openAI RateLimitError: "+str(e))
         return None, None
     except APIError as e:
-        logger.error("openAI APIError: "+e)
+        logger.error("openAI APIError: "+str(e))
         return None, None 
 
  
     r=response['choices'][0]['message']['content'].strip()
     return r, response
 
-
-async def oai_aget_example(user_id, fword, fw2=None):
+#n задает какой раз подряд пытаемся сгенерить это предложение
+async def oai_aget_example(user_id, fword, n=0, fw2=None):
     ex=None
-    #if random.randint(1, 2) == 2: #каждый втрой пример через text-davinci-002
-    mode="chat"
-    ex, rsp=await oai_aget_example2(fword)
+    if n<5:
+        #if random.randint(1, 2) == 2: #каждый втрой пример через text-davinci-002
+        mode="chat"
+        ex, rsp=await oai_aget_example2(fword, n)
     
     if ex is None:
         ex, rsp= await oai_aget_example1(fword)
