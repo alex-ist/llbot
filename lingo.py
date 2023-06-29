@@ -851,8 +851,8 @@ class UI:
                     self.list_pos+=6
             elif data=="kbd:x":
                 return False
-            elif data.startswith('kbd:'):
-                data = data.split('kbd:', 1)[1] #card_id
+            elif data.startswith('kbd:'): 
+                data = data.split('kbd:', 1)[1] #this is card_id
                 self.edited_card=await Card.ReadFromDb(self.user_id, int(data))
                 self.states_q.append(self.state)
                 self.sub_state="edit_old"
@@ -863,7 +863,7 @@ class UI:
 
 
         await self.m1.clear()
-        await self.m2.text(msg12_select_card(), kbd=self.create_show_cards_buttons())
+        await self.m2.text(msg12_select_card(len(self.show_cards_list)), kbd=self.create_show_cards_buttons())
         self.state_prev = UI.States.SHOW_CARDS
         return False
 

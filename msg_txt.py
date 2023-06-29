@@ -48,7 +48,7 @@ def msg03_first_run3(result):
           "🔸 Если вы вспомнили слово, то интервал до следующей тренировки этого слова будет увеличен. Если не вспомнили - он уменьшится.")
 
     if result==0:
-        return f"Ничего страшного. Во время этой тренировки я покажу это слово еще раз - все получится!\n\n{info}"
+        return f"Ничего страшного. Во время этой тренировки я покажу карточку с этим словом еще раз - все получится!\n\n{info}"
     else:
         return f"Ура, вы знаете слово.\n\n{info}"
 
@@ -67,19 +67,35 @@ def sticker04_tren3(): #драночик ok!
     return 'CAACAgIAAxkBAAIXG2R7uMd7vi7G6PN5iAns6r9IZLX_AAJBAAN4qOYP-J7xorhFu34vBA'
 
 def msg05_tren0():
-        return "🤷‍♂️ Пока, нет слов для повторения 💤"
+    return "🤷‍♂️ Пока нет слов для повторения 💤, чтобы добавить /add"
 
 def msg_word(n):
-    if n==24 or n==23 or n==22 or n==2 or n==3 or n==4:
+    if n>20:
+        d=n%10
+    else:
+        d=n
+    if  d==2 or d==3 or d==4:
         return f"{n} слова"
-    elif n==21 or n==1:
+    elif d==1:
         return f"{n} слово"
     else:
         return f"{n} слов"
 
-def msg06_tren0(n):
-    return f"🏄🏼 Пора начинать!\n{msg_word(n)} для повторения"
+def msg_card(n):
+    if n>20:
+        d=n%10
+    else:
+        d=n
+        
+    if d==2 or d==3 or d==4:
+        return f"{n} карточки"
+    elif d==1:
+        return f"{n} карточка"
+    else:
+        return f"{n} карточек"
 
+def msg06_tren0(n):
+    return f"🏄🏼 Пора начинать!\n{msg_card(n)} для повторения"
 
 def sticker06_tren0(n): #белка сила
     return 'CAACAgIAAxkBAAIXHWR7umqAobh7yIO-X8uti1gcdGhgAAKyAAP3AsgPM6si_fBflFgvBA'
@@ -104,16 +120,16 @@ def get_next(ttd:timedelta):
     return w
 
 def msg07_edit_card():
-    return "<pre>Редактирование слова:</pre>\n"
+    return "<pre>📝 Редактирование слова:</pre>\n"
 
 def msg08_del_card():
-    return "<pre>УДАЛЕНИЕ слова:</pre>\n"
+    return "<pre>🗑 УДАЛЕНИЕ слова:</pre>\n"
 
 def msg09_reset_prog():
     return "<pre>Сброс прогресса запоминания слова:</pre>\n"
 
 def msg10_add_new_card():
-    return "Ведите слово для изучения ✏️:"
+    return "<pre>✏️ Ведите слово для изучения:</pre>"
 
 def msg11_t_o():
     return "Я на тех. обслуживании, извини!"
@@ -121,11 +137,11 @@ def msg11_t_o():
 def sticker11_t_o(): #'Hedgehog_Ned язык с телефоном'
     return 'CAACAgIAAxkBAAIXPmR7xS_plWDjwkD-bwPqRq6srRrsAAI3AAN4qOYPfx9FB5_gW6QvBA'
 
-def msg12_select_card():
-    return "<pre>Выберите слово:</pre>\n"
+def msg12_select_card(n):
+    return f"<pre>Список для изучения, {msg_word(n)}. \nВыберите слово для просмотра и редактирования:</pre>\n"
 
 def msg11_total_stat(n: int, forg_r):
-    return f"<b>Статистика:</b><pre>\nВ списке для изучения {msg_word(n)}\nТекущий % забывания: {round(forg_r*100)}%\n\u28ffСлово            повтор через\n===============================\n</pre>"
+    return f"<b>Статистика:</b><pre>\nСейчас в списке для изучения {msg_card(n)}\nТекущий % забывания: {round(forg_r*100)}%\n\u28ffСлово            повтор через\n===============================\n</pre>"
 
 def msg12_add_from_lib():
     return "Для добавления набора слов, выберите тему и нажмите [ Добавить▶️ ]"
