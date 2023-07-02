@@ -269,6 +269,13 @@ class TrainingCardSet:
             return self.tcard_set[self.current_pos]
         else:
             return None
+
+    #если слово есть в наборе - вернем его, иначе None        
+    def GetWord(self, word_id) ->TrainingCard:
+        for tc in self.tcard_set:
+            if tc.card.card_id==word_id:
+                return tc.card
+        return None
     
     #извлекает тр карту из списка и возвращет ее
     def GetTCard(self, cid):

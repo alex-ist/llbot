@@ -67,8 +67,15 @@ def card_read(user_id:int, card_id:int):
     close_db()
     return row[0],row[1],row[2],row[3],row[4]
 
-
-
+def word_read_by_fw(user_id:int, fw:str):
+    c=open_db()
+    c.execute("SELECT card_id FROM cards WHERE user_id = ? AND foreign_w = ?", (user_id, fw))
+    row = c.fetchone()
+    close_db()
+    if row is not None:
+        return row[0]
+    else:
+        return None
 
 def card_delete(user_id:int, cid:int):
     c=open_db()

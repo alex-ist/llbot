@@ -697,10 +697,21 @@ class UI:
         data = data.split('msg:', 1)[1]
         data=data.lower().strip()
         f,n = await translate_text(self.u.foreign_lang, self.u.native_lang, data)
+        #проверить по fw есть ли такое слово в базе
+        word_id=word_read_by_fw(self.user_id, f)
+        if word_id is not None:
+            #проверим есть ли в текщем наборе, если есть возбмем его. если нет вычитаем из базы
+            self.edited_card=self.tcs.GetWord(word_id)
+            if self.edited_card is None:
+                self.edited_card=await Card.ReadFromDb(self.user_id, word_id)
+            self.states_q.append(self.state)
+            self.sub_state="edit_old"
+            self.state = UI.States.EDIT_CARD
+            return True
+
         if f==n: #вероятно не смогли первести, может абракадабра была вместо слова
             ex=None
         else:
-            #ex=oai_get_example(self.user_id, f)
             ex=await oai_aget_example(self.user_id, f)
 
         self.edited_card=Card(self.user_id, self.u.foreign_lang, f, self.u.native_lang, n, ex)
