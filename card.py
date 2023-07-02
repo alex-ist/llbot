@@ -34,6 +34,8 @@ class Card:
         return self.native_w
 
     def GetExample(self):
+        if self.example is None:
+            return ""
         return self.example
 
     def ChangeForeign(self, new_fw):
@@ -377,7 +379,7 @@ class TrainingCardSet:
         return n  #N=колличество карт для обучения прямо сейчас
     
     #берет из базы тренировочные карты у которых next_training_t минимальное.
-    #апдейтит текущий набор
+    #новые карты берет, токо если нет старых
     async def Create(self):
         #сколько всего тренировочных карт?
         n =self.CardsReadyNow()
@@ -388,16 +390,12 @@ class TrainingCardSet:
         rows=get_tcards(self.user_id, n)
 
         self.current_pos=0
-        self.tcard_set.clear()
-        #заменяем все  карты, так как новая выборка может быть содержать другие карты
+        self.tcard_set.clear() 
         for row in rows: 
             nt=t_from_DB(row[3])
             lt=t_from_DB(row[4])
             training_card_id=row[0]
             self.tcard_set.append(TrainingCard(training_card_id, self.user_id, row[1], row[2], nt, lt, self.u))
-
-        #сразу отсортируем список - чтобы сначала шли только четные dir, а затем нечетн dir. Чтобы одна и таже карта в разных направлениях не повторялась сама за собой
-        self.tcard_set.sort(key=lambda t: t.direction)
 
         #считать объекты Card, и сдалать с обоих TrainingCard ссылку на один Card
         cards_dict = {}

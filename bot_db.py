@@ -251,15 +251,30 @@ def training_card_update_by_id(training_card_id, user_id, next_training_t, last_
 
 def get_tcards(user_id, n):
         cursor=open_db()
+        #выбирает сначала старые карты для поаторения, если их нехватает то дополняет новыми
         #новые карты у которых next_training_t = -1 выбирает в случайном порядке.
+        #сразу отсортирует по направлению
+        t_now=t_to_DB(datetime.now())
         cursor.execute(f"""
-    SELECT training_card_id, card_id, direction, next_training_t, last_training_t 
-    FROM training_cards 
-    WHERE user_id = {user_id} 
-    ORDER BY (CASE WHEN next_training_t = -1 THEN ABS(RANDOM()) % 16384 ELSE next_training_t END) ASC
-    LIMIT {n}
+            SELECT training_card_id, card_id, direction, next_training_t, last_training_t 
+            FROM training_cards
+            WHERE user_id = {user_id} AND next_training_t > 0 AND next_training_t < {t_now}
+            ORDER BY next_training_t LIMIT {n}
         """)
-        rows = cursor.fetchall()
+        result1 = cursor.fetchall()
+        n1=len(result1)
+        if n1 < n:
+            cursor.execute(f"""
+                SELECT training_card_id, card_id, direction, next_training_t, last_training_t 
+                FROM training_cards 
+                WHERE user_id = {user_id} AND next_training_t = -1 
+                ORDER BY ABS(RANDOM()) % 16384
+                LIMIT {n - n1}
+            """)
+            result1 = result1 + cursor.fetchall()
+        
+        result1 = sorted(result1, key=lambda x: x[2])
+
         close_db()
-        return rows
+        return result1
 

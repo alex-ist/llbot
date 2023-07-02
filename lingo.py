@@ -471,6 +471,10 @@ class UI:
                 return True        
             elif data=="tmr:t0":
                 pass
+            elif data.startswith('msg:'):
+                self.timer_stop()
+                await self.add_word(data)
+                return True
             else:
                 return False
 
@@ -494,14 +498,7 @@ class UI:
         if self.state_prev is not UI.States.TREN1:
             logger.info(f"{self.user_id}: state=TREN1, prev_st=" + self.state_prev)
 
-        if self.state_prev is UI.States.EDIT_CARD or self.state_prev is UI.States.ADD_WORD or self.state_prev is UI.States.SHOW_CARDS or self.state_prev is UI.States.SHOW_STAT or self.state_prev is UI.States.FIRST_RUN3: 
-            self.sub_state="q"
-        elif self.state_prev is UI.States.FIRST_RUN2:
-            self.sub_state="a"
-        elif self.state_prev is UI.States.TREN0 or self.state_prev is UI.States.TREN3 or self.state_prev is UI.States.FIRST_RUN1:
-            await self.tcs.Create()
-            self.sub_state="q"
-        elif self.state_prev is UI.States.TREN1 and data is not None:
+        if self.state_prev is UI.States.TREN1 and data is not None:
             if data=="kbd:?":
                 self.sub_state="a"
                 if self.u.new_user:
@@ -527,6 +524,13 @@ class UI:
                 return True
             else:
                 return False
+        elif self.state_prev is UI.States.EDIT_CARD or self.state_prev is UI.States.ADD_WORD or self.state_prev is UI.States.SHOW_CARDS or self.state_prev is UI.States.SHOW_STAT or self.state_prev is UI.States.FIRST_RUN3: 
+            self.sub_state="q"
+        elif self.state_prev is UI.States.FIRST_RUN2:
+            self.sub_state="a"
+        elif self.state_prev is UI.States.TREN0 or self.state_prev is UI.States.TREN3 or self.state_prev is UI.States.FIRST_RUN1:
+            await self.tcs.Create()
+            self.sub_state="q"
         else:
             return False
         
@@ -577,11 +581,12 @@ class UI:
             logger.info(f"{self.user_id}: state=TREN3, prev_st={self.state_prev}")
             
         if self.state_prev is UI.States.TREN3 and data is not None:
-            self.timer_stop()
             if data=='kbd:enough' or data=='tmr:t3':
+                self.timer_stop()
                 self.state=UI.States.TREN0 #goto tren0,
                 return True
             elif data=='kbd:again':
+                self.timer_stop()
                 self.state=UI.States.TREN1 #goto tren1,
                 return True
             return False
@@ -615,7 +620,7 @@ class UI:
         #decoding inside state events:
         if self.state_prev is not UI.States.EDIT_CARD:
             await self.clear_screan()
-            if self.state_prev!=UI.States.TREN1 and self.state_prev!=UI.States.ADD_WORD and self.state_prev!=UI.States.SHOW_CARDS:
+            if self.state_prev!=UI.States.TREN1 and self.state_prev!=UI.States.TREN0 and self.state_prev!=UI.States.ADD_WORD and self.state_prev!=UI.States.SHOW_CARDS:
                 logger.warning("edit_card: unknown state_prev: " + self.state_prev)
                 return False
             self.selected_button=None
