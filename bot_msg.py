@@ -65,6 +65,9 @@ class BotMsg:
 
     @staticmethod
     def kbd_eq(k1:InlineKeyboardMarkup, k2:InlineKeyboardMarkup) -> bool:
+        if k1 is None and k2 is None:
+            return True
+        
         if k1 is None or k2 is None:
             return False
 

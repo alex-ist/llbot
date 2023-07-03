@@ -51,9 +51,15 @@ class UI:
         self.chat_id=chat_id
         self.bot=context.bot
         self.jq=context.job_queue
+        self.m0=BotMsg(self.bot, chat_id, pos=0)
         self.m1=BotMsg(self.bot, chat_id, pos=1)
         self.m2=BotMsg(self.bot, chat_id, pos=2)
         self.u=User(user_id, new_user)
+        
+        if new_user:
+            self.tutorial_mode=2
+        else: 
+            self.tutorial_mode=0
 
         self.tcs=TrainingCardSet(user_id, self.u)
         self.edited_word=None
@@ -70,6 +76,8 @@ class UI:
         logger.warning(f"{self.user_id}: deleted UI object")
 
     async def clear_screan(self):
+        if self.m0 is not None:
+            await self.m0.clear()
         await self.m1.clear()
         await self.m2.clear()
    
@@ -127,7 +135,7 @@ class UI:
 
             if self.state_prev is UI.States.ST_UNDEF:
                 #cn=tcards_count(self.user_id) #проверка на нового пользователя.
-                if self.u.new_user:
+                if self.tutorial_mode:
                     self.state = UI.States.NEW_USER
                 else:
                     self.state = UI.States.TREN0
@@ -194,8 +202,8 @@ class UI:
                 kbd = [[InlineKeyboardButton("    ❓❓   ", callback_data="kbd:?")]]
             else:
                 kbd = [[
-                    InlineKeyboardButton("❌ Forgot", callback_data="kbd:-"),
-                    InlineKeyboardButton("✅ Know", callback_data="kbd:+"),
+                    InlineKeyboardButton("❌ Забыл", callback_data="kbd:-"),
+                    InlineKeyboardButton("✅ Знаю", callback_data="kbd:+"),
                     ]]
         elif self.state is UI.States.TREN3:
             if self.sub_state=="no_to_learn":
@@ -240,7 +248,7 @@ class UI:
             if self.sub_state == "edit_old":
                 kbd.append([
                     InlineKeyboardButton("Удалить слово", callback_data="kbd:delete"),
-                    InlineKeyboardButton("Сброс прогресса", callback_data="kbd:reset")])
+                    InlineKeyboardButton("Сбросить прогресс", callback_data="kbd:reset")])
             kbd.append([
                     InlineKeyboardButton("Отменить", callback_data="kbd:cancel"),
                     InlineKeyboardButton("Сохранить", callback_data="kbd:save")])
@@ -498,19 +506,21 @@ class UI:
         if self.state_prev is not UI.States.TREN1:
             logger.info(f"{self.user_id}: state=TREN1, prev_st=" + self.state_prev)
 
+        if self.tutorial_mode==0:
+            await self.m0.clear()
+
         if self.state_prev is UI.States.TREN1 and data is not None:
             if data=="kbd:?":
                 self.sub_state="a"
-                if self.u.new_user:
-#                    self.u.new_user=False
+                if self.tutorial_mode==2:
                     self.state=UI.States.FIRST_RUN2
                     return True
             elif data=='kbd:+' or data=='kbd:-':
                 self.last_answer = True if data=='kbd:+' else False
                 self.tcs.SetAnswer(self.last_answer)
                 self.sub_state="q"
-                if self.u.new_user==True:
-                    self.u.new_user=False
+                if self.tutorial_mode==2:
+                    self.tutorial_mode=1
                     self.state=UI.States.FIRST_RUN3
                     return True
             elif data=="cmd:edit":
@@ -524,15 +534,13 @@ class UI:
                 return True
             else:
                 return False
-        elif self.state_prev is UI.States.EDIT_WORD or self.state_prev is UI.States.ADD_WORD or self.state_prev is UI.States.SHOW_WORDS or self.state_prev is UI.States.SHOW_STAT or self.state_prev is UI.States.FIRST_RUN3: 
-            self.sub_state="q"
         elif self.state_prev is UI.States.FIRST_RUN2:
             self.sub_state="a"
         elif self.state_prev is UI.States.TREN0 or self.state_prev is UI.States.TREN3 or self.state_prev is UI.States.FIRST_RUN1:
             await self.tcs.Create()
             self.sub_state="q"
-        else:
-            return False
+        else: 
+            self.sub_state="q"
         
         tc=self.tcs.GetCurrentTCard()  
         if tc is None: #нет карт для запоминания
@@ -542,6 +550,8 @@ class UI:
             return True
 
         if self.sub_state=="q":
+            if self.tutorial_mode==1:
+                await self.m0.text(msg19_tutorial_tren1())
             ae_path=await tc.GetAudioExample()
             self.txt_ex=tc.GetExample()
             if self.txt_ex=="":
@@ -562,6 +572,10 @@ class UI:
             a = await tc.GetAudio()
             await self.m2.voice(voice=a, txt=tc.GetA(), kbd=self.create_buttons())
         else: #self.sub_state=="a":
+            if self.tutorial_mode==1:
+                await self.m0.text(msg20_tutorial_tren1())
+                self.tutorial_mode=0
+
             if self.ma_ex is not None:
                 ae_path = await tc.GetAudioExample()
                 with open(ae_path, 'rb') as f:
@@ -579,6 +593,7 @@ class UI:
     async def tren3_state(self, data=None) -> None:
         if self.state_prev is not UI.States.TREN3:
             logger.info(f"{self.user_id}: state=TREN3, prev_st={self.state_prev}")
+            self.m0.clear()
             
         if self.state_prev is UI.States.TREN3 and data is not None:
             if data=='kbd:enough' or data=='tmr:t3':
@@ -685,9 +700,10 @@ class UI:
         elif self.selected_button=="delete":
             txt2=f"<s>{txt2}</s>"
             txt=msg08_del_word()+txt2
-        else:
+        elif self.sub_state=="edit_old":
             txt=msg07_edit_word()+txt2
-
+        else:
+            txt=msg07_add_word()+txt2
                             
         await self.m2.text(txt, kbd=self.kbd)
         self.state_prev = UI.States.EDIT_WORD
@@ -726,6 +742,7 @@ class UI:
             logger.info(f"{self.user_id}: state=ADD_WORD, prev_st=" + self.state_prev)
 
         if self.state_prev is not UI.States.ADD_WORD:
+            await self.m0.clear()
             await self.m1.clear()
             self.selected_button=None
             self.kbd=self.create_buttons()
@@ -750,6 +767,7 @@ class UI:
             logger.info(f"{self.user_id}: state=ADD_WORDS_FROM_LIB, prev_st={self.state_prev}")
 
         if self.state_prev is not UI.States.ADD_WORDS_FROM_LIB:
+            await self.m0.clear()
             await self.m1.clear()
             self.selected_button=None
             self.kbd=self.create_buttons()
@@ -786,6 +804,7 @@ class UI:
             logger.info(f"{self.user_id}: state=SHOW_STAT, prev_st={self.state_prev}")
 
         if self.state_prev is not UI.States.SHOW_STAT:
+            await self.m0.clear()
             await self.m1.clear()
             self.list_pos=0
             self.list_sz=tcards_count(self.user_id)
@@ -848,6 +867,8 @@ class UI:
     async def show_words(self, data:str=None) -> None:
         if self.state_prev is not UI.States.SHOW_WORDS:
             logger.info(f"{self.user_id}: state=SHOW_WORDS, prev_st={self.state_prev}")
+            await self.m0.clear()
+            await self.m1.clear()
 
         if self.state_prev is not UI.States.SHOW_WORDS:
             self.show_words_list=words_read(self.user_id)
@@ -874,14 +895,8 @@ class UI:
                 data = data.split('kbd:', 1)[1] #this is word_id
                 self.edited_word=await Word.ReadFromDb(self.user_id, int(data))
                 self.states_q.append(self.state)
-                self.sub_state="edit_old"
-                self.state = UI.States.EDIT_WORD
-                return True
-            else:
-                return False
+                self.sub_state="edit_old" 
 
-
-        await self.m1.clear()
         await self.m2.text(msg12_select_word(len(self.show_words_list)), kbd=self.create_show_words_buttons())
         self.state_prev = UI.States.SHOW_WORDS
         return False
