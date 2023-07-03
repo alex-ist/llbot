@@ -52,14 +52,14 @@ def load_maintenance_data():
     return rows
 
 
-def cards_read(user_id:int):
+def words_read(user_id:int):
     c=open_db()
     c.execute("SELECT card_id, foreign_w, native_w FROM cards WHERE user_id = ? ORDER BY foreign_w ASC", (user_id,))
     rows = c.fetchall()
     close_db()
     return rows
 
-def card_read(user_id:int, card_id:int):
+def word_read(user_id:int, card_id:int):
     c=open_db()
     c.execute("SELECT foreign_w, native_w, foreign_lang, native_lang, example FROM cards WHERE user_id = ? AND card_id = ?",
                     (user_id, card_id))
@@ -77,25 +77,23 @@ def word_read_by_fw(user_id:int, fw:str):
     else:
         return None
 
-def card_delete(user_id:int, cid:int):
+def word_delete(user_id:int, word_id:int):
     c=open_db()
-    c.execute(f"DELETE FROM cards WHERE card_id = {cid} and user_id = {user_id}")
+    c.execute(f"DELETE FROM cards WHERE card_id = {word_id} and user_id = {user_id}")
     close_db(commit=True)
 
-
-def card_reset_progress(user_id:int, cid:int):
+def words_delete(user_id:int):
     c=open_db()
-    c.execute(f"UPDATE training_cards SET next_training_t=-1, last_training_t=-1 WHERE card_id = {cid} and user_id = {user_id}")
-    close_db(commit=True)
+    c.execute("DELETE FROM cards WHERE user_id = ?", (user_id,))
+    close_db(True)
 
-
-def card_update(user_id:int, card_id:int, foreign_w, native_w, example):
+def word_update(user_id:int, card_id:int, foreign_w, native_w, example):
     c=open_db()
     c.execute("UPDATE cards SET foreign_w = ?, native_w = ?, example = ? WHERE card_id = ? AND user_id = ?", 
              (foreign_w, native_w, example, card_id, user_id))
     close_db(commit=True)
 
-def card_add(user_id:int, foreign_w, native_w, foreign_lang, native_lang, example=None):
+def word_add(user_id:int, foreign_w, native_w, foreign_lang, native_lang, example=None):
     c=open_db()
     #fixme: должно ли быть foreign_w уникальным для каждого юзера? если да:
     #if not cursor.execute("SELECT * FROM cards WHERE user_id = ? AND foreign_w = ?", (user_id, foreign_w,)).fetchone():
@@ -105,7 +103,7 @@ def card_add(user_id:int, foreign_w, native_w, foreign_lang, native_lang, exampl
     close_db(commit=True)
     return card_id
 
-def cards_add_words_by_topic(user_id:int, topic:str, flang= "en", nlang="ru"):
+def add_words_by_topic(user_id:int, topic:str, flang= "en", nlang="ru"):
     c=open_db()
     #fixme подумать с переводом на другие языки
     sql = f"""
@@ -127,7 +125,7 @@ def tcards_count(user_id:int):
     close_db()
     return n
 
-def cards_count(user_id:int):
+def words_count(user_id:int):
     c = open_db()
     c.execute("SELECT COUNT(*) FROM cards WHERE user_id = ?", (user_id,))
     n = c.fetchone()[0]
@@ -149,7 +147,13 @@ def get_progr (t:int ):
         return unicode_symbols[4]
 
 
-def card_get_progress(user_id:int, card_id:int):
+def card_reset_progress(user_id:int, cid:int):
+    c=open_db()
+    c.execute(f"UPDATE training_cards SET next_training_t=-1, last_training_t=-1 WHERE card_id = {cid} and user_id = {user_id}")
+    close_db(commit=True)
+
+
+def word_get_progress(user_id:int, card_id:int):
     if card_id<0:
         return get_progr(0)
 
@@ -199,12 +203,6 @@ def cards_stat(user_id:int, len, offset=0):
         else:
             r+="new\n"
     return r
-
-def cards_remove(user_id:int):
-    c=open_db()
-    c.execute("DELETE FROM cards WHERE user_id = ?", (user_id,))
-    close_db(True)
-
 
 def user_exist(user_id:int):
     c=open_db()

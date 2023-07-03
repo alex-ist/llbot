@@ -13,10 +13,10 @@ DB='data/ll.db'
 def get_hash(input_string):
     return hashlib.md5(input_string.encode()).hexdigest()[:10]
 
-class Card:
-    def __init__(self, user_id, foreign_lang, foreign_w, native_lang, native_w, example=None, card_id=-1):
+class Word:
+    def __init__(self, user_id, foreign_lang, foreign_w, native_lang, native_w, example=None, word_id=-1):
         self.user_id=user_id
-        self.card_id=card_id
+        self.word_id=word_id
         self.native_lang=native_lang
         self.foreign_lang=foreign_lang
         self.foreign_w=foreign_w
@@ -53,7 +53,7 @@ class Card:
     
     #восстанавливает карту по данным из базы
     def ReloadFromDb(self):
-        foreign_w, native_w, foreign_lang, native_lang, example=card_read(self.user_id, self.card_id)
+        foreign_w, native_w, foreign_lang, native_lang, example=word_read(self.user_id, self.word_id)
         self.native_lang=native_lang
         self.foreign_lang=foreign_lang
         self.ChangeNative(native_w)
@@ -62,21 +62,22 @@ class Card:
             
 
     #сохраняет карту в базе
-    #если self.card_id==-1 (новая карта) то insert
-    #если self.card_id!=-1 (старая карта) то update
-    def SaveCardToDb(self):
-        if self.card_id>=0:
-            card_update(self.user_id, self.card_id, self.foreign_w, self.native_w, self.example)
+    #если self.word_id==-1 (новая слово) то insert
+    #если self.word_id!=-1 (старое слово) то update
+
+    def SaveWordToDb(self):
+        if self.word_id>=0:
+            word_update(self.user_id, self.word_id, self.foreign_w, self.native_w, self.example)
         else:
-            self.card_id=card_add(self.user_id, self.foreign_w, self.native_w, self.foreign_lang, self.native_lang, self.example)
+            self.word_id=word_add(self.user_id, self.foreign_w, self.native_w, self.foreign_lang, self.native_lang, self.example)
 
     @staticmethod
-    async def ReadFromDb(user_id:int, card_id:int) -> 'Card':
-        foreign_w, native_w, foreign_lang, native_lang, example=card_read(user_id, card_id)
-        card=Card(user_id, foreign_lang, foreign_w, native_lang, native_w, example, card_id)
-        #await card.SetAudio()
-        #await card.SetAudioExample()
-        return card
+    async def ReadFromDb(user_id:int, word_id:int) -> 'Word':
+        foreign_w, native_w, foreign_lang, native_lang, example=word_read(user_id, word_id)
+        word=Word(user_id, foreign_lang, foreign_w, native_lang, native_w, example, word_id)
+        #await word.SetAudio()
+        #await word.SetAudioExample()
+        return word
 
     #Устанавливает Аудио файл для записи в наборе. Проеверяет есть ли на локальном хранилище этот файл, если нет, то пытается его получить из сети.
     #audio: data/{foreign_lang}/audio_words
@@ -121,11 +122,11 @@ class Card:
         return self.audio_example
 
 class TrainingCard:
-    def __init__(self, training_card_id, user_id, card_id, direction, next_training_t, last_training_t, u:User=None ):
+    def __init__(self, training_card_id, user_id, word_id, direction, next_training_t, last_training_t, u:User=None ):
         self.training_card_id=training_card_id
-        self.card=None
+        self.word:Word=None
         self.user_id=user_id
-        self.card_id=card_id
+        self.word_id=word_id
         self.direction=direction
         self.incorrect_answer=False        
         self.next_training_t=next_training_t 
@@ -135,16 +136,16 @@ class TrainingCard:
     #создает новую tcard без записи в базе. После окончания редактирования запишем в базу
     @staticmethod
     def CreateNewTCard(user_id, u:User, foreign_w, native_w="", example="") -> 'TrainingCard':
-        tc=TrainingCard(training_card_id=-1, user_id=user_id, card_id=-1, direction=-1, next_training_t=None, last_training_t=None, u=u)
-        tc.card=Card(user_id, u.foreign_lang, foreign_w, u.native_lang, native_w, example)
+        tc=TrainingCard(training_card_id=-1, user_id=user_id, word_id=-1, direction=-1, next_training_t=None, last_training_t=None, u=u)
+        tc.word=Word(user_id, u.foreign_lang, foreign_w, u.native_lang, native_w, example)
         return tc        
 
     def SaveToDb(self):
         training_card_update_by_id(self.training_card_id, self.user_id, self.next_training_t, self.last_training_t)
 
 
-    def GetCard(self) ->Card:
-        return self.card
+    def GetWord(self) ->Word:
+        return self.word
     
     def SetCorrect(self, correct:bool):
         if correct==False:
@@ -163,7 +164,7 @@ class TrainingCard:
             last_real_interval=self.u.first_interval
         
         #расчитывает -> current_forget_rate  irr фильтр, окно 100
-        self.u.CalcCurreentForgetRate(self.incorrect_answer)
+        self.u.CalcCurrentForgetRate(self.incorrect_answer)
 
         if self.incorrect_answer:
             #если не запомнили, то надо вязть меньший из двух интервалов - фактический или требуемый.
@@ -188,61 +189,61 @@ class TrainingCard:
 
     #вернет слово для изучения
     def GetA(self):
-        if self.card is None:
+        if self.word is None:
             return None        
         if self.direction==0:
-            return self.card.GetForeign()
+            return self.word.GetForeign()
         else:
-            return self.card.GetNative()
+            return self.word.GetNative()
 
     #вернет проверочное слово
     def GetB(self):
-        if self.card is None:
+        if self.word is None:
             return None        
         if self.direction==0:
-            return self.card.GetNative()
+            return self.word.GetNative()
         else:
-            return self.card.GetForeign()
+            return self.word.GetForeign()
         
     async def GetAudio(self):
-        if self.card is None:
+        if self.word is None:
             return None
         
-        return await self.card.GetAudio()
+        return await self.word.GetAudio()
     
     async def GetAudioExample(self):
-        if self.card is None:
+        if self.word is None:
             return None
         
-        return await self.card.GetAudioExample()
+        return await self.word.GetAudioExample()
 
     def GetForeign(self):
-        if self.card is None:
+        if self.word is None:
             return None
-        return self.card.GetForeign()
+        return self.word.GetForeign()
 
     def GetNative(self):
-        if self.card is None:
+        if self.word is None:
             return None
-        return self.card.GetNative()
+        return self.word.GetNative()
 
     def GetExample(self):
-        if self.card is None:
+        if self.word is None:
             return None
-        return self.card.GetExample()
+        return self.word.GetExample()
 
     def ChangeForeign(self, f):
-        if self.card is not None:
-            self.card.ChangeForeign(f)
+        if self.word is not None:
+            self.word.ChangeForeign(f)
            
 
     def ChangeNative(self, n):
-        if self.card is not None:
-            self.card.ChangeNative(n)
+        if self.word is not None:
+            self.word.ChangeNative(n)
 
     def ChangeExample(self,e):
-        if self.card is not None:
-            self.card.ChangeExample(e)
+        if self.word is not None:
+            self.word.ChangeExample(e)
 
     # def CreateNewTCard(user_id, cfg:UserConfig, foreign_w, native_w="", example="") -> 'TrainingCard':
     #     tc=TrainingCard(-1, user_id, -1, -1, None, None, cfg)
@@ -271,16 +272,16 @@ class TrainingCardSet:
             return None
 
     #если слово есть в наборе - вернем его, иначе None        
-    def GetWord(self, word_id) ->TrainingCard:
+    def GetWord(self, word_id) ->Word:
         for tc in self.tcard_set:
-            if tc.card.card_id==word_id:
-                return tc.card
+            if tc.word.word_id==word_id:
+                return tc.word
         return None
     
     #извлекает тр карту из списка и возвращет ее
-    def GetTCard(self, cid):
+    def ExtractTCard(self, word_id):
         for idx, tc in enumerate(self.tcard_set):
-            if tc.card.card_id==cid:
+            if tc.word.word_id==word_id:
                 del self.tcard_set[idx]
                 if idx < self.current_pos:
                     self.current_pos-=1
@@ -290,30 +291,30 @@ class TrainingCardSet:
         return None
 
     # 1) удаление пары tкарт из набора, если они там есть
-    # 2) удаление карты  и пары tкарт из базы
-    def DeleteCard(self, cid):
-        if cid!=-1:
-            if self.GetTCard(cid) is not None:
-                self.GetTCard(cid)
-            card_delete(self.user_id, cid)
+    # 2) удаление слова  и пары tкарт из базы
+    def DeleteWord(self, word_id):
+        if word_id!=-1:
+            if self.ExtractTCard(word_id) is not None:
+                self.ExtractTCard(word_id)
+            word_delete(self.user_id, word_id)
 
 
 	# найти в базе 2-tc
 	# проапдейтить их.
 	# если есть tcs - проапдейтить их
 
-    def ResetProgressCard(self, cid):
+    def ResetWordProgress(self, word_id):
         cnt=0
-        if cid!=-1:
+        if word_id!=-1:
             for tc in self.tcard_set:
-                if tc.card.card_id==cid:
+                if tc.word.word_id==word_id:
                     cnt+=1
-                    tc.card.last_training_t=None
-                    tc.card.next_training_t=None
+                    tc.word.last_training_t=None
+                    tc.word.next_training_t=None
                 if cnt>=2:
                     break
 
-            card_reset_progress(self.user_id, cid)
+            card_reset_progress(self.user_id, word_id)
 
         
     #сообщаем результат,
@@ -343,7 +344,7 @@ class TrainingCardSet:
             return None
 
     #сколько карт готово прямо сейчас.
-    def CardsReadyNow(self):
+    def TCardsReadyNow(self):
         cursor = open_db()
         tn = datetime.now()     # tn = текущее время
         cursor.execute(f"SELECT COUNT(*) FROM training_cards WHERE user_id = {self.user_id} AND next_training_t <= ?", (t_to_DB(tn),))        
@@ -389,7 +390,7 @@ class TrainingCardSet:
     #новые карты берет, токо если нет старых
     async def Create(self):
         #сколько всего тренировочных карт?
-        n =self.CardsReadyNow()
+        n =self.TCardsReadyNow()
         if n<1: 
             return
 
@@ -407,12 +408,12 @@ class TrainingCardSet:
         #считать объекты Card, и сдалать с обоих TrainingCard ссылку на один Card
         cards_dict = {}
         for tc in self.tcard_set:
-            if tc.card is None:
-                if tc.card_id in cards_dict:
-                    tc.card = cards_dict[tc.card_id]
+            if tc.word is None:
+                if tc.word_id in cards_dict:
+                    tc.word = cards_dict[tc.word_id]
                 else:
-                    tc.card = await Card.ReadFromDb(self.user_id, tc.card_id)
-                    cards_dict[tc.card_id] = tc.card
+                    tc.word = await Word.ReadFromDb(self.user_id, tc.word_id)
+                    cards_dict[tc.word_id] = tc.word
 
         #выясним есть ли в наборе IsTextExample, IsAudioExample,IsAudioWord
         # self.text_examples=False

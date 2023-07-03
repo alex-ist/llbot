@@ -119,16 +119,16 @@ def get_next(ttd:timedelta):
         w=f"через {delta_days} дней"
     return w
 
-def msg07_edit_card():
+def msg07_edit_word():
     return "<pre>📝 Редактирование слова:</pre>\n"
 
-def msg08_del_card():
+def msg08_del_word():
     return "<pre>🗑 УДАЛЕНИЕ слова:</pre>\n"
 
 def msg09_reset_prog():
     return "<pre>Сброс прогресса запоминания слова:</pre>\n"
 
-def msg10_add_new_card():
+def msg10_add_new_word():
     return "<pre>✏️ Ведите слово для изучения:</pre>"
 
 def msg11_t_o():
@@ -137,7 +137,7 @@ def msg11_t_o():
 def sticker11_t_o(): #'Hedgehog_Ned язык с телефоном'
     return 'CAACAgIAAxkBAAIXPmR7xS_plWDjwkD-bwPqRq6srRrsAAI3AAN4qOYPfx9FB5_gW6QvBA'
 
-def msg12_select_card(n):
+def msg12_select_word(n):
     return f"<pre>Список для изучения, {msg_word(n)}. \nВыберите слово для просмотра и редактирования:</pre>\n"
 
 def msg11_total_stat(n: int, forg_r):

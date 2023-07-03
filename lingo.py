@@ -15,7 +15,7 @@ import secrets
 from trans import translate_text
 from update_dns import update_dns
 
-from card import Card, TrainingCard, TrainingCardSet
+from card import Word, TrainingCard, TrainingCardSet
 from msg_txt import *
 
 from utils import *
@@ -39,11 +39,11 @@ class UI:
         TREN0 ="tren0_st"
         TREN1 ="tren1_st"
         TREN3 ="tren2_st"
-        EDIT_CARD ="edit_card_st"
+        EDIT_WORD ="edit_word_st"
         ADD_WORD ="add_word_st"
         ADD_WORDS_FROM_LIB="add_from_lib_st"
         SHOW_STAT ="show_stat_st"
-        SHOW_CARDS="show_cards_st"
+        SHOW_WORDS="show_words_st"
         HELP_CMD="help_cmd_st"
 
     def __init__(self, user_id:int, chat_id:int, context, new_user=False):
@@ -56,7 +56,7 @@ class UI:
         self.u=User(user_id, new_user)
 
         self.tcs=TrainingCardSet(user_id, self.u)
-        self.edited_card=None
+        self.edited_word=None
         self.state= UI.States.ST_UNDEF  
         self.state_prev= UI.States.ST_UNDEF
         self.sub_state=None
@@ -110,12 +110,12 @@ class UI:
                 self.state=UI.States.SHOW_STAT
                 data=None
             elif data=="cmd:edit":
-                if self.state==UI.States.SHOW_CARDS or self.state==UI.States.EDIT_CARD:
+                if self.state==UI.States.SHOW_WORDS or self.state==UI.States.EDIT_WORD:
                     return
                 if self.state != UI.States.TREN1:
                     self.timer_stop()
                     self.states_q.append(self.state)
-                    self.state=UI.States.SHOW_CARDS
+                    self.state=UI.States.SHOW_WORDS
                     data=None
             elif data=="cmd:help":
                 if self.state==UI.States.HELP_CMD:
@@ -138,16 +138,16 @@ class UI:
                 next_step=await self.tren1_state(data)
             elif self.state is UI.States.TREN3:
                 next_step=await self.tren3_state(data)
-            elif self.state is UI.States.EDIT_CARD:
-                next_step=await self.edit_card_state(data)
+            elif self.state is UI.States.EDIT_WORD:
+                next_step=await self.edit_word_state(data)
             elif self.state is UI.States.ADD_WORD:
                 next_step=await self.add_word_state(data)
             elif self.state is UI.States.ADD_WORDS_FROM_LIB:
                 next_step=await self.add_from_lib(data)
             elif self.state is UI.States.SHOW_STAT:
                 next_step=await self.show_stat(data)
-            elif self.state is UI.States.SHOW_CARDS:
-                next_step=await self.show_cards(data)
+            elif self.state is UI.States.SHOW_WORDS:
+                next_step=await self.show_words(data)
             elif self.state is UI.States.NEW_USER:
                 next_step=await self.new_user(data)
             elif self.state is UI.States.CFG_LANG:
@@ -228,12 +228,12 @@ class UI:
                         ],[
                         InlineKeyboardButton("Начать", callback_data="kbd:ok"),
                     ]]
-        elif self.state is UI.States.EDIT_CARD:
-            ex=self.edited_card.GetExample()
+        elif self.state is UI.States.EDIT_WORD:
+            ex=self.edited_word.GetExample()
             if ex is None or ex=="": ex="_"
             kbd = [[
-                    InlineKeyboardButton(f"{self.edited_card.GetForeign()}", callback_data="kbd:fw"),
-                    InlineKeyboardButton(f"{self.edited_card.GetNative()}", callback_data="kbd:nw"),
+                    InlineKeyboardButton(f"{self.edited_word.GetForeign()}", callback_data="kbd:fw"),
+                    InlineKeyboardButton(f"{self.edited_word.GetNative()}", callback_data="kbd:nw"),
                     ],[
                     InlineKeyboardButton(f"{ex}", callback_data="kbd:ex"),
                 ]]
@@ -358,10 +358,10 @@ class UI:
         elif data is not None:
             if data=='kbd:ok':
                 if self.selected_button is not None:
-                    cards_add_words_by_topic(self.user_id, self.selected_button[4:], flang=self.u.foreign_lang, nlang=self.u.native_lang)
+                    add_words_by_topic(self.user_id, self.selected_button[4:], flang=self.u.foreign_lang, nlang=self.u.native_lang)
                     self.state=UI.States.FIRST_RUN1
                     return True
-                elif cards_count(self.user_id)>0:
+                elif words_count(self.user_id)>0:
                     self.state=UI.States.FIRST_RUN1
                     return True
                 else:
@@ -375,7 +375,7 @@ class UI:
 
         if self.selected_button is not None:
             self.kbd=self.create_buttons(selected=self.selected_button, selected2='kbd:ok')
-        elif cards_count(self.user_id)>0:
+        elif words_count(self.user_id)>0:
             self.kbd=self.create_buttons(selected2='kbd:ok')
         else:
             self.kbd=self.create_buttons()
@@ -432,7 +432,7 @@ class UI:
         logger.info(f"{self.user_id}: state=AFTER_MAINT, prev_st={self.state_prev}")
         self.state = UI.States.TREN0
         self.state_prev = UI.States.TREN0
-        n=self.tcs.CardsReadyNow()
+        n=self.tcs.TCardsReadyNow()
         if n==0:
             if self.m1.id is not None:
                 self.m1.clear()
@@ -459,7 +459,7 @@ class UI:
             self.timer_run(timedelta(minutes=5),"tmr:t0")
         return False
 
-    #state tren0 => inviting to learn cards
+    #state tren0 => inviting to learn words
     async def tren0_state(self, data=None) -> None:
         if self.state_prev is not UI.States.TREN0:
             logger.info(f"{self.user_id}: state=TREN0, prev_st=" + self.state_prev)
@@ -478,7 +478,7 @@ class UI:
             else:
                 return False
 
-        n=self.tcs.CardsReadyNow()
+        n=self.tcs.TCardsReadyNow()
         if n!=self.sub_state:
             self.sub_state=n
             if n==0:
@@ -514,17 +514,17 @@ class UI:
                     self.state=UI.States.FIRST_RUN3
                     return True
             elif data=="cmd:edit":
-                self.edited_card=self.tcs.GetCurrentTCard().card
+                self.edited_word=self.tcs.GetCurrentTCard().word
                 self.states_q.append(self.state)
                 self.sub_state="edit_old"
-                self.state=UI.States.EDIT_CARD #goto edit_cards
+                self.state=UI.States.EDIT_WORD #goto edit_cards
                 return True
             elif data.startswith('msg:'):
                 await self.add_word(data)
                 return True
             else:
                 return False
-        elif self.state_prev is UI.States.EDIT_CARD or self.state_prev is UI.States.ADD_WORD or self.state_prev is UI.States.SHOW_CARDS or self.state_prev is UI.States.SHOW_STAT or self.state_prev is UI.States.FIRST_RUN3: 
+        elif self.state_prev is UI.States.EDIT_WORD or self.state_prev is UI.States.ADD_WORD or self.state_prev is UI.States.SHOW_WORDS or self.state_prev is UI.States.SHOW_STAT or self.state_prev is UI.States.FIRST_RUN3: 
             self.sub_state="q"
         elif self.state_prev is UI.States.FIRST_RUN2:
             self.sub_state="a"
@@ -591,7 +591,7 @@ class UI:
                 return True
             return False
 
-        n=self.tcs.CardsReadyNow()
+        n=self.tcs.TCardsReadyNow()
         if n==0:
             self.sub_state="no_to_learn"
         else:
@@ -603,30 +603,30 @@ class UI:
         self.state_prev = UI.States.TREN3
         return False
 
-    def save_edited_card(self):
-        if self.selected_button=="delete":      #1) удаление существующей ткарты из tcs и из базы
-            self.tcs.DeleteCard(self.edited_card.card_id)
+    def save_edited_word(self):
+        if self.selected_button=="delete":      #1) удаление слова (и tcard) из текщего набора и из базы
+            self.tcs.DeleteWord(self.edited_word.word_id)
         elif self.selected_button=="reset":     #4) сброс прогресса ->todo
-            self.tcs.ResetProgressCard(self.edited_card.card_id) 
+            self.tcs.ResetWordProgress(self.edited_word.word_id) 
         else:                                   #2) апдейт существующей ткарты, #3) insert новой карты:
-            self.edited_card.SaveCardToDb()
+            self.edited_word.SaveWordToDb()
         
-        self.edited_card=None
+        self.edited_word=None
 
-    async def edit_card_state(self, data:str=None) -> None:
-        if self.state_prev is not UI.States.EDIT_CARD:
-            logger.info(f"{self.user_id}: state=EDIT_CARD, prev_st=" + self.state_prev)
+    async def edit_word_state(self, data:str=None) -> None:
+        if self.state_prev is not UI.States.EDIT_WORD:
+            logger.info(f"{self.user_id}: state=EDIT_WORD, prev_st=" + self.state_prev)
 
         #decoding inside state events:
-        if self.state_prev is not UI.States.EDIT_CARD:
+        if self.state_prev is not UI.States.EDIT_WORD:
             await self.clear_screan()
-            if self.state_prev!=UI.States.TREN1 and self.state_prev!=UI.States.TREN0 and self.state_prev!=UI.States.ADD_WORD and self.state_prev!=UI.States.SHOW_CARDS:
-                logger.warning("edit_card: unknown state_prev: " + self.state_prev)
+            if self.state_prev!=UI.States.TREN1 and self.state_prev!=UI.States.TREN0 and self.state_prev!=UI.States.ADD_WORD and self.state_prev!=UI.States.SHOW_WORDS:
+                logger.warning("edit_word: unknown state_prev: " + self.state_prev)
                 return False
             self.selected_button=None
             self.kbd=self.create_buttons()
 
-        elif self.state_prev is UI.States.EDIT_CARD and data is not None:
+        elif self.state_prev is UI.States.EDIT_WORD and data is not None:
             if data=="kbd:fw":
                 self.selected_button="fw"
                 self.kbd=self.create_buttons("kbd:fw", "✏️")
@@ -638,10 +638,10 @@ class UI:
                     self.selected_button="ex"
                     self.cnt1=0
                 else: #create new examle
-                    #ex=oai_get_example(self.user_id, self.edited_card.GetForeign())
-                    ex=await oai_aget_example(self.user_id, self.edited_card.GetForeign(), self.cnt1)
+                    #ex=oai_get_example(self.user_id, self.edited_word.GetForeign())
+                    ex=await oai_aget_example(self.user_id, self.edited_word.GetForeign(), self.cnt1)
                     self.cnt1+=1
-                    self.edited_card.ChangeExample(ex)
+                    self.edited_word.ChangeExample(ex)
                 self.kbd=self.create_buttons("kbd:ex", "✏️")
             elif data=='kbd:reset'and self.sub_state=="edit_old":
                 self.selected_button="reset"
@@ -651,46 +651,46 @@ class UI:
                 self.kbd=self.create_buttons("kbd:delete")
             elif data=='kbd:cancel':                
                 if self.sub_state=="edit_old":
-                    self.edited_card.ReloadFromDb() #restore vals from the base.
+                    self.edited_word.ReloadFromDb() #restore vals from the base.
                     #fixme restore progress?
                 self.state=self.states_q.pop() #goto back
                 return True
             elif data=='kbd:save':
-                self.save_edited_card() #удаление, апдейт, insert
+                self.save_edited_word() #удаление, апдейт, insert
                 self.state=self.states_q.pop() #goto back
                 return True
             elif data.startswith('msg:'):
                 data = data.split('msg:', 1)[1]
                 if self.selected_button=="fw":
                     logger.info("fw: rx_msg: "+data)
-                    self.edited_card.ChangeForeign(data)
+                    self.edited_word.ChangeForeign(data)
                     self.kbd=self.create_buttons("kbd:fw", "✏️")
                 elif self.selected_button=="nw":
                     logger.info("nw: rx_msg: "+data)
-                    self.edited_card.ChangeNative(data)
+                    self.edited_word.ChangeNative(data)
                     self.kbd=self.create_buttons("kbd:nw", "✏️")
                 elif self.selected_button=="ex":
                     logger.info("ex: rx_msg: "+data)
-                    self.edited_card.ChangeExample(data)
+                    self.edited_word.ChangeExample(data)
                     self.kbd=self.create_buttons("kbd:ex", "✏️")
                 else:
                     return False
             else:
                 return False #ignore other signals (need to log?)
         
-        pg=card_get_progress(self.user_id, self.edited_card.card_id)
-        txt2=f"\n{pg} <u>{self.edited_card.GetForeign()}</u> = {self.edited_card.GetNative()}\n\n<i>{self.edited_card.GetExample()}</i>"
+        pg=word_get_progress(self.user_id, self.edited_word.word_id)
+        txt2=f"\n{pg} <u>{self.edited_word.GetForeign()}</u> = {self.edited_word.GetNative()}\n\n<i>{self.edited_word.GetExample()}</i>"
         if self.selected_button=="reset":
             txt=msg09_reset_prog()+txt2
         elif self.selected_button=="delete":
             txt2=f"<s>{txt2}</s>"
-            txt=msg08_del_card()+txt2
+            txt=msg08_del_word()+txt2
         else:
-            txt=msg07_edit_card()+txt2
+            txt=msg07_edit_word()+txt2
 
                             
         await self.m2.text(txt, kbd=self.kbd)
-        self.state_prev = UI.States.EDIT_CARD
+        self.state_prev = UI.States.EDIT_WORD
         return False
 
     async def add_word(self, data:str):
@@ -701,12 +701,12 @@ class UI:
         word_id=word_read_by_fw(self.user_id, f)
         if word_id is not None:
             #проверим есть ли в текщем наборе, если есть возбмем его. если нет вычитаем из базы
-            self.edited_card=self.tcs.GetWord(word_id)
-            if self.edited_card is None:
-                self.edited_card=await Card.ReadFromDb(self.user_id, word_id)
+            self.edited_word=self.tcs.GetWord(word_id)
+            if self.edited_word is None:
+                self.edited_word=await Word.ReadFromDb(self.user_id, word_id)
             self.states_q.append(self.state)
             self.sub_state="edit_old"
-            self.state = UI.States.EDIT_CARD
+            self.state = UI.States.EDIT_WORD
             return True
 
         if f==n: #вероятно не смогли первести, может абракадабра была вместо слова
@@ -714,10 +714,10 @@ class UI:
         else:
             ex=await oai_aget_example(self.user_id, f)
 
-        self.edited_card=Card(self.user_id, self.u.foreign_lang, f, self.u.native_lang, n, ex)
+        self.edited_word=Word(self.user_id, self.u.foreign_lang, f, self.u.native_lang, n, ex)
         self.states_q.append(self.state)
         self.sub_state="edit_new"
-        self.state = UI.States.EDIT_CARD
+        self.state = UI.States.EDIT_WORD
         return True
 
 
@@ -740,7 +740,7 @@ class UI:
             else:
                 return False
 
-        await self.m2.text(msg10_add_new_card(), kbd=self.kbd)
+        await self.m2.text(msg10_add_new_word(), kbd=self.kbd)
         self.state_prev = UI.States.ADD_WORD
         return False            
 
@@ -763,7 +763,7 @@ class UI:
                 return True
             elif data=='kbd:ok':
                 if self.selected_button is not None:
-                    n=cards_add_words_by_topic(self.user_id, self.selected_button, flang=self.u.foreign_lang, nlang=self.u.native_lang)
+                    n=add_words_by_topic(self.user_id, self.selected_button, flang=self.u.foreign_lang, nlang=self.u.native_lang)
                     logger.info(f"{self.user_id}: added {n} words from word_set[{self.selected_button}]")
                     self.state=self.states_q.pop() #goto back
                     await self.m2.clear()
@@ -813,21 +813,21 @@ class UI:
         self.state_prev = UI.States.SHOW_STAT
         return False
 
-    def create_show_cards_buttons(self):
+    def create_show_words_buttons(self):
         kbd = [[]]
-        n=len(self.show_cards_list)-1
+        n=len(self.show_words_list)-1
         n1=self.list_pos
         n2=min(n, n1+6)
 
         for i in range (n1, n2):
-            card_data=self.show_cards_list[i]
-            cid=card_data[0]
-            pg=card_get_progress(self.user_id, cid)+" "
-            f=format_button_text(pg+card_data[1], 17)
-            l=format_button_text(card_data[2], 17)                
+            word_data=self.show_words_list[i]
+            word_id=word_data[0]
+            pg=word_get_progress(self.user_id, word_id)+" "
+            f=format_button_text(pg+word_data[1], 17)
+            l=format_button_text(word_data[2], 17)                
             kbd.append([
-                InlineKeyboardButton(f"{f}", callback_data=f"kbd:{cid}"),
-                InlineKeyboardButton(f"{l}", callback_data=f"kbd:{cid}")])
+                InlineKeyboardButton(f"{f}", callback_data=f"kbd:{word_id}"),
+                InlineKeyboardButton(f"{l}", callback_data=f"kbd:{word_id}")])
         
         if self.list_pos>0:
             #left=InlineKeyboardButton("«", callback_data="kbd:prev")
@@ -845,18 +845,18 @@ class UI:
         return InlineKeyboardMarkup(kbd)
 
 
-    async def show_cards(self, data:str=None) -> None:
-        if self.state_prev is not UI.States.SHOW_CARDS:
-            logger.info(f"{self.user_id}: state=SHOW_CARDS, prev_st={self.state_prev}")
+    async def show_words(self, data:str=None) -> None:
+        if self.state_prev is not UI.States.SHOW_WORDS:
+            logger.info(f"{self.user_id}: state=SHOW_WORDS, prev_st={self.state_prev}")
 
-        if self.state_prev is not UI.States.SHOW_CARDS:
-            self.show_cards_list=cards_read(self.user_id)
+        if self.state_prev is not UI.States.SHOW_WORDS:
+            self.show_words_list=words_read(self.user_id)
             #сохранить  позицию при выходе из редактирования
-            if self.state_prev is not UI.States.EDIT_CARD or self.list_pos>=len (self.show_cards_list):
+            if self.state_prev is not UI.States.EDIT_WORD or self.list_pos>=len (self.show_words_list):
                 self.list_pos=0 
-        elif self.state_prev is UI.States.SHOW_CARDS and data is not None:
+        elif self.state_prev is UI.States.SHOW_WORDS and data is not None:
             if data=='kbd:cancel':
-                self.show_cards_list=None
+                self.show_words_list=None
                 self.list_pos=0
                 self.state=self.states_q.pop() #goto back, сбросить список
                 await self.clear_screan()
@@ -866,24 +866,24 @@ class UI:
                 if self.list_pos<0:
                     self.list_pos=0
             elif data=="kbd:next":
-                if self.list_pos+6<len(self.show_cards_list):
+                if self.list_pos+6<len(self.show_words_list):
                     self.list_pos+=6
             elif data=="kbd:x":
                 return False
             elif data.startswith('kbd:'): 
-                data = data.split('kbd:', 1)[1] #this is card_id
-                self.edited_card=await Card.ReadFromDb(self.user_id, int(data))
+                data = data.split('kbd:', 1)[1] #this is word_id
+                self.edited_word=await Word.ReadFromDb(self.user_id, int(data))
                 self.states_q.append(self.state)
                 self.sub_state="edit_old"
-                self.state = UI.States.EDIT_CARD
+                self.state = UI.States.EDIT_WORD
                 return True
             else:
                 return False
 
 
         await self.m1.clear()
-        await self.m2.text(msg12_select_card(len(self.show_cards_list)), kbd=self.create_show_cards_buttons())
-        self.state_prev = UI.States.SHOW_CARDS
+        await self.m2.text(msg12_select_word(len(self.show_words_list)), kbd=self.create_show_words_buttons())
+        self.state_prev = UI.States.SHOW_WORDS
         return False
 
     @staticmethod
@@ -908,7 +908,7 @@ class UI:
         # global ui_set
         # ui=get_ui(update.effective_user.id, update.effective_chat.id, context)
         # ui.del_words()
-        cards_remove(update.effective_user.id)
+        words_delete(update.effective_user.id)
 
     @staticmethod
     async def stat_cmd_(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -1062,9 +1062,7 @@ async def post_stop(a):
     for ui in ui_set.values():
         await ui.stop_chat_signal()
 
-
 def main() -> None:
-
     use_web_hook=update_dns() #dns updated, there is free dns key -> work on server
     try:
         with open("keys/tg-token.txt", 'r') as f:

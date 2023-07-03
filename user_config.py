@@ -56,7 +56,7 @@ class User:
                               foreign_lang="en", min_t_interval=timedelta(minutes=60).total_seconds(), min_cards_for_t=12, max_cards_for_t=24, o_param=2.0)
             return True
     
-    def CalcCurreentForgetRate(self, incorrect): #если слово забыто incorrect=1, если вспомнено incorrect=0
+    def CalcCurrentForgetRate(self, incorrect): #если слово забыто incorrect=1, если вспомнено incorrect=0
         self.shown_words_count+=1
         before=self.current_forget_rate
         self.current_forget_rate += (incorrect - self.current_forget_rate) / min(self.shown_words_count, 100)
