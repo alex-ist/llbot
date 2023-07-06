@@ -635,7 +635,8 @@ class UI:
         #decoding inside state events:
         if self.state_prev is not UI.States.EDIT_WORD:
             await self.clear_screan()
-            if self.state_prev!=UI.States.TREN1 and self.state_prev!=UI.States.TREN0 and self.state_prev!=UI.States.ADD_WORD and self.state_prev!=UI.States.SHOW_WORDS:
+            if self.state_prev!=UI.States.TREN1 and self.state_prev!=UI.States.TREN0 and self.state_prev!=UI.States.ADD_WORD \
+                    and self.state_prev!=UI.States.SHOW_WORDS and self.state_prev!=UI.States.HELP_CMD:
                 logger.warning("edit_word: unknown state_prev: " + self.state_prev)
                 return False
             self.selected_button=None
