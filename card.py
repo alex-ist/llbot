@@ -6,9 +6,7 @@ from botlog import logger
 from g_ttos import google_speach
 from datetime import *
 from user_config import *
-
-DB='data/ll.db'
-
+from bot_db import *
 
 def get_hash(input_string):
     return hashlib.md5(input_string.encode()).hexdigest()[:10]
