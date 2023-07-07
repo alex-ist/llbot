@@ -230,8 +230,8 @@ class UI:
             kbd = [[
                         InlineKeyboardButton("Школа", callback_data="kbd:school"),
                         InlineKeyboardButton("Соседи", callback_data="kbd:neighbours"),
-                        # ],[
-                        # InlineKeyboardButton("медецина", callback_data="kbd:med"),
+                        ],[
+                        InlineKeyboardButton("у врача", callback_data="kbd:health"),
                         # InlineKeyboardButton("дети", callback_data="kbd:kids"),
                         ],[
                         InlineKeyboardButton("Начать", callback_data="kbd:ok"),
