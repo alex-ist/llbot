@@ -56,7 +56,7 @@ TODO:
 из любых состояний выходить по длинному таймеру в трен 0
 если нажать очень старую кнопку 2023-07-16 14:45:06,861 - telegram.ext.Application - ERROR - No error handlers are registered, logging exception.
             telegram.error.BadRequest: Message can't be deleted for everyone
-
++
 
 в начальном наборе нужно меньше слов (30)
   File "Lib\site-packages\telegram\request\_baserequest.py", line 328, in _request_wrapper raise BadRequest(message) telegram.error.BadRequest: Query is too old and response timeout expired or query id is invalid
