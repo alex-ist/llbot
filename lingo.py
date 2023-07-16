@@ -445,7 +445,7 @@ class UI:
         n=self.tcs.TCardsReadyNow()
         if n==0:
             if self.m1.id is not None:
-                self.m1.clear()
+                await self.m1.clear()
             if self.m2.id is not None:
                 self.m2.txt=msg05_tren0()
                 self.m2.kbd=None
@@ -595,7 +595,7 @@ class UI:
     async def tren3_state(self, data=None) -> None:
         if self.state_prev is not UI.States.TREN3:
             logger.info(f"{self.user_id}: state=TREN3, prev_st={self.state_prev}")
-            self.m0.clear()
+            await self.m0.clear()
             
         if self.state_prev is UI.States.TREN3 and data is not None:
             if data=='kbd:enough' or data=='tmr:t3':

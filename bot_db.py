@@ -54,14 +54,14 @@ def load_maintenance_data():
 
 def words_read(user_id:int):
     c=open_db()
-    c.execute("SELECT card_id, foreign_w, native_w FROM cards WHERE user_id = ? ORDER BY foreign_w ASC", (user_id,))
+    c.execute("SELECT card_id, foreign_w, native_w FROM words WHERE user_id = ? ORDER BY foreign_w ASC", (user_id,))
     rows = c.fetchall()
     close_db()
     return rows
 
 def word_read(user_id:int, card_id:int):
     c=open_db()
-    c.execute("SELECT foreign_w, native_w, foreign_lang, native_lang, example FROM cards WHERE user_id = ? AND card_id = ?",
+    c.execute("SELECT foreign_w, native_w, foreign_lang, native_lang, example FROM words WHERE user_id = ? AND card_id = ?",
                     (user_id, card_id))
     row = c.fetchone()
     close_db()
@@ -69,7 +69,7 @@ def word_read(user_id:int, card_id:int):
 
 def word_read_by_fw(user_id:int, fw:str):
     c=open_db()
-    c.execute("SELECT card_id FROM cards WHERE user_id = ? AND foreign_w = ?", (user_id, fw))
+    c.execute("SELECT card_id FROM words WHERE user_id = ? AND foreign_w = ?", (user_id, fw))
     row = c.fetchone()
     close_db()
     if row is not None:
@@ -79,25 +79,25 @@ def word_read_by_fw(user_id:int, fw:str):
 
 def word_delete(user_id:int, word_id:int):
     c=open_db()
-    c.execute(f"DELETE FROM cards WHERE card_id = {word_id} and user_id = {user_id}")
+    c.execute(f"DELETE FROM words WHERE card_id = {word_id} and user_id = {user_id}")
     close_db(commit=True)
 
 def words_delete(user_id:int):
     c=open_db()
-    c.execute("DELETE FROM cards WHERE user_id = ?", (user_id,))
+    c.execute("DELETE FROM words WHERE user_id = ?", (user_id,))
     close_db(True)
 
 def word_update(user_id:int, card_id:int, foreign_w, native_w, example):
     c=open_db()
-    c.execute("UPDATE cards SET foreign_w = ?, native_w = ?, example = ? WHERE card_id = ? AND user_id = ?", 
+    c.execute("UPDATE words SET foreign_w = ?, native_w = ?, example = ? WHERE card_id = ? AND user_id = ?", 
              (foreign_w, native_w, example, card_id, user_id))
     close_db(commit=True)
 
 def word_add(user_id:int, foreign_w, native_w, foreign_lang, native_lang, example=None):
     c=open_db()
     #fixme: должно ли быть foreign_w уникальным для каждого юзера? если да:
-    #if not cursor.execute("SELECT * FROM cards WHERE user_id = ? AND foreign_w = ?", (user_id, foreign_w,)).fetchone():
-    c.execute("INSERT INTO cards (user_id, foreign_w, native_w, foreign_lang, native_lang, example) VALUES (?, ?, ?, ?, ?, ?)",
+    #if not cursor.execute("SELECT * FROM words WHERE user_id = ? AND foreign_w = ?", (user_id, foreign_w,)).fetchone():
+    c.execute("INSERT INTO words (user_id, foreign_w, native_w, foreign_lang, native_lang, example) VALUES (?, ?, ?, ?, ?, ?)",
              (user_id, foreign_w, native_w, foreign_lang, native_lang, example))
     card_id=c.lastrowid
     close_db(commit=True)
@@ -107,11 +107,11 @@ def add_words_by_topic(user_id:int, topic:str, flang= "en", nlang="ru"):
     c=open_db()
     #fixme подумать с переводом на другие языки
     sql = f"""
-INSERT INTO cards (user_id, foreign_w, native_w, foreign_lang, native_lang, example)
+INSERT INTO words (user_id, foreign_w, native_w, foreign_lang, native_lang, example)
 SELECT ?, f_word, tr1, '{flang}', '{nlang}', f_example
 FROM word_set 
 WHERE topic = ? and f_lang= '{flang}' AND NOT EXISTS 
-(SELECT 1 FROM cards WHERE foreign_w = word_set.f_word AND user_id = ?)
+(SELECT 1 FROM words WHERE foreign_w = word_set.f_word AND user_id = ?)
 """
     c.execute(sql, (user_id, topic, user_id))
     n=c.rowcount
@@ -127,7 +127,7 @@ def tcards_count(user_id:int):
 
 def words_count(user_id:int):
     c = open_db()
-    c.execute("SELECT COUNT(*) FROM cards WHERE user_id = ?", (user_id,))
+    c.execute("SELECT COUNT(*) FROM words WHERE user_id = ?", (user_id,))
     n = c.fetchone()[0]
     close_db()
     return n
@@ -171,7 +171,7 @@ def word_get_progress(user_id:int, card_id:int):
 
 def cards_stat(user_id:int, len, offset=0):
     c=open_db()
-    c.execute(f"SELECT cards.foreign_w, cards.native_w, training_cards.next_training_t, training_cards.last_training_t, training_cards.direction FROM training_cards INNER JOIN cards ON training_cards.card_id = cards.card_id WHERE training_cards.user_id = {user_id} ORDER BY training_cards.next_training_t ASC LIMIT {len} OFFSET {offset}")
+    c.execute(f"SELECT words.foreign_w, words.native_w, training_cards.next_training_t, training_cards.last_training_t, training_cards.direction FROM training_cards INNER JOIN words ON training_cards.card_id = words.card_id WHERE training_cards.user_id = {user_id} ORDER BY training_cards.next_training_t ASC LIMIT {len} OFFSET {offset}")
     rows = c.fetchall()
     close_db()
     r=""

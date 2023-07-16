@@ -54,6 +54,8 @@ TODO:
 проверка на опечатки? 
 проверить выкл таймера
 из любых состояний выходить по длинному таймеру в трен 0
+если нажать очень старую кнопку 2023-07-16 14:45:06,861 - telegram.ext.Application - ERROR - No error handlers are registered, logging exception.
+            telegram.error.BadRequest: Message can't be deleted for everyone
 
 
 в начальном наборе нужно меньше слов (30)
