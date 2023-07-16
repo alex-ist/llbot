@@ -54,22 +54,22 @@ def load_maintenance_data():
 
 def words_read(user_id:int):
     c=open_db()
-    c.execute("SELECT card_id, foreign_w, native_w FROM words WHERE user_id = ? ORDER BY foreign_w ASC", (user_id,))
+    c.execute("SELECT word_id, foreign_w, native_w FROM words WHERE user_id = ? ORDER BY foreign_w ASC", (user_id,))
     rows = c.fetchall()
     close_db()
     return rows
 
-def word_read(user_id:int, card_id:int):
+def word_read(user_id:int, word_id:int):
     c=open_db()
-    c.execute("SELECT foreign_w, native_w, foreign_lang, native_lang, example FROM words WHERE user_id = ? AND card_id = ?",
-                    (user_id, card_id))
+    c.execute("SELECT foreign_w, native_w, foreign_lang, native_lang, example FROM words WHERE user_id = ? AND word_id = ?",
+                    (user_id, word_id))
     row = c.fetchone()
     close_db()
     return row[0],row[1],row[2],row[3],row[4]
 
 def word_read_by_fw(user_id:int, fw:str):
     c=open_db()
-    c.execute("SELECT card_id FROM words WHERE user_id = ? AND foreign_w = ?", (user_id, fw))
+    c.execute("SELECT word_id FROM words WHERE user_id = ? AND foreign_w = ?", (user_id, fw))
     row = c.fetchone()
     close_db()
     if row is not None:
@@ -79,7 +79,7 @@ def word_read_by_fw(user_id:int, fw:str):
 
 def word_delete(user_id:int, word_id:int):
     c=open_db()
-    c.execute(f"DELETE FROM words WHERE card_id = {word_id} and user_id = {user_id}")
+    c.execute(f"DELETE FROM words WHERE word_id = {word_id} and user_id = {user_id}")
     close_db(commit=True)
 
 def words_delete(user_id:int):
@@ -87,10 +87,10 @@ def words_delete(user_id:int):
     c.execute("DELETE FROM words WHERE user_id = ?", (user_id,))
     close_db(True)
 
-def word_update(user_id:int, card_id:int, foreign_w, native_w, example):
+def word_update(user_id:int, word_id:int, foreign_w, native_w, example):
     c=open_db()
-    c.execute("UPDATE words SET foreign_w = ?, native_w = ?, example = ? WHERE card_id = ? AND user_id = ?", 
-             (foreign_w, native_w, example, card_id, user_id))
+    c.execute("UPDATE words SET foreign_w = ?, native_w = ?, example = ? WHERE word_id = ? AND user_id = ?", 
+             (foreign_w, native_w, example, word_id, user_id))
     close_db(commit=True)
 
 def word_add(user_id:int, foreign_w, native_w, foreign_lang, native_lang, example=None):
@@ -99,9 +99,9 @@ def word_add(user_id:int, foreign_w, native_w, foreign_lang, native_lang, exampl
     #if not cursor.execute("SELECT * FROM words WHERE user_id = ? AND foreign_w = ?", (user_id, foreign_w,)).fetchone():
     c.execute("INSERT INTO words (user_id, foreign_w, native_w, foreign_lang, native_lang, example) VALUES (?, ?, ?, ?, ?, ?)",
              (user_id, foreign_w, native_w, foreign_lang, native_lang, example))
-    card_id=c.lastrowid
+    word_id=c.lastrowid
     close_db(commit=True)
-    return card_id
+    return word_id
 
 def add_words_by_topic(user_id:int, topic:str, flang= "en", nlang="ru"):
     c=open_db()
@@ -149,16 +149,16 @@ def get_progr (t:int ):
 
 def card_reset_progress(user_id:int, cid:int):
     c=open_db()
-    c.execute(f"UPDATE training_cards SET next_training_t=-1, last_training_t=-1 WHERE card_id = {cid} and user_id = {user_id}")
+    c.execute(f"UPDATE training_cards SET next_training_t=-1, last_training_t=-1 WHERE word_id = {cid} and user_id = {user_id}")
     close_db(commit=True)
 
 
-def word_get_progress(user_id:int, card_id:int):
-    if card_id<0:
+def word_get_progress(user_id:int, word_id:int):
+    if word_id<0:
         return get_progr(0)
 
     c=open_db()
-    c.execute(f"SELECT next_training_t, last_training_t FROM training_cards WHERE user_id = {user_id} AND card_id = {card_id}")
+    c.execute(f"SELECT next_training_t, last_training_t FROM training_cards WHERE user_id = {user_id} AND word_id = {word_id}")
     r = c.fetchall()
     close_db()
     total=0
@@ -171,7 +171,7 @@ def word_get_progress(user_id:int, card_id:int):
 
 def cards_stat(user_id:int, len, offset=0):
     c=open_db()
-    c.execute(f"SELECT words.foreign_w, words.native_w, training_cards.next_training_t, training_cards.last_training_t, training_cards.direction FROM training_cards INNER JOIN words ON training_cards.card_id = words.card_id WHERE training_cards.user_id = {user_id} ORDER BY training_cards.next_training_t ASC LIMIT {len} OFFSET {offset}")
+    c.execute(f"SELECT words.foreign_w, words.native_w, training_cards.next_training_t, training_cards.last_training_t, training_cards.direction FROM training_cards INNER JOIN words ON training_cards.word_id = words.word_id WHERE training_cards.user_id = {user_id} ORDER BY training_cards.next_training_t ASC LIMIT {len} OFFSET {offset}")
     rows = c.fetchall()
     close_db()
     r=""
@@ -261,7 +261,7 @@ def get_tcards(user_id, n):
         #сразу отсортирует по направлению
         t_now=t_to_DB(datetime.now())
         cursor.execute(f"""
-            SELECT training_card_id, card_id, direction, next_training_t, last_training_t 
+            SELECT training_card_id, word_id, direction, next_training_t, last_training_t 
             FROM training_cards
             WHERE user_id = {user_id} AND next_training_t > 0 AND next_training_t < {t_now}
             ORDER BY next_training_t LIMIT {n}
@@ -270,7 +270,7 @@ def get_tcards(user_id, n):
         n1=len(result1)
         if n1 < n:
             cursor.execute(f"""
-                SELECT training_card_id, card_id, direction, next_training_t, last_training_t 
+                SELECT training_card_id, word_id, direction, next_training_t, last_training_t 
                 FROM training_cards 
                 WHERE user_id = {user_id} AND next_training_t = -1 
                 ORDER BY ABS(RANDOM()) % 16384
