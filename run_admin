@@ -1,0 +1,1 @@
+gunicorn -w 2 admin.admin:app --error-logfile log/adm_error.log --access-logfile log/adm_access.log &

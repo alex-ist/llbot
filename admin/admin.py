@@ -21,7 +21,10 @@ class User(db.Model):
     shown_words_count = db.Column('shown_words_count', db.Integer)
     current_forget_rate = db.Column('current_forget_rate', db.Float)
     def get_forget_rate(self):
-        return format(self.current_forget_rate*100, ".1f")
+        if self.current_forget_rate is None:
+            return -1
+        else:
+            return format(self.current_forget_rate*100, ".1f")
 
     def get_first_access(self):
         return datetime.fromtimestamp(self.first_access).strftime('%Y-%m-%d %H:%M')
