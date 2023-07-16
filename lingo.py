@@ -191,7 +191,7 @@ class UI:
     async def timer_cb_(context: ContextTypes.DEFAULT_TYPE):
         job = context.job
         ui, user_data =job.data
-        logger.info("%d: timer run! data=%s", ui.user_id, user_data)
+        #logger.info("%d: timer run! data=%s", ui.user_id, user_data)
         await ui.process_ev(user_data)
 
     def create_buttons(self, selected=None, sel_symb=None, selected2=None, sel_symb2=None):
