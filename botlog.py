@@ -19,6 +19,7 @@ def log_init():
 
     logging.getLogger('httpx').setLevel(logging.WARNING)
     logging.getLogger('apscheduler').setLevel(logging.WARNING)
+    logging.getLogger('openai').setLevel(logging.ERROR)
     return logging.getLogger("LL")
 
 
