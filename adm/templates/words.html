@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Cards</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
+</head>
+<body>
+    <div class="container mt-5">
+        <h1 class="mb-4">User: {{ user_id }}</h1>  <!-- mb-4 это класс для добавления отступа снизу -->
+        <a href="{{ url_for('show_user_log', user_id=user_id) }}">Log</a>
+
+        <table class="table table-striped">
+            <thead class="thead-dark">
+                <tr>
+                    <th>word_id</th>
+                    <th>foreign_w</th>
+                    <th>native_w</th>
+                    <th>example</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for w in words %}
+                <tr>
+                    <td>{{ w.word_id }}</td>
+                    <td>{{ w.foreign_w }}</td>
+                    <td>{{ w.native_w }}</td>
+                    <td>{{ w.example }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"></script>
+</body>
+</html>
