@@ -3,7 +3,7 @@ from datetime import datetime
 from flask import Flask, jsonify, request, render_template
 from flask_sqlalchemy import SQLAlchemy
 import os
-from adm_utils import get_last_n_lines
+from adm.adm_utils import get_last_n_lines
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(os.getcwd(), "data", "ll.db")
