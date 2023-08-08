@@ -4,43 +4,68 @@
     <title>Users</title>
     <!-- Подключение Bootstrap -->
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
+    <style>
+        th.sortable {
+            cursor: pointer;
+        }
+    </style>
 </head>
 <body>
     <div class="container mt-5">  <!-- контейнер для центрирования содержимого и добавления отступов -->
         <table class="table table-striped">  <!-- классы Bootstrap для стилизации таблицы -->
             <thead class="thead-dark">  <!-- делает заголовок таблицы темным -->
                 <tr>
-                    <th>user_id</th>
-                    <th>username</th>
-                    <th>name</th>
-                    <th>first_name</th>
-                    <th>lang</th>
-                    <th>show count</th>
-                    <th>forget_rate</th>
-                    <th>first_access</th>
-                    <th>last_access</th>
+                    <th class="sortable" data-column="user_id">user_id <span class="sort-indicator"></span></th>
+                    <th class="sortable" data-column="username">username <span class="sort-indicator"></span></th>
+                    <th class="sortable" data-column="name">name <span class="sort-indicator"></span></th>
+                    <th class="sortable" data-column="first_name">first_name <span class="sort-indicator"></span></th>
+                    <th class="sortable" data-column="lang_code">lang <span class="sort-indicator"></span></th>
+                    <th class="sortable" data-column="shown_words_count">show count <span class="sort-indicator"></span></th>
+                    <th class="sortable" data-column="current_forget_rate">forget_rate <span class="sort-indicator"></span></th>
+                    <th class="sortable" data-column="first_access">first_access <span class="sort-indicator"></span></th>
+                    <th class="sortable" data-column="last_access">last_access <span class="sort-indicator"></span></th>
                 </tr>
             </thead>
-            <tbody>
-                {% for user in users %}
-                <tr>
-                    <td><a href="{{ url_for('show_user_words', user_id=user.user_id) }}">{{ user.user_id }}</a></td>
-                    <td>{{ user.username }}</td> 
-                    <td>{{ user.name }}</td> 
-                    <td>{{ user.first_name }}</td> 
-                    <td>{{ user.lang_code }}</td> 
-                    <td>{{ user.shown_words_count }}</td> 
-                    <td>{{ user.get_forget_rate() }}</td> 
-                    <td>{{ user.get_first_access() }}</td> 
-                    <td>{{ user.get_last_access() }}</td> 
-                </tr>
-                {% endfor %}
+            <tbody id="users-table">
+                {% include 'users_table.html' %}
             </tbody>
         </table>
     </div>
-    <!-- Подключение JavaScript библиотек Bootstrap (требуются для некоторых компонентов, например модальных окон) -->
-    <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js"></script>
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"></script>
+    <script>
+        $(document).ready(function(){
+            $('th.sortable').click(function(){
+                let column = $(this).data('column');
+                let order = $(this).data('order') || 'asc';
+        
+                $.ajax({
+                    url: '/',
+                    data: { 'sort_by': column, 'order': order },
+                    type: 'GET',
+                    success: function(response){
+                        $('#users-table').html(response);
+                    }
+                });
+        
+                // Переключаем порядок сортировки
+                if(order == 'asc'){
+                    $(this).data('order', 'desc');
+                } else {
+                    $(this).data('order', 'asc');
+                }
+
+                // Обновите индикаторы сортировки
+                $("th.sortable .sort-indicator").text(""); // сначала очистите все индикаторы
+                if(order == "asc") {
+                    $(this).find(".sort-indicator").text("▲");
+                } else {
+                    $(this).find(".sort-indicator").text("▼");
+                }                
+
+            });
+        });
+    </script>     
 </body>
 </html>

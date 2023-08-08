@@ -1,10 +1,9 @@
 
 from datetime import datetime
-from flask import Flask, render_template
+from flask import Flask, jsonify, request, render_template
 from flask_sqlalchemy import SQLAlchemy
 import os
-from adm.adm_utils import get_last_n_lines
-from utils import *
+from adm_utils import get_last_n_lines
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(os.getcwd(), "data", "ll.db")
@@ -41,10 +40,26 @@ class Word(db.Model):
     native_w = db.Column('native_w', db.String)
     example = db.Column('example', db.String)
 
+# @app.route('/')
+# def show_users():
+#     users = User.query.order_by(User.last_access.desc()).all()        
+#     return render_template('users.html', users=users)
+
 @app.route('/')
 def show_users():
-    users = User.query.all()
-    return render_template('users.html', users=users)
+    sort_by = request.args.get('sort_by', 'last_access')  # по умолчанию сортируем по last_access
+    order = request.args.get('order', 'asc')  
+
+    if order == 'desc':
+        users = User.query.order_by(db.desc(sort_by)).all()
+    else:
+        users = User.query.order_by(db.asc(sort_by)).all()
+
+    if 'sort_by' in request.args:  # Если приходит запрос с параметрами сортировки, возвращаем только HTML таблицы
+        return render_template('users_table.html', users=users)
+    else:  # Иначе возвращаем полную страницу
+        return render_template('users.html', users=users)
+
 
 @app.route('/words/<int:user_id>')
 def show_user_words(user_id):
