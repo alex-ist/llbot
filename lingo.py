@@ -45,7 +45,7 @@ class UI:
         SHOW_STAT ="show_stat_st"
         SHOW_WORDS="show_words_st"
         HELP_CMD="help_cmd_st"
-
+    
     def __init__(self, user_id:int, chat_id:int, context, new_user=False):
         self.user_id=user_id
         self.chat_id=chat_id
@@ -71,7 +71,7 @@ class UI:
         self.states_q=[]
         self.list_pos=0
         self.cnt1=0
-    
+
     def __del__(self):
         logger.warning(f"{self.user_id}: deleted UI object")
 
@@ -87,12 +87,7 @@ class UI:
             if data=="stop:":
                 await self.stop_chat()
                 return
-
-            if data == "cmd:restart_after_maintenance":
-                self.timer_stop()
-                await self.tren0_run_after_maintenance()
-                break
-            elif data=="cmd:start":
+            if data=="cmd:start":
                 if self.tutorial_mode:
                     self.state = UI.States.NEW_USER
                 else:
@@ -134,39 +129,10 @@ class UI:
                 self.state=UI.States.HELP_CMD
                 data=None
 
-            if self.state_prev is UI.States.ST_UNDEF:
-                logger.error(f"{self.user_id}: state_prev is UI.States.ST_UNDEF" ) #тут была проверка, зачем она?
+            if self.state_prev == UI.States.ST_UNDEF:
+                logger.error(f"{self.user_id}: state_prev == {self.state_prev}" ) #тут была проверка, зачем она?
 
-            if self.state is UI.States.TREN0:
-                next_step=await self.tren0_state(data)
-            elif self.state is UI.States.TREN1:
-                next_step=await self.tren1_state(data)
-            elif self.state is UI.States.TREN3:
-                next_step=await self.tren3_state(data)
-            elif self.state is UI.States.EDIT_WORD:
-                next_step=await self.edit_word_state(data)
-            elif self.state is UI.States.ADD_WORD:
-                next_step=await self.add_word_state(data)
-            elif self.state is UI.States.ADD_WORDS_FROM_LIB:
-                next_step=await self.add_from_lib(data)
-            elif self.state is UI.States.SHOW_STAT:
-                next_step=await self.show_stat(data)
-            elif self.state is UI.States.SHOW_WORDS:
-                next_step=await self.show_words(data)
-            elif self.state is UI.States.NEW_USER:
-                next_step=await self.new_user(data)
-            elif self.state is UI.States.CFG_LANG:
-                next_step=await self.cfg_lang(data)
-            elif self.state is UI.States.FIRST_SET:
-                next_step=await self.first_set(data)
-            elif self.state is UI.States.FIRST_RUN1:
-                next_step=await self.first_run1(data)
-            elif self.state is UI.States.FIRST_RUN2:
-                next_step=await self.first_run2(data)
-            elif self.state is UI.States.FIRST_RUN3:
-                next_step=await self.first_run3(data)
-            elif self.state is UI.States.HELP_CMD:
-                next_step=await self.help_cmd(data)
+            next_step = await self.process_state(data)
 
             if next_step!=True:
                 break
@@ -191,10 +157,16 @@ class UI:
         logger.info("%d: st=%s timer run! data=%s", ui.user_id, ui.state, user_data)
         await ui.process_ev(user_data)
 
-    def create_buttons(self, selected=None, sel_symb=None, selected2=None, sel_symb2=None):
-        if self.state is UI.States.TREN0:
-            kbd = [[InlineKeyboardButton("   Начать  ", callback_data="kbd:satrt")]]
-        elif self.state is UI.States.TREN1:
+    def create_buttons(self, selected=None, sel_symb=None, selected2=None, sel_symb2=None, state=None):
+        if state is None:
+            state=self.state
+
+        if state == UI.States.TREN0:
+            if self.sub_state>0:
+                kbd = [[InlineKeyboardButton("   Начать  ", callback_data="kbd:satrt")]]
+            else:
+                return None
+        elif state == UI.States.TREN1:
             if self.sub_state=="q":
                 kbd = [[InlineKeyboardButton("    ❓❓   ", callback_data="kbd:?")]]
             else:
@@ -202,7 +174,7 @@ class UI:
                     InlineKeyboardButton("❌ Забыл", callback_data="kbd:-"),
                     InlineKeyboardButton("✅ Знаю", callback_data="kbd:+"),
                     ]]
-        elif self.state is UI.States.TREN3:
+        elif state == UI.States.TREN3:
             if self.sub_state=="no_to_learn":
                 kbd = [[InlineKeyboardButton("Ok", callback_data="kbd:enough"),]]
             else:
@@ -211,9 +183,9 @@ class UI:
                         InlineKeyboardButton("Продолжить", callback_data="kbd:again"),
                         ]]
             
-        elif self.state is UI.States.NEW_USER:
+        elif state == UI.States.NEW_USER:
             kbd = [[InlineKeyboardButton("Начать🎈", callback_data="kbd:satrt")]]
-        elif self.state is UI.States.CFG_LANG:
+        elif state == UI.States.CFG_LANG:
             kbd = [[
                         InlineKeyboardButton("English", callback_data="kbd:en"),
                         #InlineKeyboardButton("Српски", callback_data="kbd:sr"),
@@ -223,7 +195,7 @@ class UI:
                     # ],[
                         InlineKeyboardButton("Начать", callback_data="kbd:ok"),
                         ]]
-        elif self.state is UI.States.FIRST_SET: 
+        elif state == UI.States.FIRST_SET: 
             kbd = [[
                         InlineKeyboardButton("Школа", callback_data="kbd:school"),
                         InlineKeyboardButton("Соседи", callback_data="kbd:neighbours"),
@@ -233,7 +205,7 @@ class UI:
                         ],[
                         InlineKeyboardButton("Начать", callback_data="kbd:ok"),
                     ]]
-        elif self.state is UI.States.EDIT_WORD:
+        elif state == UI.States.EDIT_WORD:
             ex=self.edited_word.GetExample()
             if ex is None or ex=="": ex="_"
             kbd = [[
@@ -250,11 +222,11 @@ class UI:
                     InlineKeyboardButton("Отменить", callback_data="kbd:cancel"),
                     InlineKeyboardButton("Сохранить", callback_data="kbd:save")])
 
-        elif self.state is UI.States.ADD_WORD:
+        elif state == UI.States.ADD_WORD:
             kbd = [[
                         InlineKeyboardButton("Назад ↩️", callback_data="kbd:back"),
                     ]]
-        elif self.state is UI.States.ADD_WORDS_FROM_LIB:
+        elif state == UI.States.ADD_WORDS_FROM_LIB:
             kbd = [[
                         InlineKeyboardButton("Школа", callback_data="kbd:school"),
                         InlineKeyboardButton("Соседи", callback_data="kbd:neighbours"),
@@ -264,7 +236,7 @@ class UI:
                         InlineKeyboardButton("Назад ↩️", callback_data="kbd:cancel"),
                         InlineKeyboardButton("Добавить", callback_data="kbd:ok"),
                     ]]
-        elif self.state is UI.States.SHOW_STAT:
+        elif state == UI.States.SHOW_STAT:
             if self.list_pos>0:
                 left=InlineKeyboardButton("⏪", callback_data="kbd:prev")
             else:
@@ -276,9 +248,9 @@ class UI:
                 right=InlineKeyboardButton("✖️", callback_data="kbd:x")
 
             kbd = [[left, InlineKeyboardButton("Назад ↩️", callback_data="kbd:cancel"), right]]
-        elif self.state is UI.States.HELP_CMD:
+        elif state == UI.States.HELP_CMD:
             kbd = [[InlineKeyboardButton("Закрыть", callback_data="kbd:close")]]
-        elif self.state is UI.States.FIRST_RUN1 or self.state is UI.States.FIRST_RUN2 or self.state is UI.States.FIRST_RUN3:
+        elif state == UI.States.FIRST_RUN1 or state == UI.States.FIRST_RUN2 or state == UI.States.FIRST_RUN3:
             kbd = [[InlineKeyboardButton("Продолжить ▶️", callback_data="kbd:ok")]]
         else:
             return None
@@ -311,11 +283,11 @@ class UI:
         save_maintenance_data(self.user_id, self.chat_id, m1, m2 , self.state, self.sub_state)
 
     async def new_user(self, data=None) -> None:
-        if self.state_prev is not UI.States.NEW_USER:
+        if self.state_prev != UI.States.NEW_USER:
             logger.info(f"{self.user_id}: state=NEW_USER, prev_st={self.state_prev}")
 
         self.state = UI.States.NEW_USER
-        if self.state_prev is UI.States.NEW_USER and data=="kbd:satrt":
+        if self.state_prev == UI.States.NEW_USER and data=="kbd:satrt":
             await self.m1.text(msg01_welcom())
             self.state=UI.States.CFG_LANG
             return True        
@@ -325,10 +297,10 @@ class UI:
         return False
 
     async def cfg_lang(self, data=None) -> None:
-        if self.state_prev is not UI.States.CFG_LANG:
+        if self.state_prev != UI.States.CFG_LANG:
             logger.info(f"{self.user_id}: state=CFG_LANG, prev_st={self.state_prev}")
 
-        if self.state_prev is not UI.States.CFG_LANG:
+        if self.state_prev != UI.States.CFG_LANG:
             self.selected_button=None
             self.kbd=self.create_buttons()
         elif data is not None:
@@ -353,10 +325,10 @@ class UI:
         return False
 
     async def help_cmd(self, data=None) -> None:
-        if self.state_prev is not UI.States.HELP_CMD:
+        if self.state_prev != UI.States.HELP_CMD:
             logger.info(f"{self.user_id}: state=HELP_CMD, prev_st={self.state_prev}")
 
-        if self.state_prev is UI.States.HELP_CMD and data=="kbd:close":
+        if self.state_prev == UI.States.HELP_CMD and data=="kbd:close":
             self.state=self.states_q.pop() #goto back
             return True
         await self.clear_screan()
@@ -365,10 +337,10 @@ class UI:
         return False
 
     async def first_set(self, data=None) -> None:
-        if self.state_prev is not UI.States.FIRST_SET:
+        if self.state_prev != UI.States.FIRST_SET:
             logger.info(f"{self.user_id}: state=FIRST_SET, prev_st={self.state_prev}")
 
-        if self.state_prev is not UI.States.FIRST_SET:
+        if self.state_prev != UI.States.FIRST_SET:
             self.selected_button=None            
         elif data is not None:
             if data=='kbd:ok':
@@ -399,7 +371,7 @@ class UI:
         return False
 
     async def first_run1(self, data=None) -> None:
-        if self.state_prev is not UI.States.FIRST_RUN1:
+        if self.state_prev != UI.States.FIRST_RUN1:
             logger.info(f"{self.user_id}: state=FIRST_RUN1, prev_st={self.state_prev}")
 
         if self.state_prev==UI.States.FIRST_RUN1 and data=='kbd:ok':
@@ -411,7 +383,7 @@ class UI:
         return False
 
     async def first_run2(self, data=None) -> None:
-        if self.state_prev is not UI.States.FIRST_RUN2:
+        if self.state_prev != UI.States.FIRST_RUN2:
             logger.info(f"{self.user_id}: state=FIRST_RUN2, prev_st={self.state_prev}")
 
         if self.state_prev!=UI.States.FIRST_RUN2:
@@ -427,7 +399,7 @@ class UI:
         return False
 
     async def first_run3(self, data=None) -> None:
-        if self.state_prev is not UI.States.FIRST_RUN3:
+        if self.state_prev != UI.States.FIRST_RUN3:
             logger.info(f"{self.user_id}: state=FIRST_RUN3, prev_st={self.state_prev}")
 
         if self.state_prev!=UI.States.FIRST_RUN3:
@@ -442,41 +414,9 @@ class UI:
         self.state_prev = UI.States.FIRST_RUN3
         return False
 
-
-    async def tren0_run_after_maintenance(self) -> None:
-        logger.info(f"{self.user_id}: state=AFTER_MAINT, prev_st={self.state_prev}")
-        self.state = UI.States.TREN0
-        self.state_prev = UI.States.TREN0
-        n=self.tcs.TCardsReadyNow()
-        if n==0:
-            if self.m1.id is not None:
-                await self.m1.clear()
-            if self.m2.id is not None:
-                self.m2.txt=msg05_tren0()
-                self.m2.kbd=None
-                self.m2.type="txt"            
-        else:
-            if self.m1.id is not None:
-                self.m1.txt=sticker06_tren0(n)
-                self.m1.kbd=None
-                self.m1.type='sticker'
-            if self.m2.id is not None:
-                self.m2.type=msg06_tren0(n)
-                self.m2.kbd=self.create_buttons()
-                self.m2.txt='txt'
-        
-        if self.sub_state is None:
-            await self.clear_screan()
-            self.timer_run(timedelta(seconds=10),"tmr:t0")
-        elif n!=self.sub_state:
-            self.timer_run(timedelta(seconds=10),"tmr:t0")
-        else:
-            self.timer_run(timedelta(minutes=5),"tmr:t0")
-        return False
-
     #state tren0 => inviting to learn words
     async def tren0_state(self, data=None) -> None:
-        if self.state_prev is not UI.States.TREN0:
+        if self.state_prev != UI.States.TREN0:
             logger.info(f"{self.user_id}: state=TREN0, prev_st=" + self.state_prev)
             self.sub_state=None
         elif data is not None:
@@ -492,32 +432,30 @@ class UI:
                 return True
             else:
                 return False
-
+        
+        #здесь, если было событие таймера или переход из другого состояния:
         n=self.tcs.TCardsReadyNow()
         if n!=self.sub_state:
             self.sub_state=n
             if n==0:
                 await self.m1.clear()
-                await self.m2.text(msg05_tren0())
-            else:
-                await self.m1.sticker(sticker06_tren0(n))
-                await self.m2.clear()
-                await self.m2.text(msg06_tren0(n), self.create_buttons())
+            await self.m1.sticker(sticker06_tren0())
+            await self.m2.clear()
+            await self.m2.text(msg06_tren0(n), self.create_buttons())
 
         if n<self.u.max_cards_for_training: #fixme: таймер на время когда след слово подойдет
-            logger.error(f"{self.user_id}: ready to run timer st={self.state}, n={n} max={self.u.max_cards_for_training}")
             self.timer_run(timedelta(minutes=5),"tmr:t0")
         self.state_prev = UI.States.TREN0
         return False
 
     async def tren1_state(self, data=None) -> None:
-        if self.state_prev is not UI.States.TREN1:
+        if self.state_prev != UI.States.TREN1:
             logger.info(f"{self.user_id}: state=TREN1, prev_st=" + self.state_prev)
 
         if self.tutorial_mode==0:
             await self.m0.clear()
 
-        if self.state_prev is UI.States.TREN1 and data is not None:
+        if self.state_prev == UI.States.TREN1 and data is not None:
             if data=="kbd:?":
                 self.sub_state="a"
                 if self.tutorial_mode==2:
@@ -542,9 +480,9 @@ class UI:
                 return True
             else:
                 return False
-        elif self.state_prev is UI.States.FIRST_RUN2:
+        elif self.state_prev == UI.States.FIRST_RUN2:
             self.sub_state="a"
-        elif self.state_prev is UI.States.TREN0 or self.state_prev is UI.States.TREN3 or self.state_prev is UI.States.FIRST_RUN1:
+        elif self.state_prev == UI.States.TREN0 or self.state_prev == UI.States.TREN3 or self.state_prev == UI.States.FIRST_RUN1:
             await self.tcs.Create()
             self.sub_state="q"
         else: 
@@ -599,11 +537,11 @@ class UI:
         return False
 
     async def tren3_state(self, data=None) -> None:
-        if self.state_prev is not UI.States.TREN3:
+        if self.state_prev != UI.States.TREN3:
             logger.info(f"{self.user_id}: state=TREN3, prev_st={self.state_prev}")
             await self.m0.clear()
             
-        if self.state_prev is UI.States.TREN3 and data is not None:
+        if self.state_prev == UI.States.TREN3 and data is not None:
             if data=='kbd:enough' or data=='tmr:t3':
                 self.timer_stop()
                 self.state=UI.States.TREN0 #goto tren0,
@@ -637,11 +575,11 @@ class UI:
         self.edited_word=None
 
     async def edit_word_state(self, data:str=None) -> None:
-        if self.state_prev is not UI.States.EDIT_WORD:
+        if self.state_prev != UI.States.EDIT_WORD:
             logger.info(f"{self.user_id}: state=EDIT_WORD, prev_st=" + self.state_prev)
 
         #decoding inside state events:
-        if self.state_prev is not UI.States.EDIT_WORD:
+        if self.state_prev != UI.States.EDIT_WORD:
             await self.clear_screan()
             if self.state_prev!=UI.States.TREN1 and self.state_prev!=UI.States.TREN0 and self.state_prev!=UI.States.ADD_WORD \
                     and self.state_prev!=UI.States.SHOW_WORDS and self.state_prev!=UI.States.HELP_CMD:
@@ -650,7 +588,7 @@ class UI:
             self.selected_button=None
             self.kbd=self.create_buttons()
 
-        elif self.state_prev is UI.States.EDIT_WORD and data is not None:
+        elif self.state_prev == UI.States.EDIT_WORD and data is not None:
             if data=="kbd:fw":
                 self.selected_button="fw"
                 self.kbd=self.create_buttons("kbd:fw", "✏️")
@@ -747,10 +685,10 @@ class UI:
 
 
     async def add_word_state(self, data:str=None) -> None:
-        if self.state_prev is not UI.States.ADD_WORD:
+        if self.state_prev != UI.States.ADD_WORD:
             logger.info(f"{self.user_id}: state=ADD_WORD, prev_st=" + self.state_prev)
 
-        if self.state_prev is not UI.States.ADD_WORD:
+        if self.state_prev != UI.States.ADD_WORD:
             await self.m0.clear()
             await self.m1.clear()
             self.selected_button=None
@@ -772,15 +710,15 @@ class UI:
 
 
     async def add_from_lib(self, data:str=None) -> None:
-        if self.state_prev is not UI.States.ADD_WORDS_FROM_LIB:
+        if self.state_prev != UI.States.ADD_WORDS_FROM_LIB:
             logger.info(f"{self.user_id}: state=ADD_WORDS_FROM_LIB, prev_st={self.state_prev}")
 
-        if self.state_prev is not UI.States.ADD_WORDS_FROM_LIB:
+        if self.state_prev != UI.States.ADD_WORDS_FROM_LIB:
             await self.m0.clear()
             await self.m1.clear()
             self.selected_button=None
             self.kbd=self.create_buttons()
-        elif self.state_prev is UI.States.ADD_WORDS_FROM_LIB and data is not None:
+        elif self.state_prev == UI.States.ADD_WORDS_FROM_LIB and data is not None:
             if data.startswith('msg:'):
                 await self.add_word(data)
                 return True
@@ -809,16 +747,16 @@ class UI:
 
 
     async def show_stat(self, data:str=None) -> None:
-        if self.state_prev is not UI.States.SHOW_STAT:
+        if self.state_prev != UI.States.SHOW_STAT:
             logger.info(f"{self.user_id}: state=SHOW_STAT, prev_st={self.state_prev}")
 
-        if self.state_prev is not UI.States.SHOW_STAT:
+        if self.state_prev != UI.States.SHOW_STAT:
             await self.m0.clear()
             await self.m1.clear()
             self.list_pos=0
             self.list_sz=tcards_count(self.user_id)
             self.selected_button=None
-        elif self.state_prev is UI.States.SHOW_STAT and data is not None:
+        elif self.state_prev == UI.States.SHOW_STAT and data is not None:
             if data=='kbd:cancel':
                 self.state=self.states_q.pop() #goto back, сбросить список
                 await self.clear_screan()
@@ -874,17 +812,17 @@ class UI:
 
 
     async def show_words(self, data:str=None) -> None:
-        if self.state_prev is not UI.States.SHOW_WORDS:
+        if self.state_prev != UI.States.SHOW_WORDS:
             logger.info(f"{self.user_id}: state=SHOW_WORDS, prev_st={self.state_prev}")
             await self.m0.clear()
             await self.m1.clear()
 
-        if self.state_prev is not UI.States.SHOW_WORDS:
+        if self.state_prev != UI.States.SHOW_WORDS:
             self.show_words_list=words_read(self.user_id)
             #сохранить  позицию при выходе из редактирования
-            if self.state_prev is not UI.States.EDIT_WORD or self.list_pos>=len (self.show_words_list):
+            if self.state_prev != UI.States.EDIT_WORD or self.list_pos>=len (self.show_words_list):
                 self.list_pos=0 
-        elif self.state_prev is UI.States.SHOW_WORDS and data is not None:
+        elif self.state_prev == UI.States.SHOW_WORDS and data is not None:
             if data=='kbd:cancel':
                 self.show_words_list=None
                 self.list_pos=0
@@ -909,6 +847,32 @@ class UI:
         await self.m2.text(msg12_select_word(len(self.show_words_list)), kbd=self.create_show_words_buttons())
         self.state_prev = UI.States.SHOW_WORDS
         return False
+
+    state_functions = {
+        States.TREN0:           tren0_state,
+        States.TREN1:           tren1_state,
+        States.TREN3:           tren3_state,
+        States.EDIT_WORD:       edit_word_state,
+        States.ADD_WORD:        add_word_state,
+        States.ADD_WORDS_FROM_LIB: add_from_lib,
+        States.SHOW_STAT:       show_stat,
+        States.SHOW_WORDS:      show_words,
+        States.NEW_USER:        new_user,
+        States.CFG_LANG:        cfg_lang,
+        States.FIRST_SET:       first_set,
+        States.FIRST_RUN1:      first_run1,
+        States.FIRST_RUN2:      first_run2,
+        States.FIRST_RUN3:      first_run3,
+        States.HELP_CMD:        help_cmd,
+    }
+
+    async def process_state(self, data):
+        handler = UI.state_functions.get(self.state)
+        if handler:
+            return await handler(self, data)
+        else: # обработка, если self.state не найден в словаре state_functions
+            logger.error(f"{self.user_id}: process_state:  no handler for st={self.state}")
+            return None
 
     @staticmethod
     async def help_cmd_(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -1059,9 +1023,8 @@ async def post_init(context):
         await context.bot.delete_my_commands(language_code='ru')
         await context.bot.set_my_commands(commands_ru, language_code='ru')
     else:
-        #удалить старое сообщение о тех обслуживании и создать UI
         r=load_maintenance_data()
-        if r is not None and len(r) > 0:
+        if r:
             for u in r:
                 user_id=u[0]
                 chat_id=u[1]
@@ -1076,22 +1039,34 @@ async def post_init(context):
                 if msg_id2 is not None and msg_id2<0:
                     await BotMsg.clear_msg(context.bot, chat_id, -msg_id2)
 
-                n=words_count(user_id)
-                if n!=0:
+                n=words_count(user_id)  #сколько у юзера всего слов на изучении.
+                if n>0:                 #для тех кто не осилил еще, инстанс не создаем. Юзер может запустится командой /start
                     ui=get_ui(user_id, chat_id, context)
-                    if state=="tren0_st":
-                        ui.m1.id=msg_id1
-                        ui.m2.id=msg_id2
-                        if sub_state is not None and sub_state!='':
-                            ui.sub_state = int(sub_state)
-                        else:
-                            sub_state=None
-                        await ui.process_ev("cmd:restart_after_maintenance")
+                    if state==UI.States.TREN0:
+                        ui.state_prev = ui.state = state
+                        ui.sub_state = 0
+                        if sub_state:
+                            ui.sub_state = int(sub_state) # колличество слов, готовых к изучению перед остановкой
+                        
+                        if msg_id1<0 or msg_id2<0:
+                            logger.error(f"{user_id}: post_init: was in state={state}, ss={sub_state}. but msg_id1={msg_id1}, msg_id2={msg_id2}")
+
+                        #восстановим сообщения которые были в состаянии tren0_st перед остановкой
+                        if ui.sub_state>0:
+                            ui.m1.set_sticker(msg_id1, sticker06_tren0())
+                        ui.m2.set_txt(msg_id2, msg06_tren0(ui.sub_state), ui.create_buttons())
+                        
+                        #находимя в режиме ожидания, запустим таймер и по нему поапдейтим все данные в tren0_state()
+                        logger.info(f"{user_id}: restoring state=TREN0")
+                        ui.timer_run(timedelta(minutes=5),"tmr:t0")
                     else:
+                        logger.info(f"{user_id}: was in state={state}, ss={sub_state}. Run cmd:start for him")
                         await ui.process_ev("cmd:start")
-                #else: нет ни одного слова для пользователя -> тоесть застало его до добавления первых слов.
-                #для таких пользователей инстанс при запуске не запускаем. Только после того как нажмут старт
-            
+                else:
+                    #нет ни одного слова для пользователя -> тоесть застало его до добавления первых слов.
+                    #для таких пользователей инстанс при запуске не запускаем. Только после того как нажмут старт
+                    logger.info(f"{user_id}: has 0 words in learning list. will not run instance for him")
+
 
 async def post_stop(a):
     for ui in ui_set.values():
@@ -1148,6 +1123,3 @@ if __name__ == "__main__":
 #        job.schedule_removal()
 
 #job_queue.run_once(alarm, due, chat_id=chat_id, name=str(chat_id), data=due)
-
-
-
