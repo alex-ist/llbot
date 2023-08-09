@@ -92,10 +92,11 @@ class UI:
                 self.timer_stop()
                 await self.tren0_run_after_maintenance()
                 break
-
             elif data=="cmd:start":
-                self.timer_stop()
-                self.state_prev = UI.States.ST_UNDEF
+                if self.tutorial_mode:
+                    self.state = UI.States.NEW_USER
+                else:
+                    self.state = UI.States.TREN0
             elif data=="cmd:add":
                 if self.state==UI.States.ADD_WORD:
                     return
@@ -134,11 +135,7 @@ class UI:
                 data=None
 
             if self.state_prev is UI.States.ST_UNDEF:
-                #cn=tcards_count(self.user_id) #проверка на нового пользователя.
-                if self.tutorial_mode:
-                    self.state = UI.States.NEW_USER
-                else:
-                    self.state = UI.States.TREN0
+                logger.error(f"{self.user_id}: state_prev is UI.States.ST_UNDEF" ) #тут была проверка, зачем она?
 
             if self.state is UI.States.TREN0:
                 next_step=await self.tren0_state(data)
@@ -191,7 +188,7 @@ class UI:
     async def timer_cb_(context: ContextTypes.DEFAULT_TYPE):
         job = context.job
         ui, user_data =job.data
-        #logger.info("%d: timer run! data=%s", ui.user_id, user_data)
+        logger.info("%d: st=%s timer run! data=%s", ui.user_id, ui.state, user_data)
         await ui.process_ev(user_data)
 
     def create_buttons(self, selected=None, sel_symb=None, selected2=None, sel_symb2=None):
@@ -280,7 +277,7 @@ class UI:
 
             kbd = [[left, InlineKeyboardButton("Назад ↩️", callback_data="kbd:cancel"), right]]
         elif self.state is UI.States.HELP_CMD:
-            kbd = [[InlineKeyboardButton("Ok", callback_data="kbd:ok")]]
+            kbd = [[InlineKeyboardButton("Закрыть", callback_data="kbd:close")]]
         elif self.state is UI.States.FIRST_RUN1 or self.state is UI.States.FIRST_RUN2 or self.state is UI.States.FIRST_RUN3:
             kbd = [[InlineKeyboardButton("Продолжить ▶️", callback_data="kbd:ok")]]
         else:
@@ -295,15 +292,23 @@ class UI:
         return InlineKeyboardMarkup(kbd)
 
     async def stop_chat(self) -> None:
-        m1_id=self.m1.id
-        m2_id=self.m2.id
+        #для всех состояний кроме tren0  - выводим сообщение об тех обсуживании.
+        #tren0 - это когда пользователь не работает, а ожидает. Для этого состояния сообщение
+        #о тех. обсл не выводим. А после перезапуска подхватываем старые сообщения.
         if self.state!=UI.States.TREN0:
             await self.clear_screan()
+            await self.m1.sticker(sticker11_t_o())
+            await self.m2.text(msg11_t_o())
+            # '-' индикатор что это сообщение о тех обслуживании. Его нужно будет удалить при след. запуске
+            m1=-self.m1.id
+            m2=-self.m2.id
+        else:
+            m1=self.m1.id
+            m2=self.m2.id
             
-        #await self.m1.sticker(sticker11_t_o())
-        #await self.m2.text(msg11_t_o())
-        #сохранить в базе chat_id, msg_id у m1, что бы при запуске удалить его. 
-        save_maintenance_data(self.user_id, self.chat_id, m1_id, m2_id, self.state, self.sub_state)
+        #сохранить в базе msg_id у m1, m2 что бы при запуске незаметно восстановится, или удалить сообщения в зависимости от состояния. 
+        #в состоянии TREN0 не удаляем сообщения, а тихо восттанавливаемся
+        save_maintenance_data(self.user_id, self.chat_id, m1, m2 , self.state, self.sub_state)
 
     async def new_user(self, data=None) -> None:
         if self.state_prev is not UI.States.NEW_USER:
@@ -338,7 +343,7 @@ class UI:
                 parts = data.split(':')
                 if len(parts) != 2 or parts[0] != 'kbd':
                     #fixme: че делать?
-                    logger.info("select lang error: %s", data)
+                    logger.error("select lang error: %s", data)
                     return False
                 self.kbd=self.create_buttons(selected=data, selected2='kbd:ok')
                 self.selected_button=parts[1]
@@ -351,7 +356,7 @@ class UI:
         if self.state_prev is not UI.States.HELP_CMD:
             logger.info(f"{self.user_id}: state=HELP_CMD, prev_st={self.state_prev}")
 
-        if self.state_prev is UI.States.HELP_CMD and data=="kbd:ok":
+        if self.state_prev is UI.States.HELP_CMD and data=="kbd:close":
             self.state=self.states_q.pop() #goto back
             return True
         await self.clear_screan()
@@ -500,6 +505,7 @@ class UI:
                 await self.m2.text(msg06_tren0(n), self.create_buttons())
 
         if n<self.u.max_cards_for_training: #fixme: таймер на время когда след слово подойдет
+            logger.error(f"{self.user_id}: ready to run timer st={self.state}, n={n} max={self.u.max_cards_for_training}")
             self.timer_run(timedelta(minutes=5),"tmr:t0")
         self.state_prev = UI.States.TREN0
         return False
@@ -906,14 +912,12 @@ class UI:
 
     @staticmethod
     async def help_cmd_(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-        global ui_set
         await context.bot.delete_message(update.effective_chat.id, update.effective_message.id)
         ui=get_ui(update.effective_user.id, update.effective_chat.id, context)
         await ui.process_ev("cmd:help")
 
     @staticmethod
     async def edit_cmd_(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-        global ui_set
         await context.bot.delete_message(update.effective_chat.id, update.effective_message.id)
         ui=get_ui(update.effective_user.id, update.effective_chat.id, context)
         await ui.process_ev("cmd:edit")
@@ -923,35 +927,30 @@ class UI:
 
     @staticmethod
     async def del_words(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-        # global ui_set
         # ui=get_ui(update.effective_user.id, update.effective_chat.id, context)
         # ui.del_words()
         words_delete(update.effective_user.id)
 
     @staticmethod
     async def stat_cmd_(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-        global ui_set
         await context.bot.delete_message(update.effective_chat.id, update.effective_message.id)
         ui=get_ui(update.effective_user.id, update.effective_chat.id, context)
         await ui.process_ev("cmd:stat")
 
     @staticmethod
     async def add_cmd_(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-        global ui_set
         await context.bot.delete_message(update.effective_chat.id, update.effective_message.id)
         ui=get_ui(update.effective_user.id, update.effective_chat.id, context)
         await ui.process_ev("cmd:add")
 
     @staticmethod
     async def lib_cmd_(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-        global ui_set
         await context.bot.delete_message(update.effective_chat.id, update.effective_message.id)
         ui=get_ui(update.effective_user.id, update.effective_chat.id, context)
         await ui.process_ev("cmd:lib")
 
     @staticmethod
     async def rx_msg_(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-        global ui_set
         await context.bot.delete_message(update.effective_chat.id, update.effective_message.id)
         ui=get_ui(update.effective_user.id, update.effective_chat.id, context)
         text = update.message.text
@@ -991,6 +990,11 @@ def get_ui(user_id, chat_id, context):
         ui_set[user_id]=ui
     return ui
 
+# останавливаем ui если он существовал - stop_ui()
+# удаляем ui del 
+# Апдейтим (или добавляем) данные пользователя в базу
+# создаем новый ui
+# событие - "cmd:start"
 async def start_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     global ui_set
     chat_id=update.effective_chat.id
@@ -1005,13 +1009,16 @@ async def start_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     name=update.effective_user.name
     await context.bot.delete_message(update.effective_chat.id, update.effective_message.id)
 
-    #await context.bot.delete_message(chat_id, msg_id)
     #перезапуск UI
     if user_id in ui_set:
         await ui_set[user_id].stop_ui()
         del ui_set[user_id]
 
-    new_user=User.Update(user_id, chat_id, username, first_name, lang_code, is_premium, name)
+    User.Update(user_id, chat_id, username, first_name, lang_code, is_premium, name)
+    n=words_count(user_id)
+    #новый пользователь - у кого 0 слов  в списке. Возможно это тот кто уже пробовал но не смог добавить слова
+    #новым пользователям будет показан туториал.
+    new_user=(n==0) 
     ui=UI(user_id, chat_id, context, new_user)
     ui_set[user_id]=ui
     logger.info(f"{user_id}: Start UI")
@@ -1062,18 +1069,28 @@ async def post_init(context):
                 msg_id2=u[3]
                 state=u[4]
                 sub_state=u[5]
+                
+                #удалить сообщение о тех обслуживании. Индикатор техобслуживания - знак минус.
+                if msg_id1 is not None and msg_id1<0:
+                    await BotMsg.clear_msg(context.bot, chat_id, -msg_id1)
+                if msg_id2 is not None and msg_id2<0:
+                    await BotMsg.clear_msg(context.bot, chat_id, -msg_id2)
 
-                ui=get_ui(user_id, chat_id, context)
-                if state=="tren0_st":
-                    ui.m1.id=msg_id1
-                    ui.m2.id=msg_id2
-                    if sub_state is not None and sub_state!='':
-                        ui.sub_state = int(sub_state)
+                n=words_count(user_id)
+                if n!=0:
+                    ui=get_ui(user_id, chat_id, context)
+                    if state=="tren0_st":
+                        ui.m1.id=msg_id1
+                        ui.m2.id=msg_id2
+                        if sub_state is not None and sub_state!='':
+                            ui.sub_state = int(sub_state)
+                        else:
+                            sub_state=None
+                        await ui.process_ev("cmd:restart_after_maintenance")
                     else:
-                        sub_state=None
-                    await ui.process_ev("cmd:restart_after_maintenance")
-                else:
-                    await ui.process_ev("cmd:start")
+                        await ui.process_ev("cmd:start")
+                #else: нет ни одного слова для пользователя -> тоесть застало его до добавления первых слов.
+                #для таких пользователей инстанс при запуске не запускаем. Только после того как нажмут старт
             
 
 async def post_stop(a):

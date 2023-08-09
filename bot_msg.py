@@ -21,13 +21,21 @@ class BotMsg:
             try:
                 await self.bot.delete_message(self.chat_id, self.id)
             except error.BadRequest as e:
-                logger.warning(f"chat_id={self.chat_id}: {e}")
+                logger.warning(f"{self.chat_id}: {e}")
             self.id=None
             
         self.txt=None
         self.kbd=None
         self.type=None
         self.prev_vo=None
+
+    @staticmethod
+    async def clear_msg(bot, chat_id, msg_id):
+        if msg_id is not None:
+            try:
+                await bot.delete_message(chat_id, msg_id)
+            except error.BadRequest as e:
+                logger.warning(f"{chat_id}: {e}")
 
     async def text(self, txt:str=None, kbd:InlineKeyboardMarkup=None):        
         if self.type!="txt":
