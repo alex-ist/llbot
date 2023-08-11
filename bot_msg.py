@@ -66,7 +66,14 @@ class BotMsg:
             if self.type=="sticker" and self.txt==stick:
                 return
             await self.clear()
-        m = await self.bot.send_sticker(chat_id=self.chat_id, sticker=stick)
+
+        try:
+            m = await self.bot.send_sticker(chat_id=self.chat_id, sticker=stick)
+        except error.Forbidden as e:
+            logger.warning(f"{self.chat_id}: Forbidden: {e}")
+            return False
+
+        self.id=None
         self.id=m.message_id
         self.type="sticker"
         self.txt=stick
