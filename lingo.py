@@ -473,7 +473,7 @@ class UI:
                 await self.add_word(self.ev)
                 return True
             elif self.ev=="tmr:tren_to":
-                #self.u.UpdateStat() #Fixme: обновить пользовательскую статистику?
+                self.u.UpdateStat()
                 logger.info(f"{self.user_id}: TREN: inactivity timeout")
                 self.reset_state()
                 return True
@@ -558,7 +558,7 @@ class UI:
             self.sub_state="is_to_learn"
 
         await self.m1.sticker(sticker04_tren3())
-        await self.m2.text(msg04_tren3(n), kbd=self.create_buttons())
+        await self.m2.text(msg04_tren3(n, self.u.current_forget_rate), kbd=self.create_buttons())
         self.timer_run(timedelta(minutes=5), "tmr:t3")
         return False
 

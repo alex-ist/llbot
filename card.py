@@ -126,7 +126,7 @@ class TrainingCard:
         self.user_id=user_id
         self.word_id=word_id
         self.direction=direction
-        self.incorrect_answer=False        
+        self.first_answer=None
         self.next_training_t=next_training_t 
         self.last_training_t=last_training_t #вообще бывают апдейты? или ролмьл заменгяем и все?
         self.u=u
@@ -146,44 +146,46 @@ class TrainingCard:
         return self.word
     
     def SetCorrect(self, correct:bool):
-        if correct==False:
-            self.incorrect_answer=True
+        if self.first_answer is None:
+            self.first_answer=correct
+            #расчитывает -> current_forget_rate  irr фильтр, окно 100
+            self.u.CalcCurrentForgetRate(correct)
 
-
-    def Complete(self):
-        if self.last_training_t is not None:
-            last_req_interval=self.next_training_t-self.last_training_t
-        else:
-            last_req_interval=self.u.first_interval
-
-        if self.last_training_t is not None:
-            last_real_interval=datetime.now()-self.last_training_t
-        else:
-            last_real_interval=self.u.first_interval
-        
-        #расчитывает -> current_forget_rate  irr фильтр, окно 100
-        self.u.CalcCurrentForgetRate(self.incorrect_answer)
-
-        if self.incorrect_answer:
-            #если не запомнили, то надо вязть меньший из двух интервалов - фактический или требуемый.
-            i=min(last_req_interval, last_real_interval)
-            #но интервал не может быть меньше начального
-            i=max(self.u.first_interval, i)
-            #полученный результат уменьшаем
-            self.last_training_t=datetime.now()
-            self.next_training_t=datetime.now() + i/self.u.o_param
-        else:
-            #если фактический интервал больше требуемого - берем фактический.
-            if last_real_interval>last_req_interval:
-                new_i=self.u.o_param*last_real_interval
+        if correct:
+            if self.last_training_t is not None:
+                last_req_interval=self.next_training_t-self.last_training_t
             else:
-                #а если фактический интервал меньше требуемого? тогда линейно меняем 
-                # FIXME:  нужно поисследовать функцию, сделать без перегиба в точке last_req_interval
-                new_i=last_req_interval + (self.u.o_param-1)*last_real_interval
+                last_req_interval=self.u.first_interval
 
-            self.last_training_t=datetime.now()
-            self.next_training_t=self.last_training_t + new_i
-            self.incorrect_answer=False
+            if self.last_training_t is not None:
+                last_real_interval=datetime.now()-self.last_training_t
+            else:
+                last_real_interval=self.u.first_interval
+            
+            if self.first_answer:
+                #если фактический интервал больше требуемого - берем фактический.
+                if last_real_interval>last_req_interval:
+                    new_i=self.u.o_param*last_real_interval
+                else:
+                    #а если фактический интервал меньше требуемого? тогда линейно меняем 
+                    # FIXME:  нужно поисследовать функцию, сделать без перегиба в точке last_req_interval
+                    new_i=last_req_interval + (self.u.o_param-1)*last_real_interval
+
+                self.last_training_t=datetime.now()
+                self.next_training_t=self.last_training_t + new_i
+                #self.incorrect_answer=False
+            else:
+                #self.incorrect_answer:
+                #если не запомнили, то надо вязть меньший из двух интервалов - фактический или требуемый.
+                i=min(last_req_interval, last_real_interval)
+                #но интервал не может быть меньше начального
+                i=max(self.u.first_interval, i)
+                #полученный результат уменьшаем
+                self.last_training_t=datetime.now()
+                self.next_training_t=datetime.now() + i/self.u.o_param
+            
+            self.SaveToDb()
+
 
     #вернет слово для изучения
     def GetA(self):
@@ -323,11 +325,8 @@ class TrainingCardSet:
         tc=self.GetCurrentTCard()
         if tc is not None:
             tc.SetCorrect(correct)
-            if correct==True:
-                tc.Complete()
-                tc.SaveToDb()
-                #remove card from set
-                del self.tcard_set[self.current_pos]
+            if correct:
+                del self.tcard_set[self.current_pos] #remove card from set
             else:
                 self.current_pos+=1
 
@@ -336,10 +335,6 @@ class TrainingCardSet:
                 return None           
             if self.current_pos>=l or self.current_pos>self.u.min_cards_for_training:
                 self.current_pos=0
-
-            return self.tcard_set[self.current_pos]
-        else:
-            return None
 
     #сколько карт готово прямо сейчас.
     def TCardsReadyNow(self):
