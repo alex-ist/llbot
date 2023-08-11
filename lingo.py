@@ -1069,7 +1069,7 @@ async def post_init(context):
                         if sub_state:
                             ui.sub_state = int(sub_state) # колличество слов, готовых к изучению перед остановкой
                         
-                        if msg_id1<0 or msg_id2<0:
+                        if msg_id1 is None or msg_id1<0 or msg_id2 is None or msg_id2<0:
                             logger.error(f"{user_id}: post_init: was in state={state}, ss={sub_state}. but msg_id1={msg_id1}, msg_id2={msg_id2}")
 
                         #восстановим сообщения которые были в состоянии BEFORE_TREN перед остановкой
