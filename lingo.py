@@ -33,12 +33,12 @@ class UI:
         NEW_USER = "new_user_st"
         CFG_LANG = "cfg_lang_st"
         FIRST_SET = "first_set_st"
-        FIRST_RUN1 = "first_run1_st"
-        FIRST_RUN2 = "first_run2_st"
-        FIRST_RUN3 = "first_run3_st"
-        TREN0 ="tren0_st"
-        TREN1 ="tren1_st"
-        TREN3 ="tren2_st"
+        TUTOR_SCR1 = "tutor_scr1_st"
+        TUTOR_SCR2 = "tutor_scr2_st"
+        TUTOR_SCR3 = "tutor_scr3_st"
+        BEFORE_TREN ="before_tren_st"
+        TREN ="tren_st"
+        AFTER_TREN ="after_tren_st"
         EDIT_WORD ="edit_word_st"
         ADD_WORD ="add_word_st"
         ADD_WORDS_FROM_LIB="add_from_lib_st"
@@ -57,8 +57,9 @@ class UI:
         self.u=User(user_id, new_user)
         
         if new_user:
+            #tutorial mode for new users
             self.tutorial_mode=2
-        else: 
+        else:
             self.tutorial_mode=0
 
         self.tcs=TrainingCardSet(user_id, self.u)
@@ -71,6 +72,7 @@ class UI:
         self.states_q=[]
         self.list_pos=0
         self.cnt1=0
+        self.ev=None
 
     def __del__(self):
         logger.warning(f"{self.user_id}: deleted UI object")
@@ -82,91 +84,78 @@ class UI:
         await self.m2.clear()
    
     async def process_ev(self, data:str):
+        self.ev=data
         while True:
             next_step=False
-            if data=="stop:":
+            if self.ev=="stop:":
                 await self.stop_chat()
                 return
-            if data=="cmd:start":
+            elif self.ev=="cmd:start":
                 if self.tutorial_mode:
                     self.state = UI.States.NEW_USER
                 else:
-                    self.state = UI.States.TREN0
-            elif data=="cmd:add":
+                    self.state = UI.States.BEFORE_TREN
+            elif self.ev=="cmd:add":
                 if self.state==UI.States.ADD_WORD:
                     return
-                self.timer_stop()
-                self.states_q.append(self.state)
-                self.state=UI.States.ADD_WORD
-                data=None
-            elif data=="cmd:lib":
+                self.call_state(UI.States.ADD_WORD)
+                self.ev=None
+            elif self.ev=="cmd:lib":
                 if self.state==UI.States.ADD_WORDS_FROM_LIB:
                     return
-                self.timer_stop()
-                self.states_q.append(self.state)
-                self.state=UI.States.ADD_WORDS_FROM_LIB
-                data=None
-            elif data=="cmd:stat":
+                self.call_state(UI.States.ADD_WORDS_FROM_LIB)
+                self.ev=None
+            elif self.ev=="cmd:stat":
                 if self.state==UI.States.SHOW_STAT:
                     return
-                self.timer_stop()
-                self.states_q.append(self.state)
-                self.state=UI.States.SHOW_STAT
-                data=None
-            elif data=="cmd:edit":
+                self.call_state(UI.States.SHOW_STAT)
+                self.ev=None
+            elif self.ev=="cmd:edit":
                 if self.state==UI.States.SHOW_WORDS or self.state==UI.States.EDIT_WORD:
                     return
-                if self.state != UI.States.TREN1:
-                    self.timer_stop()
-                    self.states_q.append(self.state)
-                    self.state=UI.States.SHOW_WORDS
-                    data=None
-            elif data=="cmd:help":
+                if self.state != UI.States.TREN:
+                    self.call_state(UI.States.SHOW_WORDS)
+                    self.ev=None
+            elif self.ev=="cmd:help":
                 if self.state==UI.States.HELP_CMD:
                     return
-                self.timer_stop()
-                self.states_q.append(self.state)
-                self.state=UI.States.HELP_CMD
-                data=None
+                self.call_state(UI.States.HELP_CMD)
+                self.ev=None
 
-            if self.state_prev == UI.States.ST_UNDEF:
-                logger.error(f"{self.user_id}: state_prev == {self.state_prev}" ) #тут была проверка, зачем она?
-
-            next_step = await self.process_state(data)
-
+            next_step = await self.process_state()
             if next_step!=True:
                 break
-            data=None
+            self.ev=None
 
     def timer_run(self, t, user_data):
         self.timer_stop()
         self.timer_job=self.jq.run_once(UI.timer_cb_, t, data=[self, user_data], user_id=self.user_id)
-        logger.info(f"{self.user_id}: timer add: {int(t.total_seconds()/60)}min data={user_data}" )
+        #logger.info(f"{self.user_id}: timer add: {int(t.total_seconds()/60)}min data={user_data}" )
 
 
     def timer_stop(self):
         if self.timer_job is not None and self.timer_job in self.jq.jobs():
             self.timer_job.schedule_removal()
-            logger.info("%d: timer stop", self.user_id)
+            #logger.info("%d: timer stop", self.user_id)
         self.timer_job=None
 
     @staticmethod
     async def timer_cb_(context: ContextTypes.DEFAULT_TYPE):
         job = context.job
         ui, user_data =job.data
-        logger.info("%d: st=%s timer run! data=%s", ui.user_id, ui.state, user_data)
+        #logger.info("%d: st=%s timer run! data=%s", ui.user_id, ui.state, user_data)
         await ui.process_ev(user_data)
 
     def create_buttons(self, selected=None, sel_symb=None, selected2=None, sel_symb2=None, state=None):
         if state is None:
             state=self.state
 
-        if state == UI.States.TREN0:
+        if state == UI.States.BEFORE_TREN:
             if self.sub_state>0:
                 kbd = [[InlineKeyboardButton("   Начать  ", callback_data="kbd:satrt")]]
             else:
                 return None
-        elif state == UI.States.TREN1:
+        elif state == UI.States.TREN:
             if self.sub_state=="q":
                 kbd = [[InlineKeyboardButton("    ❓❓   ", callback_data="kbd:?")]]
             else:
@@ -174,7 +163,7 @@ class UI:
                     InlineKeyboardButton("❌ Забыл", callback_data="kbd:-"),
                     InlineKeyboardButton("✅ Знаю", callback_data="kbd:+"),
                     ]]
-        elif state == UI.States.TREN3:
+        elif state == UI.States.AFTER_TREN:
             if self.sub_state=="no_to_learn":
                 kbd = [[InlineKeyboardButton("Ok", callback_data="kbd:enough"),]]
             else:
@@ -250,7 +239,7 @@ class UI:
             kbd = [[left, InlineKeyboardButton("Назад ↩️", callback_data="kbd:cancel"), right]]
         elif state == UI.States.HELP_CMD:
             kbd = [[InlineKeyboardButton("Закрыть", callback_data="kbd:close")]]
-        elif state == UI.States.FIRST_RUN1 or state == UI.States.FIRST_RUN2 or state == UI.States.FIRST_RUN3:
+        elif state == UI.States.TUTOR_SCR1 or state == UI.States.TUTOR_SCR2 or state == UI.States.TUTOR_SCR3:
             kbd = [[InlineKeyboardButton("Продолжить ▶️", callback_data="kbd:ok")]]
         else:
             return None
@@ -264,10 +253,10 @@ class UI:
         return InlineKeyboardMarkup(kbd)
 
     async def stop_chat(self) -> None:
-        #для всех состояний кроме tren0  - выводим сообщение об тех обсуживании.
-        #tren0 - это когда пользователь не работает, а ожидает. Для этого состояния сообщение
+        #для всех состояний кроме BEFORE_TREN - выводим сообщение об тех обсуживании.
+        #BEFORE_TREN - это когда пользователь не работает, а ожидает. Для этого состояния сообщение
         #о тех. обсл не выводим. А после перезапуска подхватываем старые сообщения.
-        if self.state!=UI.States.TREN0:
+        if self.state!=UI.States.BEFORE_TREN:
             await self.clear_screan()
             await self.m1.sticker(sticker11_t_o())
             await self.m2.text(msg11_t_o())
@@ -282,12 +271,12 @@ class UI:
         #в состоянии TREN0 не удаляем сообщения, а тихо восттанавливаемся
         save_maintenance_data(self.user_id, self.chat_id, m1, m2 , self.state, self.sub_state)
 
-    async def new_user(self, data=None) -> None:
+    async def new_user(self) -> None:
         if self.state_prev != UI.States.NEW_USER:
-            logger.info(f"{self.user_id}: state=NEW_USER, prev_st={self.state_prev}")
+            logger.info(f"{self.user_id}: NEW_USER: prev_st={self.state_prev}")
 
         self.state = UI.States.NEW_USER
-        if self.state_prev == UI.States.NEW_USER and data=="kbd:satrt":
+        if self.state_prev == UI.States.NEW_USER and self.ev=="kbd:satrt":
             await self.m1.text(msg01_welcom())
             self.state=UI.States.CFG_LANG
             return True        
@@ -296,15 +285,15 @@ class UI:
         self.state_prev = UI.States.NEW_USER
         return False
 
-    async def cfg_lang(self, data=None) -> None:
+    async def cfg_lang(self) -> None:
         if self.state_prev != UI.States.CFG_LANG:
-            logger.info(f"{self.user_id}: state=CFG_LANG, prev_st={self.state_prev}")
+            logger.info(f"{self.user_id}: CFG_LANG: prev_st={self.state_prev}")
 
         if self.state_prev != UI.States.CFG_LANG:
             self.selected_button=None
             self.kbd=self.create_buttons()
-        elif data is not None:
-            if data=='kbd:ok':
+        elif self.ev is not None:
+            if self.ev=='kbd:ok':
                 if self.selected_button is not None:
                     self.u.foreign_lang="en" #=self.selected_button
                     self.state=UI.States.FIRST_SET
@@ -312,51 +301,54 @@ class UI:
                 else:
                     return False
             else:
-                parts = data.split(':')
+                parts = self.ev.split(':')
                 if len(parts) != 2 or parts[0] != 'kbd':
                     #fixme: че делать?
-                    logger.error("select lang error: %s", data)
+                    logger.error(f"{self.user_id}: CFG_LANG: select lang error: %s", self.ev)
                     return False
-                self.kbd=self.create_buttons(selected=data, selected2='kbd:ok')
+                self.kbd=self.create_buttons(selected=self.ev, selected2='kbd:ok')
                 self.selected_button=parts[1]
 
         await self.m1.text(msg02_cfg_lang(), kbd=self.kbd)
         self.state_prev = UI.States.CFG_LANG
         return False
 
-    async def help_cmd(self, data=None) -> None:
+    async def help_cmd(self) -> None:
+        self.timer_stop()
         if self.state_prev != UI.States.HELP_CMD:
-            logger.info(f"{self.user_id}: state=HELP_CMD, prev_st={self.state_prev}")
-
-        if self.state_prev == UI.States.HELP_CMD and data=="kbd:close":
+            logger.info(f"{self.user_id}: HELP_CMD: prev_st={self.state_prev}")
+            self.state_prev = UI.States.HELP_CMD
+        elif self.ev=="tmr:help_cmd": #таймаут неактивности пользователя
+            logger.info(f"{self.user_id}: HELP_CMD: inactivity timeout")
+            self.reset_state()
+            return True
+        elif self.ev=="kbd:close":
             self.state=self.states_q.pop() #goto back
             return True
         await self.clear_screan()
         await self.m1.text('<a href="https://telegra.ph/Lingo-Link-06-04">О LingoLink</a>', self.create_buttons())
-        self.state_prev = UI.States.HELP_CMD
+        self.timer_run(timedelta(hours=23), "tmr:help_cmd") #запускаем таймер на неактивность пользователя
         return False
 
-    async def first_set(self, data=None) -> None:
+    async def first_set(self) -> None:
         if self.state_prev != UI.States.FIRST_SET:
-            logger.info(f"{self.user_id}: state=FIRST_SET, prev_st={self.state_prev}")
-
-        if self.state_prev != UI.States.FIRST_SET:
-            self.selected_button=None            
-        elif data is not None:
-            if data=='kbd:ok':
+            logger.info(f"{self.user_id}: FIRST_SET: prev_st={self.state_prev}")
+            self.selected_button=None
+        elif self.ev is not None:
+            if self.ev=='kbd:ok':
                 if self.selected_button is not None:
                     add_words_by_topic(self.user_id, self.selected_button[4:], flang=self.u.foreign_lang, nlang=self.u.native_lang)
-                    self.state=UI.States.FIRST_RUN1
+                    self.state=UI.States.TUTOR_SCR1
                     return True
                 elif words_count(self.user_id)>0:
-                    self.state=UI.States.FIRST_RUN1
+                    self.state=UI.States.TUTOR_SCR1
                     return True
                 else:
                     return False
-            elif self.selected_button==data: #second press the same button
+            elif self.selected_button==self.ev: #second press the same button
                 self.selected_button=None
-            elif data.startswith('kbd:'):
-                self.selected_button=data
+            elif self.ev.startswith('kbd:'):
+                self.selected_button=self.ev
             else:
                 return False
 
@@ -370,72 +362,73 @@ class UI:
         self.state_prev = UI.States.FIRST_SET
         return False
 
-    async def first_run1(self, data=None) -> None:
-        if self.state_prev != UI.States.FIRST_RUN1:
-            logger.info(f"{self.user_id}: state=FIRST_RUN1, prev_st={self.state_prev}")
+    async def tutor_scr1(self) -> None:
+        if self.state_prev != UI.States.TUTOR_SCR1:
+            logger.info(f"{self.user_id}: FIRST_RUN1: prev_st={self.state_prev}")
 
-        if self.state_prev==UI.States.FIRST_RUN1 and data=='kbd:ok':
-            self.state=UI.States.TREN1
+        if self.state_prev==UI.States.TUTOR_SCR1 and self.ev=='kbd:ok':
+            self.state=UI.States.TREN
             self.sub_state="q"
             return True
         await self.m1.text(msg03_first_run1(), kbd=self.create_buttons())
-        self.state_prev = UI.States.FIRST_RUN1
+        self.state_prev = UI.States.TUTOR_SCR1
         return False
 
-    async def first_run2(self, data=None) -> None:
-        if self.state_prev != UI.States.FIRST_RUN2:
-            logger.info(f"{self.user_id}: state=FIRST_RUN2, prev_st={self.state_prev}")
+    async def tutor_scr2(self) -> None:
+        if self.state_prev != UI.States.TUTOR_SCR2:
+            logger.info(f"{self.user_id}: FIRST_RUN2: prev_st={self.state_prev}")
 
-        if self.state_prev!=UI.States.FIRST_RUN2:
+        if self.state_prev!=UI.States.TUTOR_SCR2:
             await self.m2.clear()
-        elif data=='kbd:ok':
-            self.state=UI.States.TREN1
+        elif self.ev=='kbd:ok':
+            self.state=UI.States.TREN
             self.sub_state="a"
             return True
         
+        await self.m0.clear()
         tc=self.tcs.GetCurrentTCard()
         await self.m1.text(msg03_first_run2(tc.GetA()), kbd=self.create_buttons())
-        self.state_prev = UI.States.FIRST_RUN2
+        self.state_prev = UI.States.TUTOR_SCR2
         return False
 
-    async def first_run3(self, data=None) -> None:
-        if self.state_prev != UI.States.FIRST_RUN3:
-            logger.info(f"{self.user_id}: state=FIRST_RUN3, prev_st={self.state_prev}")
-
-        if self.state_prev!=UI.States.FIRST_RUN3:
+    async def tutor_scr3(self) -> None:
+        if self.state_prev != UI.States.TUTOR_SCR3:
+            logger.info(f"{self.user_id}: FIRST_RUN3: prev_st={self.state_prev}")
             await self.m2.clear()
+            self.state_prev = UI.States.TUTOR_SCR3
 
-        elif data=='kbd:ok':
-            self.state=UI.States.TREN1
+        elif self.ev=='kbd:ok':
+            self.state=UI.States.TREN
             self.sub_state="q"
+            self.tutorial_mode=1
             return True
         
+        await self.m0.clear()
         await self.m1.text(msg03_first_run3(self.last_answer), kbd=self.create_buttons())
-        self.state_prev = UI.States.FIRST_RUN3
         return False
 
-    #state tren0 => inviting to learn words
-    async def tren0_state(self, data=None) -> None:
-        if self.state_prev != UI.States.TREN0:
-            logger.info(f"{self.user_id}: state=TREN0, prev_st=" + self.state_prev)
+    #state BEFORE_TREN => inviting to learn words
+    async def before_tren_state(self) -> None:
+        self.timer_stop()
+        if self.state_prev != UI.States.BEFORE_TREN:
+            logger.info(f"{self.user_id}: BEFORE_TREN: prev_st=" + self.state_prev)
             self.sub_state=None
-        elif data is not None:
-            if data=="kbd:satrt":
-                self.timer_stop()
-                self.state=UI.States.TREN1 #goto tren1
+        elif self.ev is not None:
+            if self.ev=="kbd:satrt":
+                self.state=UI.States.TREN #goto tren
                 return True        
-            elif data=="tmr:t0":
-                pass
-            elif data.startswith('msg:'):
-                self.timer_stop()
-                await self.add_word(data)
+            elif self.ev.startswith('msg:'):
+                await self.add_word(self.ev)
                 return True
+            elif self.ev=="tmr:t0":
+                pass
             else:
                 return False
         
         #здесь, если было событие таймера или переход из другого состояния:
         n=self.tcs.TCardsReadyNow()
         if n!=self.sub_state:
+            logger.info(f"{self.user_id}: TREN0: {n} cards ready for learning" )
             self.sub_state=n
             if n==0:
                 await self.m1.clear()
@@ -443,58 +436,65 @@ class UI:
             await self.m2.clear()
             await self.m2.text(msg06_tren0(n), self.create_buttons())
 
-        if n<self.u.max_cards_for_training: #fixme: таймер на время когда след слово подойдет
+
+        if n<self.u.max_cards_for_training: #fixme: таймер на время когда след слово подойдет?
             self.timer_run(timedelta(minutes=5),"tmr:t0")
-        self.state_prev = UI.States.TREN0
+        self.state_prev = UI.States.BEFORE_TREN
         return False
 
-    async def tren1_state(self, data=None) -> None:
-        if self.state_prev != UI.States.TREN1:
-            logger.info(f"{self.user_id}: state=TREN1, prev_st=" + self.state_prev)
-
-        if self.tutorial_mode==0:
-            await self.m0.clear()
-
-        if self.state_prev == UI.States.TREN1 and data is not None:
-            if data=="kbd:?":
+    #основное состояние тренировки
+    async def tren_state(self) -> None:
+        self.timer_stop()
+        #вход в состояние
+        if self.state_prev != UI.States.TREN:
+            logger.info(f"{self.user_id}: TREN: prev_st=" + self.state_prev)
+            if self.state_prev == UI.States.TUTOR_SCR2:
                 self.sub_state="a"
-                if self.tutorial_mode==2:
-                    self.state=UI.States.FIRST_RUN2
-                    return True
-            elif data=='kbd:+' or data=='kbd:-':
-                self.last_answer = True if data=='kbd:+' else False
+            else:
+                self.sub_state="q"
+            #вход в тренинг, создаем набор для тренинга
+            if self.state_prev == UI.States.BEFORE_TREN or self.state_prev == UI.States.AFTER_TREN or self.state_prev == UI.States.TUTOR_SCR1:
+                await self.tcs.Create()
+            self.state_prev = UI.States.TREN
+        
+        #обработка событий
+        elif self.ev:
+            if self.ev=="kbd:?":
+                self.sub_state="a"
+            elif self.ev=='kbd:+' or self.ev=='kbd:-':
+                self.last_answer = True if self.ev=='kbd:+' else False
                 self.tcs.SetAnswer(self.last_answer)
                 self.sub_state="q"
-                if self.tutorial_mode==2:
-                    self.tutorial_mode=1
-                    self.state=UI.States.FIRST_RUN3
-                    return True
-            elif data=="cmd:edit":
+            elif self.ev=="cmd:edit":
                 self.edited_word=self.tcs.GetCurrentTCard().word
-                self.states_q.append(self.state)
-                self.sub_state="edit_old"
-                self.state=UI.States.EDIT_WORD #goto edit_cards
+                self.call_state(UI.States.EDIT_WORD, "edit_old") #goto edit_cards
                 return True
-            elif data.startswith('msg:'):
-                await self.add_word(data)
+            elif self.ev.startswith('msg:'):
+                await self.add_word(self.ev)
+                return True
+            elif self.ev=="tmr:tren_to":
+                #self.u.UpdateStat() #Fixme: обновить пользовательскую статистику?
+                logger.info(f"{self.user_id}: TREN: inactivity timeout")
+                self.reset_state()
                 return True
             else:
                 return False
-        elif self.state_prev == UI.States.FIRST_RUN2:
-            self.sub_state="a"
-        elif self.state_prev == UI.States.TREN0 or self.state_prev == UI.States.TREN3 or self.state_prev == UI.States.FIRST_RUN1:
-            await self.tcs.Create()
-            self.sub_state="q"
-        else: 
-            self.sub_state="q"
-        
+
+        if self.tutorial_mode==2: 
+            if self.ev=="kbd:?":
+                self.state=UI.States.TUTOR_SCR2
+                return True
+            elif self.ev=='kbd:+' or self.ev=='kbd:-':
+                self.state=UI.States.TUTOR_SCR3
+                return True
+
         tc=self.tcs.GetCurrentTCard()  
-        if tc is None: #нет карт для запоминания
-            #fixme: найти еще место где выключается, и там тоже сохранить
-            self.u.UpdateStat()
-            self.state=UI.States.TREN3 #goto tren3
+        if tc is None: #Больше нет карт для запоминания
+            self.u.UpdateStat() #обновить пользовательскую статистику
+            self.state=UI.States.AFTER_TREN #goto AFTER_TREN
             return True
 
+        #показ сообщений
         if self.sub_state=="q":
             if self.tutorial_mode==1:
                 await self.m0.text(msg19_tutorial_tren1())
@@ -532,23 +532,22 @@ class UI:
                     await self.m1.text(f"<i>{self.txt_ex}</i>")
             a = await tc.GetAudio()
             await self.m2.voice(voice=a, txt=f"<u>{tc.GetForeign()}</u> = {tc.GetNative()}", kbd=self.create_buttons())
-        
-        self.state_prev = UI.States.TREN1
+
+        self.timer_run(timedelta(hours=23), "tmr:tren_to") #запускаем таймер на неактивность пользователя
         return False
 
-    async def tren3_state(self, data=None) -> None:
-        if self.state_prev != UI.States.TREN3:
-            logger.info(f"{self.user_id}: state=TREN3, prev_st={self.state_prev}")
-            await self.m0.clear()
-            
-        if self.state_prev == UI.States.TREN3 and data is not None:
-            if data=='kbd:enough' or data=='tmr:t3':
-                self.timer_stop()
-                self.state=UI.States.TREN0 #goto tren0,
+    async def after_tren_state(self) -> None:
+        self.timer_stop()
+        if self.state_prev != UI.States.AFTER_TREN:
+            logger.info(f"{self.user_id}: AFTER_TREN: prev_st={self.state_prev}")
+            await self.clear_screan()
+            self.state_prev = UI.States.AFTER_TREN
+        elif self.ev is not None:
+            if self.ev=='kbd:enough' or self.ev=='tmr:t3':
+                self.state=UI.States.BEFORE_TREN #goto BEFORE_TREN,
                 return True
-            elif data=='kbd:again':
-                self.timer_stop()
-                self.state=UI.States.TREN1 #goto tren1,
+            elif self.ev=='kbd:again':
+                self.state=UI.States.TREN #goto tren,
                 return True
             return False
 
@@ -561,7 +560,6 @@ class UI:
         await self.m1.sticker(sticker04_tren3())
         await self.m2.text(msg04_tren3(n), kbd=self.create_buttons())
         self.timer_run(timedelta(minutes=5), "tmr:t3")
-        self.state_prev = UI.States.TREN3
         return False
 
     def save_edited_word(self):
@@ -574,28 +572,30 @@ class UI:
         
         self.edited_word=None
 
-    async def edit_word_state(self, data:str=None) -> None:
+    async def edit_word_state(self) -> None:
+        self.timer_stop()
         if self.state_prev != UI.States.EDIT_WORD:
-            logger.info(f"{self.user_id}: state=EDIT_WORD, prev_st=" + self.state_prev)
-
-        #decoding inside state events:
-        if self.state_prev != UI.States.EDIT_WORD:
+            logger.info(f"{self.user_id}: EDIT_WORD: prev_st=" + self.state_prev)
             await self.clear_screan()
-            if self.state_prev!=UI.States.TREN1 and self.state_prev!=UI.States.TREN0 and self.state_prev!=UI.States.ADD_WORD \
+            if self.state_prev!=UI.States.TREN and self.state_prev!=UI.States.BEFORE_TREN and self.state_prev!=UI.States.ADD_WORD \
                     and self.state_prev!=UI.States.SHOW_WORDS and self.state_prev!=UI.States.HELP_CMD:
-                logger.warning("edit_word: unknown state_prev: " + self.state_prev)
+                logger.warning(f"{self.user_id}: EDIT_WORD: unknown state_prev: " + self.state_prev)
                 return False
             self.selected_button=None
             self.kbd=self.create_buttons()
 
-        elif self.state_prev == UI.States.EDIT_WORD and data is not None:
-            if data=="kbd:fw":
+        elif self.state_prev == UI.States.EDIT_WORD and self.ev is not None:
+            if self.ev=="tmr:edit_word": #таймаут неактивности пользователя
+                logger.info(f"{self.user_id}: EDIT_WORD: inactivity timeout")
+                self.reset_state()
+                return True
+            elif self.ev=="kbd:fw":
                 self.selected_button="fw"
                 self.kbd=self.create_buttons("kbd:fw", "✏️")
-            elif data=='kbd:nw':
+            elif self.ev=='kbd:nw':
                 self.selected_button="nw"
                 self.kbd=self.create_buttons("kbd:nw", "✏️")
-            elif data=='kbd:ex':
+            elif self.ev=='kbd:ex':
                 if self.selected_button!="ex":
                     self.selected_button="ex"
                     self.cnt1=0
@@ -605,35 +605,35 @@ class UI:
                     self.cnt1+=1
                     self.edited_word.ChangeExample(ex)
                 self.kbd=self.create_buttons("kbd:ex", "✏️")
-            elif data=='kbd:reset'and self.sub_state=="edit_old":
+            elif self.ev=='kbd:reset'and self.sub_state=="edit_old":
                 self.selected_button="reset"
                 self.kbd=self.create_buttons("kbd:reset")
-            elif data=='kbd:delete' and self.sub_state=="edit_old":
+            elif self.ev=='kbd:delete' and self.sub_state=="edit_old":
                 self.selected_button="delete"
                 self.kbd=self.create_buttons("kbd:delete")
-            elif data=='kbd:cancel':                
+            elif self.ev=='kbd:cancel':                
                 if self.sub_state=="edit_old":
                     self.edited_word.ReloadFromDb() #restore vals from the base.
                     #fixme restore progress?
                 self.state=self.states_q.pop() #goto back
                 return True
-            elif data=='kbd:save':
+            elif self.ev=='kbd:save':
                 self.save_edited_word() #удаление, апдейт, insert
                 self.state=self.states_q.pop() #goto back
                 return True
-            elif data.startswith('msg:'):
-                data = data.split('msg:', 1)[1]
+            elif self.ev.startswith('msg:'):
+                w = self.ev.split('msg:', 1)[1]
                 if self.selected_button=="fw":
-                    logger.info("fw: rx_msg: "+data)
-                    self.edited_word.ChangeForeign(data)
+                    logger.info("f{self.user_id}: EDIT_WORD: fw: rx_msg: "+w)
+                    self.edited_word.ChangeForeign(w)
                     self.kbd=self.create_buttons("kbd:fw", "✏️")
                 elif self.selected_button=="nw":
-                    logger.info("nw: rx_msg: "+data)
-                    self.edited_word.ChangeNative(data)
+                    logger.info("f{self.user_id}: EDIT_WORD: nw: rx_msg: "+w)
+                    self.edited_word.ChangeNative(w)
                     self.kbd=self.create_buttons("kbd:nw", "✏️")
                 elif self.selected_button=="ex":
-                    logger.info("ex: rx_msg: "+data)
-                    self.edited_word.ChangeExample(data)
+                    logger.info("f{self.user_id}: EDIT_WORD: ex: rx_msg: "+w)
+                    self.edited_word.ChangeExample(w)
                     self.kbd=self.create_buttons("kbd:ex", "✏️")
                 else:
                     return False
@@ -654,22 +654,22 @@ class UI:
                             
         await self.m2.text(txt, kbd=self.kbd)
         self.state_prev = UI.States.EDIT_WORD
+        self.timer_run(timedelta(hours=23), "tmr:edit_word") #запускаем таймер на неактивность пользователя
         return False
 
-    async def add_word(self, data:str):
-        data = data.split('msg:', 1)[1]
-        data=data.lower().strip()
-        f,n = await translate_text(self.u.foreign_lang, self.u.native_lang, data)
+    async def add_word(self, ev:str):
+        await self.clear_screan()
+        w = ev.split('msg:', 1)[1]
+        w=w.lower().strip()
+        f,n = await translate_text(self.u.foreign_lang, self.u.native_lang, w)
         #проверить по fw есть ли такое слово в базе
         word_id=word_read_by_fw(self.user_id, f)
         if word_id is not None:
-            #проверим есть ли в текщем наборе, если есть возбмем его. если нет вычитаем из базы
+            #проверим есть ли в текщем наборе, если есть возьмем его. если нет вычитаем из базы
             self.edited_word=self.tcs.GetWord(word_id)
             if self.edited_word is None:
                 self.edited_word=await Word.ReadFromDb(self.user_id, word_id)
-            self.states_q.append(self.state)
-            self.sub_state="edit_old"
-            self.state = UI.States.EDIT_WORD
+            self.call_state(UI.States.EDIT_WORD, "edit_old")
             return True
 
         if f==n: #вероятно не смогли первести, может абракадабра была вместо слова
@@ -678,26 +678,27 @@ class UI:
             ex=await oai_aget_example(self.user_id, f)
 
         self.edited_word=Word(self.user_id, self.u.foreign_lang, f, self.u.native_lang, n, ex)
-        self.states_q.append(self.state)
-        self.sub_state="edit_new"
-        self.state = UI.States.EDIT_WORD
+        self.call_state(UI.States.EDIT_WORD, "edit_new")
         return True
 
-
-    async def add_word_state(self, data:str=None) -> None:
+    async def add_word_state(self) -> None:
+        self.timer_stop()
         if self.state_prev != UI.States.ADD_WORD:
-            logger.info(f"{self.user_id}: state=ADD_WORD, prev_st=" + self.state_prev)
-
-        if self.state_prev != UI.States.ADD_WORD:
+            logger.info(f"{self.user_id}: ADD_WORD: prev_st=" + self.state_prev)
             await self.m0.clear()
             await self.m1.clear()
             self.selected_button=None
             self.kbd=self.create_buttons()
-        elif self.state_prev==self.state and data is not None:
-            if data.startswith('msg:'):
-                await self.add_word(data)
+            self.state_prev = UI.States.ADD_WORD            
+        elif self.ev is not None:
+            if self.ev=="tmr:add_word": #таймаут неактивности пользователя
+                logger.info(f"{self.user_id}: ADD_WORD: inactivity timeout")
+                self.reset_state()
                 return True
-            elif data=='kbd:back':
+            elif self.ev.startswith('msg:'):
+                await self.add_word(self.ev)
+                return True
+            elif self.ev=='kbd:back':
                 self.state=self.states_q.pop() #goto back
                 await self.m2.clear()
                 return True
@@ -705,70 +706,76 @@ class UI:
                 return False
 
         await self.m2.text(msg10_add_new_word(), kbd=self.kbd)
-        self.state_prev = UI.States.ADD_WORD
+        self.timer_run(timedelta(hours=23), "tmr:add_word") #запускаем таймер на неактивность пользователя
         return False            
 
-
-    async def add_from_lib(self, data:str=None) -> None:
+    async def add_from_lib(self) -> None:
+        self.timer_stop()
         if self.state_prev != UI.States.ADD_WORDS_FROM_LIB:
-            logger.info(f"{self.user_id}: state=ADD_WORDS_FROM_LIB, prev_st={self.state_prev}")
-
-        if self.state_prev != UI.States.ADD_WORDS_FROM_LIB:
+            logger.info(f"{self.user_id}: ADD_WORDS_FROM_LIB: prev_st={self.state_prev}")
             await self.m0.clear()
             await self.m1.clear()
             self.selected_button=None
             self.kbd=self.create_buttons()
-        elif self.state_prev == UI.States.ADD_WORDS_FROM_LIB and data is not None:
-            if data.startswith('msg:'):
-                await self.add_word(data)
+            self.state_prev = UI.States.ADD_WORDS_FROM_LIB
+        elif self.ev is not None:
+            if self.ev=="tmr:add_word_from_lib": #таймаут неактивности пользователя
+                logger.info(f"{self.user_id}: ADD_WORD_FROM_LIB: inactivity timeout")
+                self.reset_state()
                 return True
-            elif data=='kbd:cancel':
+            elif self.ev.startswith('msg:'):
+                await self.add_word(self.ev)
+                return True
+            elif self.ev=='kbd:cancel':
                 self.state=self.states_q.pop() #goto back
                 await self.m2.clear()
                 return True
-            elif data=='kbd:ok':
+            elif self.ev=='kbd:ok':
                 if self.selected_button is not None:
                     n=add_words_by_topic(self.user_id, self.selected_button, flang=self.u.foreign_lang, nlang=self.u.native_lang)
-                    logger.info(f"{self.user_id}: added {n} words from word_set[{self.selected_button}]")
+                    logger.info(f"{self.user_id}: ADD_WORDS_FROM_LIB: added {n} words from word_set[{self.selected_button}]")
                     self.state=self.states_q.pop() #goto back
                     await self.m2.clear()
                     return True
                 else:
                     return False
-            elif data.startswith('kbd:'):
-                self.selected_button = data.split('kbd:', 1)[1]
-                self.kbd=self.create_buttons(selected=data, selected2='kbd:ok') 
+            elif self.ev.startswith('kbd:'):
+                self.selected_button = self.ev.split('kbd:', 1)[1]
+                self.kbd=self.create_buttons(selected=self.ev, selected2='kbd:ok') 
             else:
                 return False
 
         await self.m2.text(msg12_add_from_lib(), kbd=self.kbd)
-        self.state_prev = UI.States.ADD_WORDS_FROM_LIB
+        self.timer_run(timedelta(hours=23), "tmr:add_word_from_lib") #запускаем таймер на неактивность пользователя
         return False            
 
-
-    async def show_stat(self, data:str=None) -> None:
+    async def show_stat(self) -> None:
+        self.timer_stop()
         if self.state_prev != UI.States.SHOW_STAT:
-            logger.info(f"{self.user_id}: state=SHOW_STAT, prev_st={self.state_prev}")
-
-        if self.state_prev != UI.States.SHOW_STAT:
+            logger.info(f"{self.user_id}: SHOW_STAT:, prev_st={self.state_prev}")
             await self.m0.clear()
             await self.m1.clear()
             self.list_pos=0
             self.list_sz=tcards_count(self.user_id)
             self.selected_button=None
-        elif self.state_prev == UI.States.SHOW_STAT and data is not None:
-            if data=='kbd:cancel':
+            self.state_prev = UI.States.SHOW_STAT
+        elif self.ev is not None:
+            if self.ev=="tmr:show_stat": #таймаут неактивности пользователя
+                logger.info(f"{self.user_id}: SHOW_STAT: inactivity timeout")
+                self.reset_state()
+                return True
+            elif self.ev=='kbd:cancel':
                 self.state=self.states_q.pop() #goto back, сбросить список
                 await self.clear_screan()
                 return True
-            elif data=="kbd:prev": #продвинуться по списку
+            elif self.ev=="kbd:prev": #продвинуться по списку
                 self.list_pos-=30
                 if self.list_pos<0:
                     self.list_pos=0
-            elif data=="kbd:next":
+            elif self.ev=="kbd:next":
                 if self.list_pos + 30 < self.list_sz:
                     self.list_pos += 30
-            elif data=="kbd:x":
+            elif self.ev=="kbd:x":
                 return False
             else:
                 return False
@@ -776,12 +783,12 @@ class UI:
         t=msg11_total_stat(self.list_sz, self.u.current_forget_rate)
         t+=f"<pre>{cards_stat(self.user_id, 30, offset=self.list_pos)}</pre>"
         await self.m2.text(t, kbd=self.create_buttons())
-        self.state_prev = UI.States.SHOW_STAT
+        self.timer_run(timedelta(hours=23), "tmr:show_stat") #запускаем таймер на неактивность пользователя
         return False
 
     def create_show_words_buttons(self):
         kbd = [[]]
-        n=len(self.show_words_list)-1
+        n=len(self.show_words_list)
         n1=self.list_pos
         n2=min(n, n1+6)
 
@@ -811,47 +818,61 @@ class UI:
         return InlineKeyboardMarkup(kbd)
 
 
-    async def show_words(self, data:str=None) -> None:
+    async def show_words(self) -> None:
+        self.timer_stop()
         if self.state_prev != UI.States.SHOW_WORDS:
-            logger.info(f"{self.user_id}: state=SHOW_WORDS, prev_st={self.state_prev}")
+            logger.info(f"{self.user_id}: SHOW_WORDS: prev_st={self.state_prev}")
+            self.state_prev = UI.States.SHOW_WORDS
             await self.m0.clear()
             await self.m1.clear()
-
-        if self.state_prev != UI.States.SHOW_WORDS:
             self.show_words_list=words_read(self.user_id)
             #сохранить  позицию при выходе из редактирования
             if self.state_prev != UI.States.EDIT_WORD or self.list_pos>=len (self.show_words_list):
                 self.list_pos=0 
-        elif self.state_prev == UI.States.SHOW_WORDS and data is not None:
-            if data=='kbd:cancel':
+        elif self.ev is not None:
+            if self.ev=="tmr:show_words": #таймаут неактивности пользователя
+                self.reset_state()
+                logger.info(f"{self.user_id}: SHOW_WORDS: inactivity timeout")
+                return True
+            elif self.ev=='kbd:cancel':
                 self.show_words_list=None
                 self.list_pos=0
                 self.state=self.states_q.pop() #goto back, сбросить список
                 await self.clear_screan()
                 return True
-            elif data=="kbd:prev": #продвинуться по списку
+            elif self.ev=="kbd:prev": #продвинуться по списку
                 self.list_pos-=6
                 if self.list_pos<0:
                     self.list_pos=0
-            elif data=="kbd:next":
+            elif self.ev=="kbd:next":
                 if self.list_pos+6<len(self.show_words_list):
                     self.list_pos+=6
-            elif data=="kbd:x":
+            elif self.ev=="kbd:x":
                 return False
-            elif data.startswith('kbd:'): 
-                data = data.split('kbd:', 1)[1] #this is word_id
-                self.edited_word=await Word.ReadFromDb(self.user_id, int(data))
-                self.states_q.append(self.state)
-                self.sub_state="edit_old" 
+            elif self.ev.startswith('kbd:'):
+                w_id = self.ev.split('kbd:', 1)[1] #this is word_id
+                self.edited_word=await Word.ReadFromDb(self.user_id, int(w_id))
+                self.call_state(UI.States.EDIT_WORD, "edit_old") #goto edit_cards
+                return True
 
         await self.m2.text(msg12_select_word(len(self.show_words_list)), kbd=self.create_show_words_buttons())
-        self.state_prev = UI.States.SHOW_WORDS
+        self.timer_run(timedelta(hours=23), "tmr:show_words") #запускаем таймер на неактивность пользователя
         return False
 
+    def call_state(self, st:States, ss=None):
+        self.states_q.append(self.state)
+        self.sub_state=ss
+        self.state = st
+
+    def reset_state(self):
+        self.states_q.clear()
+        self.state = UI.States.BEFORE_TREN
+        self.state_prev = UI.States.ST_UNDEF
+
     state_functions = {
-        States.TREN0:           tren0_state,
-        States.TREN1:           tren1_state,
-        States.TREN3:           tren3_state,
+        States.BEFORE_TREN:     before_tren_state,
+        States.TREN:            tren_state,
+        States.AFTER_TREN:      after_tren_state,
         States.EDIT_WORD:       edit_word_state,
         States.ADD_WORD:        add_word_state,
         States.ADD_WORDS_FROM_LIB: add_from_lib,
@@ -860,16 +881,16 @@ class UI:
         States.NEW_USER:        new_user,
         States.CFG_LANG:        cfg_lang,
         States.FIRST_SET:       first_set,
-        States.FIRST_RUN1:      first_run1,
-        States.FIRST_RUN2:      first_run2,
-        States.FIRST_RUN3:      first_run3,
+        States.TUTOR_SCR1:      tutor_scr1,
+        States.TUTOR_SCR2:      tutor_scr2,
+        States.TUTOR_SCR3:      tutor_scr3,
         States.HELP_CMD:        help_cmd,
     }
 
-    async def process_state(self, data):
+    async def process_state(self):
         handler = UI.state_functions.get(self.state)
         if handler:
-            return await handler(self, data)
+            return await handler(self)
         else: # обработка, если self.state не найден в словаре state_functions
             logger.error(f"{self.user_id}: process_state:  no handler for st={self.state}")
             return None
@@ -919,7 +940,7 @@ class UI:
         ui=get_ui(update.effective_user.id, update.effective_chat.id, context)
         text = update.message.text
         if text is None:
-            logger.warning("rx_msg text is None!")
+            logger.warning(f"{ui.user_id}: rx_msg text is None!")
         else:
             logger.info(f"{ui.user_id}: rx_msg: {text}")
             await ui.process_ev("msg:"+text)
@@ -942,7 +963,7 @@ class UI:
             await ui.process_ev(query.data)
         else:
             #что-то пошло не так, кнопка от старого сообщения?
-            logger.info(f"repair ui: {user_id}")
+            logger.info(f"{user_id}: repair ui")
             await start_cmd(update, context)
 
 def get_ui(user_id, chat_id, context):
@@ -1042,7 +1063,7 @@ async def post_init(context):
                 n=words_count(user_id)  #сколько у юзера всего слов на изучении.
                 if n>0:                 #для тех кто не осилил еще, инстанс не создаем. Юзер может запустится командой /start
                     ui=get_ui(user_id, chat_id, context)
-                    if state==UI.States.TREN0:
+                    if state==UI.States.BEFORE_TREN:
                         ui.state_prev = ui.state = state
                         ui.sub_state = 0
                         if sub_state:
@@ -1051,13 +1072,13 @@ async def post_init(context):
                         if msg_id1<0 or msg_id2<0:
                             logger.error(f"{user_id}: post_init: was in state={state}, ss={sub_state}. but msg_id1={msg_id1}, msg_id2={msg_id2}")
 
-                        #восстановим сообщения которые были в состаянии tren0_st перед остановкой
+                        #восстановим сообщения которые были в состоянии BEFORE_TREN перед остановкой
                         if ui.sub_state>0:
                             ui.m1.set_sticker(msg_id1, sticker06_tren0())
                         ui.m2.set_txt(msg_id2, msg06_tren0(ui.sub_state), ui.create_buttons())
                         
-                        #находимя в режиме ожидания, запустим таймер и по нему поапдейтим все данные в tren0_state()
-                        logger.info(f"{user_id}: restoring state=TREN0")
+                        #находимя в режиме ожидания, запустим таймер и по нему поапдейтим все данные в before_tren_st()
+                        logger.info(f"{user_id}: post_init: restoring state=BEFORE_TREN")
                         ui.timer_run(timedelta(minutes=5),"tmr:t0")
                     else:
                         logger.info(f"{user_id}: was in state={state}, ss={sub_state}. Run cmd:start for him")
@@ -1116,10 +1137,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
-
-#current_jobs=job_queue.get_jobs_by_name(name)
-#for job in current_jobs:
-#        job.schedule_removal()
-
-#job_queue.run_once(alarm, due, chat_id=chat_id, name=str(chat_id), data=due)

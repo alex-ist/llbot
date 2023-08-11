@@ -74,13 +74,14 @@ def msg04_tren3(n:int):
     r=g[random.randint(0, 3)]
     m1=f"Выучено! молодец! {r}"
     if n>0:
-        m1+=f"\nПродолжить сейчас ({msg_word(n)})?"
+        m1+=f"\nПродолжить сейчас ({msg_card(n)})?"
     return m1
 
 def sticker04_tren3(): #драночик ok!
     return 'CAACAgIAAxkBAAIXG2R7uMd7vi7G6PN5iAns6r9IZLX_AAJBAAN4qOYP-J7xorhFu34vBA'
 
 def msg_word(n):
+    n=int(n)
     if n>20:
         d=n%10
     else:
@@ -93,6 +94,7 @@ def msg_word(n):
         return f"{n} слов"
 
 def msg_card(n):
+    n=int(n)
     if n>20:
         d=n%10
     else:
@@ -146,7 +148,7 @@ def msg09_reset_prog():
     return "<pre> Сбросить прогресс запоминания слова:</pre>\n"
 
 def msg10_add_new_word():
-    return "<pre>✏️ Ведите слово для изучения:</pre>"
+    return "<pre>✏️ Введите слово для изучения:</pre>"
 
 def msg11_t_o():
     return "Я на тех. обслуживании, извини!"
@@ -158,7 +160,7 @@ def msg12_select_word(n):
     return f"<pre>Список для изучения, {msg_word(n)}. \nВыберите слово для просмотра и редактирования:</pre>\n"
 
 def msg11_total_stat(n: int, forg_r):
-    return f"<b>Статистика:</b><pre>\nСейчас в списке для изучения {msg_card(n)}\nТекущий % забывания: {round(forg_r*100)}%\n\u28ffСлово            повтор через\n===============================\n</pre>"
+    return f"<b>Статистика:</b><pre>\nСейчас в списке для изучения {msg_word(n/2)}/{msg_card(n)}\nТекущий % забывания: {round(forg_r*100)}%\n\u28ffСлово            повтор через\n===============================\n</pre>"
 
 def msg12_add_from_lib():
     return "Для добавления набора слов, выберите тему и нажмите [ Добавить▶️ ]"
