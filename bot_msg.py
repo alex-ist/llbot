@@ -51,32 +51,30 @@ class BotMsg:
             self.kbd=kbd
             m=await self.bot.edit_message_text(text=self.txt, chat_id=self.chat_id, message_id=self.id, reply_markup=kbd)
             self.id=m.message_id
-        elif self.txt!=txt: #3) замена текста
+        elif self.txt!=txt or not BotMsg.kbd_eq(self.kbd, kbd): 
+            #3) замена текста или кнопок
             self.kbd=kbd
             self.txt=txt
             await self.bot.edit_message_text(text=txt, chat_id=self.chat_id, message_id=self.id, reply_markup=kbd)
-        else: #self.txt==txt: надо проверить кнопки одни и теже?
-            if not BotMsg.kbd_eq(self.kbd, kbd):
-                self.txt=txt
-                self.kbd=kbd
-                await self.bot.edit_message_text(text=txt, chat_id=self.chat_id, message_id=self.id, reply_markup=kbd)
 
     async def sticker(self, stick:str):
         if self.id is not None:
             if self.type=="sticker" and self.txt==stick:
                 return
             await self.clear()
+        
+        m = await self.bot.send_sticker(chat_id=self.chat_id, sticker=stick)
+        if m is not None:
+            self.id=m.message_id
+            self.type="sticker"
+            self.txt=stick
+        else:
+            logger.error(f"chat_id={self.chat_id}: send_sticker returned None!")
+            self.txt=None
+            self.kbd=None
+            self.type=None
+            self.prev_vo=None
 
-        try:
-            m = await self.bot.send_sticker(chat_id=self.chat_id, sticker=stick)
-        except error.Forbidden as e:
-            logger.warning(f"{self.chat_id}: Forbidden: {e}")
-            return False
-
-        self.id=None
-        self.id=m.message_id
-        self.type="sticker"
-        self.txt=stick
     
     def set_sticker(self, msg_id, stick:str):
         self.id=msg_id

@@ -1,64 +1,72 @@
 PRAGMA foreign_keys = 0;
 
 CREATE TABLE sqlitestudio_temp_table AS SELECT *
-                                          FROM training_cards;
+                                          FROM users;
 
-DROP TABLE training_cards;
+DROP TABLE users;
 
-CREATE TABLE training_cards (
-    training_card_id INTEGER     PRIMARY KEY AUTOINCREMENT,
-    user_id          INTEGER,
-    word_id          INTEGER     REFERENCES words (word_id),
-    direction        INTEGER (1) NOT NULL,
-    next_training_t  INTEGER     DEFAULT ( -1),
-    last_training_t  INTEGER     DEFAULT ( -1) 
+CREATE TABLE users (
+    user_id               INTEGER     PRIMARY KEY,
+    chat_id               INTEGER,
+    username              TEXT,
+    first_name            TEXT,
+    name                  TEXT,
+    lang_code             TEXT,
+    is_premium            INTEGER (1),
+    o_param               INTEGER     DEFAULT (2),
+    foreign_lang          TEXT (2)    NOT NULL,
+    use_audio_examples    INTEGER (1) DEFAULT (1),
+    use_examples          INTEGER (1) DEFAULT (1),
+    min_trening_interval  INTEGER,
+    min_cards_for_trening INTEGER,
+    max_cards_for_trening INTEGER,
+    first_access          INTEGER,
+    last_access           INTEGER,
+    shown_words_count     INTEGER,
+    current_forget_rate   REAL,
+    blocked               INTEGER (1) DEFAULT (0) 
 );
 
-INSERT INTO training_cards (
-                               training_card_id,
-                               user_id,
-                               word_id,
-                               direction,
-                               next_training_t,
-                               last_training_t
-                           )
-                           SELECT training_card_id,
-                                  user_id,
-                                  word_id,
-                                  direction,
-                                  next_training_t,
-                                  last_training_t
-                             FROM sqlitestudio_temp_table;
+INSERT INTO users (
+                      user_id,
+                      chat_id,
+                      username,
+                      first_name,
+                      name,
+                      lang_code,
+                      is_premium,
+                      o_param,
+                      foreign_lang,
+                      use_audio_examples,
+                      use_examples,
+                      min_trening_interval,
+                      min_cards_for_trening,
+                      max_cards_for_trening,
+                      first_access,
+                      last_access,
+                      shown_words_count,
+                      current_forget_rate
+                  )
+                  SELECT user_id,
+                         chat_id,
+                         username,
+                         first_name,
+                         name,
+                         lang_code,
+                         is_premium,
+                         o_param,
+                         foreign_lang,
+                         use_audio_examples,
+                         use_examples,
+                         min_trening_interval,
+                         min_cards_for_trening,
+                         max_cards_for_trening,
+                         first_access,
+                         last_access,
+                         shown_words_count,
+                         current_forget_rate
+                    FROM sqlitestudio_temp_table;
 
 DROP TABLE sqlitestudio_temp_table;
-
-DROP TRIGGER IF EXISTS create_training_cards;
-
-CREATE TRIGGER create_training_cards
-         AFTER INSERT
-            ON words
-      FOR EACH ROW
-BEGIN
-    INSERT INTO training_cards (
-                                   word_id,
-                                   user_id,
-                                   direction
-                               )
-                               VALUES (
-                                   NEW.word_id,
-                                   NEW.user_id,
-                                   '0'
-                               );
-    INSERT INTO training_cards (
-                                   word_id,
-                                   user_id,
-                                   direction
-                               )
-                               VALUES (
-                                   NEW.word_id,
-                                   NEW.user_id,
-                                   '1'
-                               );
-END;
 
 PRAGMA foreign_keys = 1;

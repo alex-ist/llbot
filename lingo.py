@@ -2,7 +2,7 @@
 import asyncio
 from botlog import logger
 
-from telegram import Update, BotCommand
+from telegram import Update, BotCommand, error 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from telegram import KeyboardButton, ReplyKeyboardMarkup
 from telegram import InputMediaAudio
@@ -84,48 +84,55 @@ class UI:
         await self.m2.clear()
    
     async def process_ev(self, data:str):
-        self.ev=data
-        while True:
-            next_step=False
-            if self.ev=="stop:":
-                await self.stop_chat()
-                return
-            elif self.ev=="cmd:start":
-                if self.tutorial_mode:
-                    self.state = UI.States.NEW_USER
-                else:
-                    self.state = UI.States.BEFORE_TREN
-            elif self.ev=="cmd:add":
-                if self.state==UI.States.ADD_WORD:
+        try:
+            self.ev=data
+            while True:
+                next_step=False
+                if self.ev=="stop:":
+                    await self.stop_chat()
                     return
-                self.call_state(UI.States.ADD_WORD)
-                self.ev=None
-            elif self.ev=="cmd:lib":
-                if self.state==UI.States.ADD_WORDS_FROM_LIB:
-                    return
-                self.call_state(UI.States.ADD_WORDS_FROM_LIB)
-                self.ev=None
-            elif self.ev=="cmd:stat":
-                if self.state==UI.States.SHOW_STAT:
-                    return
-                self.call_state(UI.States.SHOW_STAT)
-                self.ev=None
-            elif self.ev=="cmd:edit":
-                if self.state==UI.States.SHOW_WORDS or self.state==UI.States.EDIT_WORD:
-                    return
-                if self.state != UI.States.TREN:
-                    self.call_state(UI.States.SHOW_WORDS)
+                elif self.ev=="cmd:start":
+                    if self.tutorial_mode:
+                        self.state = UI.States.NEW_USER
+                    else:
+                        self.state = UI.States.BEFORE_TREN
+                elif self.ev=="cmd:add":
+                    if self.state==UI.States.ADD_WORD:
+                        return
+                    self.call_state(UI.States.ADD_WORD)
                     self.ev=None
-            elif self.ev=="cmd:help":
-                if self.state==UI.States.HELP_CMD:
-                    return
-                self.call_state(UI.States.HELP_CMD)
-                self.ev=None
+                elif self.ev=="cmd:lib":
+                    if self.state==UI.States.ADD_WORDS_FROM_LIB:
+                        return
+                    self.call_state(UI.States.ADD_WORDS_FROM_LIB)
+                    self.ev=None
+                elif self.ev=="cmd:stat":
+                    if self.state==UI.States.SHOW_STAT:
+                        return
+                    self.call_state(UI.States.SHOW_STAT)
+                    self.ev=None
+                elif self.ev=="cmd:edit":
+                    if self.state==UI.States.SHOW_WORDS or self.state==UI.States.EDIT_WORD:
+                        return
+                    if self.state != UI.States.TREN:
+                        self.call_state(UI.States.SHOW_WORDS)
+                        self.ev=None
+                elif self.ev=="cmd:help":
+                    if self.state==UI.States.HELP_CMD:
+                        return
+                    self.call_state(UI.States.HELP_CMD)
+                    self.ev=None
 
-            next_step = await self.process_state()
-            if next_step!=True:
-                break
-            self.ev=None
+                next_step = await self.process_state()
+                if next_step!=True:
+                    break
+                self.ev=None
+        except error.Forbidden as e:
+            logger.warning(f"{self.user_id}: {e}: st={self.state} ev={self.ev}")
+            return 1
+        else:
+            return 0
+
 
     def timer_run(self, t, user_data):
         self.timer_stop()
@@ -144,7 +151,9 @@ class UI:
         job = context.job
         ui, user_data =job.data
         #logger.info("%d: st=%s timer run! data=%s", ui.user_id, ui.state, user_data)
-        await ui.process_ev(user_data)
+        if await ui.process_ev(user_data):
+            ui.exit_ui()
+
 
     def create_buttons(self, selected=None, sel_symb=None, selected2=None, sel_symb2=None, state=None):
         if state is None:
@@ -899,13 +908,16 @@ class UI:
     async def help_cmd_(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         await context.bot.delete_message(update.effective_chat.id, update.effective_message.id)
         ui=get_ui(update.effective_user.id, update.effective_chat.id, context)
-        await ui.process_ev("cmd:help")
+        if await ui.process_ev("cmd:help"):
+            ui.exit_ui()
 
     @staticmethod
     async def edit_cmd_(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         await context.bot.delete_message(update.effective_chat.id, update.effective_message.id)
         ui=get_ui(update.effective_user.id, update.effective_chat.id, context)
-        await ui.process_ev("cmd:edit")
+        if await ui.process_ev("cmd:edit"):
+            ui.exit_ui()
+        
 
     async def stop_chat_signal(self) -> None:
         await self.process_ev("stop:")
@@ -920,19 +932,22 @@ class UI:
     async def stat_cmd_(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         await context.bot.delete_message(update.effective_chat.id, update.effective_message.id)
         ui=get_ui(update.effective_user.id, update.effective_chat.id, context)
-        await ui.process_ev("cmd:stat")
+        if await ui.process_ev("cmd:stat"):
+            ui.exit_ui()
 
     @staticmethod
     async def add_cmd_(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         await context.bot.delete_message(update.effective_chat.id, update.effective_message.id)
         ui=get_ui(update.effective_user.id, update.effective_chat.id, context)
-        await ui.process_ev("cmd:add")
+        if await ui.process_ev("cmd:add"):
+            ui.exit_ui()
 
     @staticmethod
     async def lib_cmd_(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         await context.bot.delete_message(update.effective_chat.id, update.effective_message.id)
         ui=get_ui(update.effective_user.id, update.effective_chat.id, context)
-        await ui.process_ev("cmd:lib")
+        if await ui.process_ev("cmd:lib"):
+            ui.exit_ui()
 
     @staticmethod
     async def rx_msg_(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -943,12 +958,20 @@ class UI:
             logger.warning(f"{ui.user_id}: rx_msg text is None!")
         else:
             logger.info(f"{ui.user_id}: rx_msg: {text}")
-            await ui.process_ev("msg:"+text)
+            if await ui.process_ev("msg:"+text):
+                ui.exit_ui()
+                
 
     async def stop_ui(self):
         self.timer_stop()
         await self.clear_screan()
         logger.info(f"{self.user_id}: Stop UI")
+
+    def exit_ui(self):
+        logger.info(f"{self.user_id}: Exit UI")
+        self.timer_stop()
+        user_block(self.user_id)
+        del ui_set[self.user_id]
 
 
     @staticmethod
@@ -960,10 +983,11 @@ class UI:
         #user_id=1 #fixme
         if user_id in ui_set:
             ui=ui_set[user_id]
-            await ui.process_ev(query.data)
+            if await ui.process_ev(query.data):
+                ui.exit_ui()
         else:
             #что-то пошло не так, кнопка от старого сообщения?
-            logger.info(f"{user_id}: repair ui")
+            logger.info(f"{user_id}: try to repair ui (start_cmd)")
             await start_cmd(update, context)
 
 def get_ui(user_id, chat_id, context):
@@ -1007,6 +1031,7 @@ async def start_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     ui=UI(user_id, chat_id, context, new_user)
     ui_set[user_id]=ui
     logger.info(f"{user_id}: Start UI")
+    user_unblock(user_id)
     await ui.process_ev("cmd:start")
 
 async def settings_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -1054,7 +1079,7 @@ async def post_init(context):
                 state=u[4]
                 sub_state=u[5]
                 
-                #удалить сообщение о тех обслуживании. Индикатор техобслуживания - знак минус.
+                #удалить сообщение о тех обслуживании. Индикатор сообщений техобслуживания - знак минус.
                 if msg_id1 is not None and msg_id1<0:
                     await BotMsg.clear_msg(context.bot, chat_id, -msg_id1)
                 if msg_id2 is not None and msg_id2<0:
@@ -1082,7 +1107,11 @@ async def post_init(context):
                         ui.timer_run(timedelta(minutes=5),"tmr:t0")
                     else:
                         logger.info(f"{user_id}: was in state={state}, ss={sub_state}. Run cmd:start for him")
-                        await ui.process_ev("cmd:start")
+                        if await ui.process_ev("cmd:start"):
+                            logger.error(f"{user_id}: post_init: error in ui.process_ev. What must to do?")
+                            ui.exit_ui()
+
+
                 else:
                     #нет ни одного слова для пользователя -> тоесть застало его до добавления первых слов.
                     #для таких пользователей инстанс при запуске не запускаем. Только после того как нажмут старт

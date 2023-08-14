@@ -221,6 +221,19 @@ def user_update(user_id:int, chat_id, username, first_name, lang_code, is_premiu
              (chat_id, username, first_name, lang_code, is_premium, name, t))
     close_db(commit=True)
 
+def user_block(user_id:int):
+    c=open_db()
+    c.execute(f"UPDATE users SET blocked=1 WHERE user_id = {user_id}")
+    close_db(commit=True)
+
+def user_unblock(user_id:int):
+    c=open_db()
+    c.execute(f"SELECT blocked FROM users WHERE user_id = {user_id}")
+    row = c.fetchone()
+    if row is not None and row[0]: #user exist and in blocked state
+        logger.warning(f"{user_id}: Ublocking!")
+        c.execute(f"UPDATE users SET blocked=0 WHERE user_id = {user_id}")
+    close_db(commit=True)
 
 def user_registration(user_id:int, chat_id, username, first_name, lang_code, is_premium, name,
                       foreign_lang, min_t_interval, min_cards_for_t, max_cards_for_t, o_param):
