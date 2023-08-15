@@ -476,6 +476,7 @@ class UI:
                 self.sub_state="q"
             elif self.ev=="cmd:edit":
                 self.edited_word=self.tcs.GetCurrentTCard().word
+                await self.clear_screan()        
                 self.call_state(UI.States.EDIT_WORD, "edit_old") #goto edit_cards
                 return True
             elif self.ev.startswith('msg:'):
@@ -585,7 +586,6 @@ class UI:
         self.timer_stop()
         if self.state_prev != UI.States.EDIT_WORD:
             logger.info(f"{self.user_id}: EDIT_WORD: prev_st=" + self.state_prev)
-            await self.clear_screan()
             if self.state_prev!=UI.States.TREN and self.state_prev!=UI.States.BEFORE_TREN and self.state_prev!=UI.States.ADD_WORD \
                     and self.state_prev!=UI.States.SHOW_WORDS and self.state_prev!=UI.States.HELP_CMD:
                 logger.warning(f"{self.user_id}: EDIT_WORD: unknown state_prev: " + self.state_prev)
@@ -668,6 +668,8 @@ class UI:
 
     async def add_word(self, ev:str):
         await self.clear_screan()
+        await self.m2.text(msg07_pre_add_word())
+
         w = ev.split('msg:', 1)[1]
         w=w.lower().strip()
         f,n = await translate_text(self.u.foreign_lang, self.u.native_lang, w)
@@ -861,6 +863,7 @@ class UI:
             elif self.ev.startswith('kbd:'):
                 w_id = self.ev.split('kbd:', 1)[1] #this is word_id
                 self.edited_word=await Word.ReadFromDb(self.user_id, int(w_id))
+                await self.clear_screan()
                 self.call_state(UI.States.EDIT_WORD, "edit_old") #goto edit_cards
                 return True
 

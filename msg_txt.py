@@ -135,6 +135,9 @@ def get_next(ttd:timedelta):
         w=f"через {delta_days} дней"
     return w
 
+def msg07_pre_add_word():
+    return "<pre>➕ Добавление слова ... ⏳</pre>"
+
 def msg07_edit_word():
     return "<pre>📝 Редактирование слова:</pre>\n"
 
