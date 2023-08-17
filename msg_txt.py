@@ -108,13 +108,51 @@ def msg_card(n):
         return f"{n} карточек"
 
 def msg06_tren0(n):
-    if n>0:
+    if n>12:
         return f"🏄🏼 Пора начинать!\n{msg_card(n)} для повторения"
+    elif n>0:
+        return f"🛶 {msg_card(n)} для повторения"
     else:
         return "🤷‍♂️ Пока нет слов для повторения 💤, чтобы добавить новые /add"
 
 def sticker06_tren0(): #белка сила
     return 'CAACAgIAAxkBAAIXHWR7umqAobh7yIO-X8uti1gcdGhgAAKyAAP3AsgPM6si_fBflFgvBA'
+
+def sticker06_sq_rest(): #белка отдыхает
+    return 'CAACAgIAAxkBAAIsEmTeU9JNDzq8sCPBG61jef_gwOdbAAKsAAP3AsgPux8r9Uivyf8wBA'
+
+def sticker06_sq_crying(): #белка плачет
+    return 'CAACAgIAAxkBAAIsMWTeXMV4jvvloy1HpFrIz3dAb0HAAAKnAAP3AsgPy5g2QN1HYEEwBA'
+
+
+def msg06_before_tren_reminder(n, count):
+    if n>12:
+        em="🏄🏼"
+    else:
+         em="🛶"
+    
+    v=count%4
+    if v==1:
+        if n>0:
+            return f"{em} Давай поучим?\n{msg_card(n)} готово"
+        else:
+            return "🤷‍♂️ Нет слов для повторения, добавим новые? /add"
+    elif v==2:
+        if n>0:
+            return f"{em} Есть {msg_card(n)}, повторим быстренько?"
+        else:
+            return "Нужны еще слова! добавим? /add или /lib"
+    elif v==3:
+        if n>0:
+            return f"{em} Есть {msg_card(n)}, можно повторить, есть время?"
+        else:
+            return "нет слов! ожете прямо сейчас сюда прислать хоть одно?"
+    else:
+        if n>0:
+            return f"🏄🏼 Давно что-то не повторяли. Начнем? {msg_card(n)} готово."
+        else:
+            return "Где же ты? Напиши мне слово!"
+
 
 def get_next(ttd:timedelta):
     delta_days = ttd.days

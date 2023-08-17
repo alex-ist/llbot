@@ -40,8 +40,11 @@ class User:
     def Get_o_param(self):
         return self.o_param
 
-    def SetLastAccess(self):
-        user_update_last_access(self.user_id)
+    def SetLastTren(self):
+        user_update_last_tren(self.user_id)
+
+    def GetLastTren(self):
+        return user_get_last_tren(self.user_id)
 
     @staticmethod
     def Update(user_id, chat_id, username, first_name, lang_code, is_premium, name):

@@ -37,15 +37,15 @@ def t_to_DB(time:datetime) ->int:
     else:    
         return int(time.timestamp())
 
-def save_maintenance_data(user_id:int, chat_id:int, msg_id1:int, msg_id2:int, state:str, sub_state:str):
+def save_maintenance_data(user_id:int, chat_id:int, msg_id1:int, msg_id2:int, state:str, sub_state:str, reminder, reminder_count):
     c=open_db()
-    c.execute("INSERT INTO maintenance_data (user_id, chat_id, msg_id1, msg_id2, state, sub_state) VALUES (?, ?, ?, ?, ?, ?)",
-             (user_id, chat_id, msg_id1, msg_id2, state, sub_state))
+    c.execute("INSERT INTO maintenance_data (user_id, chat_id, msg_id1, msg_id2, state, sub_state, reminder, reminder_count) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+             (user_id, chat_id, msg_id1, msg_id2, state, sub_state, t_to_DB(reminder), reminder_count))
     close_db(commit=True)
 
 def load_maintenance_data():
     c=open_db()
-    c.execute("SELECT user_id, chat_id, msg_id1, msg_id2, state, sub_state FROM maintenance_data")
+    c.execute("SELECT user_id, chat_id, msg_id1, msg_id2, state, sub_state, reminder, reminder_count FROM maintenance_data")
     rows=c.fetchall()
     c.execute("DELETE FROM maintenance_data")
     close_db(commit=True)
@@ -246,13 +246,20 @@ def user_registration(user_id:int, chat_id, username, first_name, lang_code, is_
               foreign_lang, min_t_interval, min_cards_for_t, max_cards_for_t, o_param, t, t ))
     close_db(commit=True)
 
-
-def user_update_last_access(user_id:int):
+def user_update_last_tren(user_id:int):
     c=open_db()
     c.execute("UPDATE users SET last_access = ?  WHERE  user_id = ?",
             (t_to_DB(datetime.now()), user_id))
     close_db(commit=True)
 
+def user_get_last_tren(user_id:int):
+    c=open_db()
+    c.execute(f"SELECT last_access FROM users WHERE user_id = {user_id}")
+    row = c.fetchone()
+    close_db()
+    if row is not None:
+        return t_from_DB(row[0])
+    else:None
 
 def user_update_stat(user_id:int, shown_words_count, forget_rate):
     cursor=open_db()

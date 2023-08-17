@@ -57,23 +57,28 @@ class BotMsg:
             self.txt=txt
             await self.bot.edit_message_text(text=txt, chat_id=self.chat_id, message_id=self.id, reply_markup=kbd)
 
+    #вернет  0 - если ничего не поменялось (старая позиция сообщения)
     async def sticker(self, stick:str):
+        ret = 0
         if self.id is not None:
-            if self.type=="sticker" and self.txt==stick:
-                return
-            await self.clear()
+            if self.type=="sticker" and self.txt==stick: #тот же стикер что и был. Ничего не меняем
+                return 0
+            await self.clear()                           #иначе старое сообщение стираем.
+            ret = 1
         
         m = await self.bot.send_sticker(chat_id=self.chat_id, sticker=stick)
         if m is not None:
             self.id=m.message_id
             self.type="sticker"
             self.txt=stick
+            return 1
         else:
             logger.error(f"chat_id={self.chat_id}: send_sticker returned None!")
             self.txt=None
             self.kbd=None
             self.type=None
             self.prev_vo=None
+        return ret
 
     
     def set_sticker(self, msg_id, stick:str):

@@ -55,6 +55,8 @@ class UI:
         self.m1=BotMsg(self.bot, chat_id, pos=1)
         self.m2=BotMsg(self.bot, chat_id, pos=2)
         self.u=User(user_id, new_user)
+        self.reminder=None
+        self.reminder_count=0
         
         if new_user:
             #tutorial mode for new users
@@ -278,7 +280,7 @@ class UI:
             
         #сохранить в базе msg_id у m1, m2 что бы при запуске незаметно восстановится, или удалить сообщения в зависимости от состояния. 
         #в состоянии TREN0 не удаляем сообщения, а тихо восттанавливаемся
-        save_maintenance_data(self.user_id, self.chat_id, m1, m2 , self.state, self.sub_state)
+        save_maintenance_data(self.user_id, self.chat_id, m1, m2 , self.state, self.sub_state, self.reminder, self.reminder_count)
 
     async def new_user(self) -> None:
         if self.state_prev != UI.States.NEW_USER:
@@ -416,6 +418,27 @@ class UI:
         await self.m1.text(msg03_first_run3(self.last_answer), kbd=self.create_buttons())
         return False
 
+    #вычислить время напоминалки, запускаеем при изменении интерфейса
+    def reminder_time(self):
+        #1) напоминалка сработает за полчаса от предыдущего времени старта тернинга.
+        # то есть если в последний раз юзер запуститл тренинг в 18:00 то вслед раз напоминалка сработат в 17:30
+        #2) напоминалка должна сработать в диапазоне от 0.9 до 1.9 суток от последненго изменнения интерфейса в состоянии before.
+
+        # Из даты последнего тренинга получаем время напоминания
+        # if 1:
+        reminder_time = (self.u.GetLastTren()-timedelta(minutes=30)).time()
+
+        # Вычисляем дату напоминания:
+        base_date = datetime.now() + timedelta(days=0.9)
+        if base_date.time() > reminder_time:
+            base_date = base_date + timedelta(days=1)
+    
+        reminder_date = datetime.combine(base_date.date(), reminder_time)
+        return reminder_date 
+        # else:
+        #     return datetime.now()+timedelta(minutes=3) 
+
+
     #state BEFORE_TREN => inviting to learn words
     async def before_tren_state(self) -> None:
         self.timer_stop()
@@ -425,9 +448,11 @@ class UI:
         elif self.ev is not None:
             if self.ev=="kbd:satrt":
                 self.state=UI.States.TREN #goto tren
+                self.reminder=None
                 return True        
             elif self.ev.startswith('msg:'):
                 await self.add_word(self.ev)
+                self.reminder=None
                 return True
             elif self.ev=="tmr:t0":
                 pass
@@ -439,15 +464,42 @@ class UI:
         if n!=self.sub_state:
             logger.info(f"{self.user_id}: TREN0: {n} cards ready for learning" )
             self.sub_state=n
-            if n==0:
-                await self.m1.clear()
-            await self.m1.sticker(sticker06_tren0())
-            await self.m2.clear()
-            await self.m2.text(msg06_tren0(n), self.create_buttons())
+            if n>self.u.max_cards_for_training/2: #напоминаем когда слов много, инече тихо апдейтим
+                await self.m2.clear()
+                await self.m1.sticker(sticker06_tren0()) #если надо то старый стикер сотрем внутри
+                await self.m2.text(msg06_tren0(n), self.create_buttons())
+            elif n==0:
+                await self.m2.clear()
+                await self.m1.sticker(sticker06_sq_rest())
+                await self.m2.text(msg06_tren0(n))
+            else:
+                new_stick=await self.m1.sticker(sticker06_tren0())
+                if new_stick: #стикер был стерт и послан заново. Поэтому сообщение тоже
+                    await self.m2.clear()
+                await self.m2.text(msg06_tren0(n), self.create_buttons())
 
+            #remember last ui changes, remember
+            self.reminder=self.reminder_time()
+            self.reminder_count=0
+        elif self.reminder is not None and self.reminder<datetime.now():
+            self.reminder=self.reminder_time() #след напоминалка
+            self.reminder_count+=1
+            logger.info(f"{self.user_id}: BEFORE_TREN: Remainder count={self.reminder_count}!")
+            await self.m2.clear()
+            await self.m1.clear()
+            if n==0:
+                if self.reminder_count>2: 
+                    await self.m1.sticker(sticker06_sq_crying())
+                else:
+                    await self.m1.sticker(sticker06_sq_rest())
+            else:
+                await self.m1.sticker(sticker06_tren0())
+            await self.m2.text(msg06_before_tren_reminder(n, self.reminder_count), self.create_buttons())
 
         if n<self.u.max_cards_for_training: #fixme: таймер на время когда след слово подойдет?
-            self.timer_run(timedelta(minutes=5),"tmr:t0")
+            self.timer_run(timedelta(minutes=10),"tmr:t0")
+        elif self.reminder is not None:
+            self.timer_run(self.reminder - datetime.now() + timedelta(minutes=1),"tmr:t0")
         self.state_prev = UI.States.BEFORE_TREN
         return False
 
@@ -1081,6 +1133,8 @@ async def post_init(context):
                 msg_id2=u[3]
                 state=u[4]
                 sub_state=u[5]
+                reminder=t_from_DB(u[6])
+                reminder_count=u[7]
                 
                 #удалить сообщение о тех обслуживании. Индикатор сообщений техобслуживания - знак минус.
                 if msg_id1 is not None and msg_id1<0:
@@ -1103,11 +1157,19 @@ async def post_init(context):
                         #восстановим сообщения которые были в состоянии BEFORE_TREN перед остановкой
                         if ui.sub_state>0:
                             ui.m1.set_sticker(msg_id1, sticker06_tren0())
+                        elif ui.sub_state==0:
+                            ui.m1.set_sticker(msg_id1, sticker06_sq_rest())
+
                         ui.m2.set_txt(msg_id2, msg06_tren0(ui.sub_state), ui.create_buttons())
+                        ui.reminder=reminder
+                        ui.reminder_count=reminder_count
+                        if ui.reminder is None:
+                            ui.reminder=ui.reminder_time()
+                            ui.reminder_count=0
                         
                         #находимя в режиме ожидания, запустим таймер и по нему поапдейтим все данные в before_tren_st()
                         logger.info(f"{user_id}: post_init: restoring state=BEFORE_TREN")
-                        ui.timer_run(timedelta(minutes=5),"tmr:t0")
+                        ui.timer_run(timedelta(minutes=1),"tmr:t0")
                     else:
                         logger.info(f"{user_id}: was in state={state}, ss={sub_state}. Run cmd:start for him")
                         if await ui.process_ev("cmd:start"):
