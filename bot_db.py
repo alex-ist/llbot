@@ -221,19 +221,14 @@ def user_update(user_id:int, chat_id, username, first_name, lang_code, is_premiu
              (chat_id, username, first_name, lang_code, is_premium, name, t))
     close_db(commit=True)
 
-def user_block(user_id:int):
+#block_status='B' - bot blocked by user
+#block_status='I' - instance stopped by inactivity
+#block_status='A' - active
+def user_set_status(user_id:int, block_status:str):
     c=open_db()
-    c.execute(f"UPDATE users SET blocked=1 WHERE user_id = {user_id}")
+    c.execute("UPDATE users SET status = ? WHERE user_id = ?", (block_status, user_id))
     close_db(commit=True)
 
-def user_unblock(user_id:int):
-    c=open_db()
-    c.execute(f"SELECT blocked FROM users WHERE user_id = {user_id}")
-    row = c.fetchone()
-    if row is not None and row[0]: #user exist and in blocked state
-        logger.warning(f"{user_id}: Ublocking!")
-        c.execute(f"UPDATE users SET blocked=0 WHERE user_id = {user_id}")
-    close_db(commit=True)
 
 def user_registration(user_id:int, chat_id, username, first_name, lang_code, is_premium, name,
                       foreign_lang, min_t_interval, min_cards_for_t, max_cards_for_t, o_param):
@@ -259,7 +254,8 @@ def user_get_last_tren(user_id:int):
     close_db()
     if row is not None:
         return t_from_DB(row[0])
-    else:None
+    else:
+        return None
 
 def user_update_stat(user_id:int, shown_words_count, forget_rate):
     cursor=open_db()

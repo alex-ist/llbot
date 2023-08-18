@@ -24,6 +24,10 @@ from datetime import *
 from oai import *
 from bot_msg import BotMsg
 
+BLOCKED_BY_USER       = "B"
+BLOCKED_BY_INACTIVITY = "I"
+UNBLOCKED =             "A"
+
 
 ui_set={}
 
@@ -90,47 +94,49 @@ class UI:
             self.ev=data
             while True:
                 next_step=False
-                if self.ev=="stop:":
-                    await self.stop_chat()
-                    return
-                elif self.ev=="cmd:start":
+                if self.ev=="cmd:start":
                     if self.tutorial_mode:
                         self.state = UI.States.NEW_USER
                     else:
                         self.state = UI.States.BEFORE_TREN
                 elif self.ev=="cmd:add":
                     if self.state==UI.States.ADD_WORD:
-                        return
+                        return 0
                     self.call_state(UI.States.ADD_WORD)
                     self.ev=None
                 elif self.ev=="cmd:lib":
                     if self.state==UI.States.ADD_WORDS_FROM_LIB:
-                        return
+                        return 0
                     self.call_state(UI.States.ADD_WORDS_FROM_LIB)
                     self.ev=None
                 elif self.ev=="cmd:stat":
                     if self.state==UI.States.SHOW_STAT:
-                        return
+                        return 0
                     self.call_state(UI.States.SHOW_STAT)
                     self.ev=None
                 elif self.ev=="cmd:edit":
                     if self.state==UI.States.SHOW_WORDS or self.state==UI.States.EDIT_WORD:
-                        return
+                        return 0
                     if self.state != UI.States.TREN:
                         self.call_state(UI.States.SHOW_WORDS)
                         self.ev=None
                 elif self.ev=="cmd:help":
                     if self.state==UI.States.HELP_CMD:
-                        return
+                        return 0
                     self.call_state(UI.States.HELP_CMD)
                     self.ev=None
 
                 next_step = await self.process_state()
+                if self.ev=="stop_by_inactivity:":
+                    await self.stop_chat_by_inactivity()
+                    return 1
                 if next_step!=True:
                     break
                 self.ev=None
         except error.Forbidden as e:
             logger.warning(f"{self.user_id}: {e}: st={self.state} ev={self.ev}")
+            self.timer_stop()
+            user_set_status(self.user_id, BLOCKED_BY_USER)
             return 1
         else:
             return 0
@@ -263,24 +269,6 @@ class UI:
         
         return InlineKeyboardMarkup(kbd)
 
-    async def stop_chat(self) -> None:
-        #для всех состояний кроме BEFORE_TREN - выводим сообщение об тех обсуживании.
-        #BEFORE_TREN - это когда пользователь не работает, а ожидает. Для этого состояния сообщение
-        #о тех. обсл не выводим. А после перезапуска подхватываем старые сообщения.
-        if self.state!=UI.States.BEFORE_TREN:
-            await self.clear_screan()
-            await self.m1.sticker(sticker11_t_o())
-            await self.m2.text(msg11_t_o())
-            # '-' индикатор что это сообщение о тех обслуживании. Его нужно будет удалить при след. запуске
-            m1=-self.m1.id
-            m2=-self.m2.id
-        else:
-            m1=self.m1.id
-            m2=self.m2.id
-            
-        #сохранить в базе msg_id у m1, m2 что бы при запуске незаметно восстановится, или удалить сообщения в зависимости от состояния. 
-        #в состоянии TREN0 не удаляем сообщения, а тихо восттанавливаемся
-        save_maintenance_data(self.user_id, self.chat_id, m1, m2 , self.state, self.sub_state, self.reminder, self.reminder_count)
 
     async def new_user(self) -> None:
         if self.state_prev != UI.States.NEW_USER:
@@ -425,8 +413,12 @@ class UI:
         #2) напоминалка должна сработать в диапазоне от 0.9 до 1.9 суток от последненго изменнения интерфейса в состоянии before.
 
         # Из даты последнего тренинга получаем время напоминания
-        # if 1:
-        reminder_time = (self.u.GetLastTren()-timedelta(minutes=30)).time()
+        #if 1:
+        lt=self.u.GetLastTren()
+        if lt is None:
+            logger.error(f"{self.user_id}: reminder_time: last_tren_time=None!")
+            lt=datetime.now()
+        reminder_time = (lt-timedelta(minutes=30)).time()
 
         # Вычисляем дату напоминания:
         base_date = datetime.now() + timedelta(days=0.9)
@@ -435,8 +427,8 @@ class UI:
     
         reminder_date = datetime.combine(base_date.date(), reminder_time)
         return reminder_date 
-        # else:
-        #     return datetime.now()+timedelta(minutes=3) 
+        #else:
+        #    return datetime.now()+timedelta(minutes=3) 
 
 
     #state BEFORE_TREN => inviting to learn words
@@ -487,8 +479,11 @@ class UI:
             logger.info(f"{self.user_id}: BEFORE_TREN: Remainder count={self.reminder_count}!")
             await self.m2.clear()
             await self.m1.clear()
+            if self.reminder_count>1:
+                self.ev="stop_by_inactivity:"
+                return True
             if n==0:
-                if self.reminder_count>2: 
+                if self.reminder_count>5: 
                     await self.m1.sticker(sticker06_sq_crying())
                 else:
                     await self.m1.sticker(sticker06_sq_rest())
@@ -499,7 +494,9 @@ class UI:
         if n<self.u.max_cards_for_training: #fixme: таймер на время когда след слово подойдет?
             self.timer_run(timedelta(minutes=10),"tmr:t0")
         elif self.reminder is not None:
-            self.timer_run(self.reminder - datetime.now() + timedelta(minutes=1),"tmr:t0")
+            dt=self.reminder - datetime.now() + timedelta(minutes=1)
+            logger.info(f"{self.user_id}: BEFORE_TREN: Remainder timer dt={dt}")
+            self.timer_run(dt,"tmr:t0")
         self.state_prev = UI.States.BEFORE_TREN
         return False
 
@@ -974,9 +971,6 @@ class UI:
             ui.exit_ui()
         
 
-    async def stop_chat_signal(self) -> None:
-        await self.process_ev("stop:")
-
     @staticmethod
     async def del_words(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         # ui=get_ui(update.effective_user.id, update.effective_chat.id, context)
@@ -1016,6 +1010,34 @@ class UI:
             if await ui.process_ev("msg:"+text):
                 ui.exit_ui()
                 
+    #дергается из post_stop, при остановке бота на тех обслуживание. Для всех instances которые лежат в ui_set
+    async def stop_chat_for_maint(self) -> None:
+        #для всех состояний кроме BEFORE_TREN - выводим сообщение об тех обсуживании.
+        #BEFORE_TREN - это когда пользователь не работает, а ожидает. Для этого состояния сообщение
+        #о тех. обсл не выводим. А после перезапуска подхватываем тихо старые сообщения.
+        if self.state!=UI.States.BEFORE_TREN:
+            await self.clear_screan()
+            await self.m1.sticker(sticker11_t_o())
+            await self.m2.text(msg11_t_o())
+            # '-' индикатор что это сообщение о тех обслуживании. Его нужно будет удалить при след. запуске
+            m1=-self.m1.id
+            m2=-self.m2.id
+        else:
+            m1=self.m1.id
+            m2=self.m2.id
+            
+        #сохранить в базе msg_id у m1, m2 что бы при запуске незаметно восстановится, или удалить сообщения в зависимости от состояния. 
+        #в состоянии TREN0 не удаляем сообщения, а тихо восттанавливаемся
+        save_maintenance_data(self.user_id, self.chat_id, m1, m2 , self.state, self.sub_state, self.reminder, self.reminder_count)
+
+
+    async def stop_chat_by_inactivity(self) -> None:
+        self.timer_stop()
+        await self.clear_screan()
+        await self.m1.sticker(sticker06_sq_love())
+        await self.m2.text(msg13_inactivity())
+        user_set_status(self.user_id, BLOCKED_BY_INACTIVITY)
+        logger.warning(f"{self.user_id}: blocked by inactivity")
 
     async def stop_ui(self):
         self.timer_stop()
@@ -1024,8 +1046,6 @@ class UI:
 
     def exit_ui(self):
         logger.info(f"{self.user_id}: Exit UI")
-        self.timer_stop()
-        user_block(self.user_id)
         del ui_set[self.user_id]
 
 
@@ -1086,7 +1106,7 @@ async def start_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     ui=UI(user_id, chat_id, context, new_user)
     ui_set[user_id]=ui
     logger.info(f"{user_id}: Start UI")
-    user_unblock(user_id)
+    user_set_status(user_id, UNBLOCKED)
     await ui.process_ev("cmd:start")
 
 async def settings_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -1143,49 +1163,47 @@ async def post_init(context):
                     await BotMsg.clear_msg(context.bot, chat_id, -msg_id2)
 
                 n=words_count(user_id)  #сколько у юзера всего слов на изучении.
-                if n>0:                 #для тех кто не осилил еще, инстанс не создаем. Юзер может запустится командой /start
-                    ui=get_ui(user_id, chat_id, context)
-                    if state==UI.States.BEFORE_TREN:
-                        ui.state_prev = ui.state = state
-                        ui.sub_state = 0
-                        if sub_state:
-                            ui.sub_state = int(sub_state) # колличество слов, готовых к изучению перед остановкой
-                        
-                        if msg_id1 is None or msg_id1<0 or msg_id2 is None or msg_id2<0:
-                            logger.error(f"{user_id}: post_init: was in state={state}, ss={sub_state}. but msg_id1={msg_id1}, msg_id2={msg_id2}")
-
-                        #восстановим сообщения которые были в состоянии BEFORE_TREN перед остановкой
-                        if ui.sub_state>0:
-                            ui.m1.set_sticker(msg_id1, sticker06_tren0())
-                        elif ui.sub_state==0:
-                            ui.m1.set_sticker(msg_id1, sticker06_sq_rest())
-
-                        ui.m2.set_txt(msg_id2, msg06_tren0(ui.sub_state), ui.create_buttons())
-                        ui.reminder=reminder
-                        ui.reminder_count=reminder_count
-                        if ui.reminder is None:
-                            ui.reminder=ui.reminder_time()
-                            ui.reminder_count=0
-                        
-                        #находимя в режиме ожидания, запустим таймер и по нему поапдейтим все данные в before_tren_st()
-                        logger.info(f"{user_id}: post_init: restoring state=BEFORE_TREN")
-                        ui.timer_run(timedelta(minutes=1),"tmr:t0")
-                    else:
-                        logger.info(f"{user_id}: was in state={state}, ss={sub_state}. Run cmd:start for him")
-                        if await ui.process_ev("cmd:start"):
-                            logger.error(f"{user_id}: post_init: error in ui.process_ev. What must to do?")
-                            ui.exit_ui()
-
-
-                else:
-                    #нет ни одного слова для пользователя -> тоесть застало его до добавления первых слов.
-                    #для таких пользователей инстанс при запуске не запускаем. Только после того как нажмут старт
+                if n<=0:                #для тех кто не осилил еще, инстанс не создаем. Юзер может запустится командой /start
                     logger.info(f"{user_id}: has 0 words in learning list. will not run instance for him")
+                    continue
+
+                ui=get_ui(user_id, chat_id, context)
+
+                if state!=UI.States.BEFORE_TREN:
+                    logger.info(f"{user_id}: was in state={state}, ss={sub_state}. Run cmd:start for him")
+                    if await ui.process_ev("cmd:start"):
+                        logger.error(f"{user_id}: post_init: error in ui.process_ev. What must to do?")
+                        ui.exit_ui()
+                    continue
+
+                #UI.States.BEFORE_TREN:
+                ui.state_prev = ui.state = state
+                ui.sub_state = int(sub_state) if sub_state else 0 # колличество слов, готовых к изучению перед остановкой
+                if msg_id1 is None or msg_id1<0 or msg_id2 is None or msg_id2<0:
+                    logger.error(f"{user_id}: post_init: was in state={state}, ss={sub_state}. but msg_id1={msg_id1}, msg_id2={msg_id2}")
+                    logger.error(f"{user_id}: post_init: Run cmd:start for him")
+                    if await ui.process_ev("cmd:start"):
+                        logger.error(f"{user_id}: post_init: error in ui.process_ev. What must to do?")
+                        ui.exit_ui()
+                    continue
+
+                #восстановим сообщения которые были в состоянии BEFORE_TREN перед остановкой
+                ui.m1.set_sticker(msg_id1, "--") #стикер перерисуется при след апдейте состояния
+                ui.m2.set_txt(msg_id2, msg06_tren0(ui.sub_state), ui.create_buttons())
+                ui.reminder=reminder
+                ui.reminder_count=reminder_count
+                if ui.reminder is None:
+                    ui.reminder=ui.reminder_time()
+                    ui.reminder_count=0
+                
+                #запустим таймер и по нему поапдейтим все данные в before_tren_st()
+                logger.info(f"{user_id}: post_init: restoring state=BEFORE_TREN n={ui.sub_state} reminder={ui.reminder}")
+                ui.timer_run(timedelta(minutes=1),"tmr:t0")
 
 
 async def post_stop(a):
     for ui in ui_set.values():
-        await ui.stop_chat_signal()
+        await ui.stop_chat_for_maint()
 
 def main() -> None:
     use_web_hook=update_dns() #dns updated, there is free dns key -> work on server

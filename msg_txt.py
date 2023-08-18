@@ -124,6 +124,10 @@ def sticker06_sq_rest(): #белка отдыхает
 def sticker06_sq_crying(): #белка плачет
     return 'CAACAgIAAxkBAAIsMWTeXMV4jvvloy1HpFrIz3dAb0HAAAKnAAP3AsgPy5g2QN1HYEEwBA'
 
+def sticker06_sq_love(): #белка любовь
+    return 'CAACAgIAAxkBAAIXOGR7wC3Ah7VhjESk8pkEalL2CWY6AAKiAAP3AsgP6IpjE3w1YuQvBA'
+
+
 
 def msg06_before_tren_reminder(n, count):
     if n>12:
@@ -205,3 +209,6 @@ def msg11_total_stat(n: int, forg_r):
 
 def msg12_add_from_lib():
     return "Для добавления набора слов, выберите тему и нажмите [ Добавить▶️ ]"
+
+def msg13_inactivity():
+    return "Вообщем я на связи, когда потребуюсь можно продолжить /start"
