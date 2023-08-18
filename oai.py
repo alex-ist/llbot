@@ -90,12 +90,14 @@ async def oai_aget_example2(fw, n=0, fw2=None):
         temp =1.0
 
     try:
-        response = await openai.ChatCompletion.acreate(
-            model='gpt-3.5-turbo',
-            messages=[
+        m=[
                 {"role": "system", "content": "You are American native speaker. I give you english word or idiom. You give me an example of english sentence. Max length of example must be 17 words"},
                 {'role': 'user', 'content': fw}
-            ],
+            ]
+        logger.info(m)
+        response = await openai.ChatCompletion.acreate(
+            model='gpt-3.5-turbo',
+            messages=m,
             temperature=temp,
             max_tokens=60,
         )
@@ -105,6 +107,9 @@ async def oai_aget_example2(fw, n=0, fw2=None):
     except APIError as e:
         logger.error("openAI APIError: "+str(e))
         return None, None 
+    except ValueError as e:
+        logger.error(f"openAI API call: {e}")
+
 
  
     r=response['choices'][0]['message']['content'].strip()
