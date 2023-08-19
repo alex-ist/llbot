@@ -479,7 +479,7 @@ class UI:
             logger.info(f"{self.user_id}: BEFORE_TREN: Reminder count={self.reminder_count}!")
             await self.m2.clear()
             await self.m1.clear()
-            if self.reminder_count>1:
+            if self.reminder_count>5:
                 self.ev="stop_by_inactivity:"
                 return True
             if n==0:
@@ -495,7 +495,8 @@ class UI:
             self.timer_run(timedelta(minutes=10),"tmr:t0")
         elif self.reminder is not None:
             dt=self.reminder - datetime.now() + timedelta(minutes=1)
-            logger.info(f"{self.user_id}: BEFORE_TREN: Reminder timer dt={dt}")
+            logger.info(f'{self.user_id}: BEFORE_TREN: Reminder timer dt={str(dt).split(".")[0]}') 
+
             self.timer_run(dt,"tmr:t0")
         self.state_prev = UI.States.BEFORE_TREN
         return False
