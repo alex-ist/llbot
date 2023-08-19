@@ -28,9 +28,9 @@ class User(db.Model):
             return format(self.current_forget_rate*100, ".1f")
 
     def get_first_access(self):
-        return datetime.fromtimestamp(self.first_access).strftime('%Y-%m-%d %H:%M')
+        return datetime.fromtimestamp(self.first_access).strftime('%y.%m.%d %H:%M')
     def get_last_access(self):
-        return datetime.fromtimestamp(self.last_access).strftime('%Y-%m-%d %H:%M')
+        return datetime.fromtimestamp(self.last_access).strftime('%y.%m.%d %H:%M')
     status = db.Column('status', db.String)
     
 class Word(db.Model):
