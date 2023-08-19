@@ -31,6 +31,7 @@ class User(db.Model):
         return datetime.fromtimestamp(self.first_access).strftime('%Y-%m-%d %H:%M')
     def get_last_access(self):
         return datetime.fromtimestamp(self.last_access).strftime('%Y-%m-%d %H:%M')
+    status = db.Column('status', db.String)
     
 class Word(db.Model):
     __tablename__ = 'words'
