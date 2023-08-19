@@ -17,9 +17,9 @@ def log_init():
         logging.basicConfig(
             format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO)
 
-    logging.getLogger('httpx').setLevel(logging.DEBUG)
+    logging.getLogger('httpx').setLevel(logging.WARNING)
     logging.getLogger('apscheduler').setLevel(logging.WARNING)
-    logging.getLogger('openai').setLevel(logging.DEBUG)
+    logging.getLogger('openai').setLevel(logging.WARNING)
     return logging.getLogger("LL")
 
 

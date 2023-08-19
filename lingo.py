@@ -476,7 +476,7 @@ class UI:
         elif self.reminder is not None and self.reminder<datetime.now():
             self.reminder=self.reminder_time() #след напоминалка
             self.reminder_count+=1
-            logger.info(f"{self.user_id}: BEFORE_TREN: Remainder count={self.reminder_count}!")
+            logger.info(f"{self.user_id}: BEFORE_TREN: Reminder count={self.reminder_count}!")
             await self.m2.clear()
             await self.m1.clear()
             if self.reminder_count>1:
@@ -495,7 +495,7 @@ class UI:
             self.timer_run(timedelta(minutes=10),"tmr:t0")
         elif self.reminder is not None:
             dt=self.reminder - datetime.now() + timedelta(minutes=1)
-            logger.info(f"{self.user_id}: BEFORE_TREN: Remainder timer dt={dt}")
+            logger.info(f"{self.user_id}: BEFORE_TREN: Reminder timer dt={dt}")
             self.timer_run(dt,"tmr:t0")
         self.state_prev = UI.States.BEFORE_TREN
         return False
@@ -1209,12 +1209,12 @@ def main() -> None:
     use_web_hook=update_dns() #dns updated, there is free dns key -> work on server
     try:
         with open("keys/tg-token.txt", 'r') as f:
-            token = f.readline()
+            token = f.readline().strip()
             logger.info("Running LL test bot")
     except FileNotFoundError:
         try:
             with open("keys/lingolink.txt", 'r') as f:
-                token = f.readline()
+                token = f.readline().strip()
                 logger.info("Running LL production bot")
         except FileNotFoundError:
             logger.error("No telegram token found")
