@@ -591,7 +591,9 @@ class UI:
                 if self.txt_ex is not None:
                     await self.m1.text(f"<i>{self.txt_ex}</i>")
             a = await tc.GetAudio()
-            await self.m2.voice(voice=a, txt=f"<u>{tc.GetForeign()}</u> = {tc.GetNative()}", kbd=self.create_buttons())
+            #await self.m2.voice(voice=a, txt=f"<u>{tc.GetForeign()}</u> = {tc.GetNative()}", kbd=self.create_buttons())
+            lnk = await get_dict_link(tc.GetForeign())
+            await self.m2.voice(voice=a, txt=f'{lnk} = {tc.GetNative()}', kbd=self.create_buttons())
 
         self.timer_run(timedelta(hours=23), "tmr:tren_to") #запускаем таймер на неактивность пользователя
         return False

@@ -221,6 +221,25 @@ def user_update(user_id:int, chat_id, username, first_name, lang_code, is_premiu
              (chat_id, username, first_name, lang_code, is_premium, name, t))
     close_db(commit=True)
 
+#1)нет слова в таблице ->None
+#2)нет ссылки со словом (например fw=абракадабра) ->fw
+#3)есть норм ссылка ->str
+def db_get_dict_link(fw, lang="en"):
+    c=open_db()
+    c.execute(f"SELECT link FROM dictionary_links WHERE foreign_w = ? and lang_code = ?", (fw, lang))
+    r = c.fetchone()
+    close_db()
+    if r is None: #нет слова или ссылки
+        return None
+    else:
+        return r[0]
+
+def db_upd_dict_link(fw, link, lang="en"):
+    c=open_db()
+    c.execute('INSERT OR REPLACE INTO dictionary_links (foreign_w, link, lang_code, date) VALUES (?, ?, ?, ?)',
+            (fw, link, lang, t_to_DB(datetime.now()) ))
+    close_db(commit=True)
+
 #block_status='B' - bot blocked by user
 #block_status='I' - instance stopped by inactivity
 #block_status='A' - active
