@@ -12,7 +12,7 @@ from telegram.ext import Application, CallbackQueryHandler, CommandHandler, Cont
 import telegram 
 import secrets
 
-from trans import translate_text
+from trans import translate_text, get_dict_link
 from update_dns import update_dns
 
 from card import Word, TrainingCard, TrainingCardSet
