@@ -76,15 +76,15 @@ async def web_get_dictionary_link(fw: str) -> str:
     return "-"
 
 async def get_dict_link(fw: str, lang="en") -> str:
-    fw = fw.strip()
+    fw2 = fw = fw.strip()
     if fw.startswith('a ') and lang=="en": #remove leading 'a' #oxford dict did not not support search with articles
-        fw = fw[2:]
+        fw2 = fw[2:]
 
-    link = db_get_dict_link(fw)
+    link = db_get_dict_link(fw2)
     
     if link is None: #new word in dict table
-        link = await web_get_dictionary_link(fw)
-        db_upd_dict_link(fw, link)
+        link = await web_get_dictionary_link(fw2)
+        db_upd_dict_link(fw2, link)
 
     if link=="-":
         return fw

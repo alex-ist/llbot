@@ -37,7 +37,7 @@ class BotMsg:
             except error.BadRequest as e:
                 logger.warning(f"{chat_id}: {e}")
 
-    async def text(self, txt:str=None, kbd:InlineKeyboardMarkup=None):        
+    async def text(self, txt:str=None, kbd:InlineKeyboardMarkup=None, disable_web_page_preview=False):
         if self.type!="txt":
             await self.clear()
 
@@ -45,17 +45,17 @@ class BotMsg:
             self.txt=txt
             self.kbd=kbd
             self.type="txt"
-            m=await self.bot.send_message(chat_id=self.chat_id, text=txt, reply_markup=kbd)
+            m=await self.bot.send_message(chat_id=self.chat_id, text=txt, reply_markup=kbd, disable_web_page_preview=disable_web_page_preview)
             self.id=m.message_id
         elif txt is None: #2)замена кнопок
             self.kbd=kbd
-            m=await self.bot.edit_message_text(text=self.txt, chat_id=self.chat_id, message_id=self.id, reply_markup=kbd)
+            m=await self.bot.edit_message_text(text=self.txt, chat_id=self.chat_id, message_id=self.id, reply_markup=kbd,disable_web_page_preview=disable_web_page_preview)
             self.id=m.message_id
         elif self.txt!=txt or not BotMsg.kbd_eq(self.kbd, kbd): 
             #3) замена текста или кнопок
             self.kbd=kbd
             self.txt=txt
-            await self.bot.edit_message_text(text=txt, chat_id=self.chat_id, message_id=self.id, reply_markup=kbd)
+            await self.bot.edit_message_text(text=txt, chat_id=self.chat_id, message_id=self.id, reply_markup=kbd, disable_web_page_preview=disable_web_page_preview)
 
     #вернет  0 - если ничего не поменялось (старая позиция сообщения)
     async def sticker(self, stick:str):

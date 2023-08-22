@@ -702,7 +702,8 @@ class UI:
                 return False #ignore other signals (need to log?)
         
         pg=word_get_progress(self.user_id, self.edited_word.word_id)
-        txt2=f"\n{pg} <u>{self.edited_word.GetForeign()}</u> = {self.edited_word.GetNative()}\n\n<i>{self.edited_word.GetExample()}</i>"
+        lnk = await get_dict_link(self.edited_word.GetForeign())
+        txt2=f"\n{pg} {lnk} = {self.edited_word.GetNative()}\n\n<i>{self.edited_word.GetExample()}</i>"
         if self.selected_button=="reset":
             txt=msg09_reset_prog()+txt2
         elif self.selected_button=="delete":
