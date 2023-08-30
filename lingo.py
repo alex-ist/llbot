@@ -210,6 +210,8 @@ class UI:
                         InlineKeyboardButton("Ремонт машины", callback_data="kbd:car repair"),
                         # InlineKeyboardButton("дети", callback_data="kbd:kids"),
                         ],[
+                        InlineKeyboardButton("Ремонт квартиры", callback_data="kbd:renovation"),
+                        ],[
                         InlineKeyboardButton("Начать", callback_data="kbd:ok"),
                     ]]
         elif state == UI.States.EDIT_WORD:
@@ -240,6 +242,8 @@ class UI:
                         ],[
                         InlineKeyboardButton("у врача", callback_data="kbd:health"),
                         InlineKeyboardButton("ремонт машины", callback_data="kbd:car repair"),
+                    ],[
+                        InlineKeyboardButton("Ремонт квартиры", callback_data="kbd:renovation"),
                     ],[
                         InlineKeyboardButton("Назад ↩️", callback_data="kbd:cancel"),
                         InlineKeyboardButton("Добавить", callback_data="kbd:ok"),
