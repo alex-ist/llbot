@@ -12,7 +12,7 @@ from telegram.ext import Application, CallbackQueryHandler, CommandHandler, Cont
 import telegram 
 import secrets
 
-from trans import translate_text, get_dict_link
+from trans import translate_text, get_dict_link, get_dict_rawlink
 from update_dns import update_dns
 
 from card import Word, TrainingCard, TrainingCardSet
@@ -206,7 +206,8 @@ class UI:
                         InlineKeyboardButton("Школа", callback_data="kbd:school"),
                         InlineKeyboardButton("Соседи", callback_data="kbd:neighbours"),
                         ],[
-                        InlineKeyboardButton("у врача", callback_data="kbd:health"),
+                        InlineKeyboardButton("У врача", callback_data="kbd:health"),
+                        InlineKeyboardButton("Ремонт машины", callback_data="kbd:car repair"),
                         # InlineKeyboardButton("дети", callback_data="kbd:kids"),
                         ],[
                         InlineKeyboardButton("Начать", callback_data="kbd:ok"),
@@ -238,6 +239,7 @@ class UI:
                         InlineKeyboardButton("Соседи", callback_data="kbd:neighbours"),
                         ],[
                         InlineKeyboardButton("у врача", callback_data="kbd:health"),
+                        InlineKeyboardButton("ремонт машины", callback_data="kbd:car repair"),
                     ],[
                         InlineKeyboardButton("Назад ↩️", callback_data="kbd:cancel"),
                         InlineKeyboardButton("Добавить", callback_data="kbd:ok"),
@@ -702,8 +704,10 @@ class UI:
                 return False #ignore other signals (need to log?)
         
         pg=word_get_progress(self.user_id, self.edited_word.word_id)
-        lnk = await get_dict_link(self.edited_word.GetForeign())
-        txt2=f"\n{pg} {lnk} = {self.edited_word.GetNative()}\n\n<i>{self.edited_word.GetExample()}</i>"
+        fw=self.edited_word.GetForeign()
+        #lnk = await get_dict_link(fw)
+        rlnk = await get_dict_rawlink(self.edited_word.GetForeign()) #used because it will be open without additional asking in telegram
+        txt2=f"\n{pg} {fw} = {self.edited_word.GetNative()}\n\n<i>{self.edited_word.GetExample()}</i>\n\n{rlnk}"
         if self.selected_button=="reset":
             txt=msg09_reset_prog()+txt2
         elif self.selected_button=="delete":

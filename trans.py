@@ -77,7 +77,7 @@ async def web_get_dictionary_link(fw: str) -> str:
 
 async def get_dict_link(fw: str, lang="en") -> str:
     fw2 = fw = fw.strip()
-    if fw.startswith('a ') and lang=="en": #remove leading 'a' #oxford dict did not not support search with articles
+    if fw.startswith('a ') and lang=="en": #remove leading 'a' #Cambridge dict did not not support search with articles
         fw2 = fw[2:]
 
     link = db_get_dict_link(fw2)
@@ -91,3 +91,16 @@ async def get_dict_link(fw: str, lang="en") -> str:
     else:
         return f'<a href="{link}">{fw}</a>'
     
+async def get_dict_rawlink(fw: str, lang="en") -> str:
+    fw2 = fw = fw.strip()
+    if fw.startswith('a ') and lang=="en": #remove leading 'a' #Cambridge dict did not not support search with articles
+        fw2 = fw[2:]
+
+    link = db_get_dict_link(fw2)
+    
+    if link is None: #new word in dict table
+        link = await web_get_dictionary_link(fw2)
+        db_upd_dict_link(fw2, link)
+        if link is None:
+            link=""
+    return link
