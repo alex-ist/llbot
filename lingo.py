@@ -66,7 +66,7 @@ class UI:
             #tutorial mode for new users
             self.tutorial_mode=2
         else:
-            self.tutorial_mode=0
+            self.tutorial_mode=-1
 
         self.tcs=TrainingCardSet(user_id, self.u)
         self.edited_word=None
@@ -105,7 +105,7 @@ class UI:
             while True:
                 next_step=False
                 if self.ev=="cmd:start":
-                    if self.tutorial_mode:
+                    if self.tutorial_mode>0:
                         self.state = UI.States.NEW_USER
                     else:
                         self.state = UI.States.BEFORE_TREN
@@ -597,6 +597,9 @@ class UI:
             if self.tutorial_mode==1:
                 await self.m0.text(msg20_tutorial_tren1())
                 self.tutorial_mode=0
+            elif self.tutorial_mode==0:
+                await self.m0.clear()
+                self.tutorial_mode=-1
 
             if self.ma_ex is not None:
                 ae_path = await tc.GetAudioExample()

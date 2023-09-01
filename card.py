@@ -151,6 +151,8 @@ class TrainingCard:
             #расчитывает -> current_forget_rate  irr фильтр, окно 100
             self.u.CalcCurrentForgetRate(correct)
 
+        logger.info(f"{self.user_id}: Answer {correct} FR={self.u.current_forget_rate:.3f}, n={self.u.shown_words_count}, fw={self.word.foreign_w}")
+
         if correct:
             if self.last_training_t is not None:
                 last_req_interval=self.next_training_t-self.last_training_t
