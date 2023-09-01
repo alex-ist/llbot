@@ -472,7 +472,7 @@ class UI:
         if n!=self.sub_state:
             self.log_info(f"TREN0: {n} cards ready for learning")
             self.sub_state=n
-            if n>self.u.max_cards_for_training/2: #напоминаем когда слов много, инече тихо апдейтим
+            if n>self.u.min_cards_for_training: #напоминаем когда слов много, инече тихо апдейтим
                 await self.m2.clear()
                 await self.m1.sticker(sticker06_tren0()) #если надо то старый стикер сотрем внутри
                 await self.m2.text(msg06_tren0(n), self.create_buttons())
@@ -507,7 +507,7 @@ class UI:
                 await self.m1.sticker(sticker06_tren0())
             await self.m2.text(msg06_before_tren_reminder(n, self.reminder_count), self.create_buttons())
 
-        if n<self.u.max_cards_for_training: #fixme: таймер на время когда след слово подойдет?
+        if n<self.u.cur_cards_for_training: #fixme: таймер на время когда след слово подойдет?
             self.timer_run(timedelta(minutes=10),"tmr:t0")
         elif self.reminder is not None:
             dt=self.reminder - datetime.now() + timedelta(minutes=1)

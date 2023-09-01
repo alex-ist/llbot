@@ -250,14 +250,14 @@ def user_set_status(user_id:int, block_status:str):
 
 
 def user_registration(user_id:int, chat_id, username, first_name, lang_code, is_premium, name,
-                      foreign_lang, min_t_interval, min_cards_for_t, max_cards_for_t, o_param):
+                      foreign_lang, min_t_interval, min_cards_for_t, max_cards_for_t, cur_cards_for_t, o_param):
     c=open_db()
     t=t_to_DB(datetime.now())
     c.execute(f"""INSERT INTO users (user_id, chat_id, username, first_name, lang_code, is_premium, name, 
-              foreign_lang, min_trening_interval, min_cards_for_trening, max_cards_for_trening, o_param, first_access, last_access)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+              foreign_lang, min_trening_interval, min_cards_for_trening, max_cards_for_trening, cur_cards_for_trening, o_param, first_access, last_access)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
              (user_id, chat_id, username, first_name, lang_code, is_premium, name, 
-              foreign_lang, min_t_interval, min_cards_for_t, max_cards_for_t, o_param, t, t ))
+              foreign_lang, min_t_interval, min_cards_for_t, max_cards_for_t, cur_cards_for_t, o_param, t, t ))
     close_db(commit=True)
 
 def user_update_last_tren(user_id:int):
@@ -265,6 +265,13 @@ def user_update_last_tren(user_id:int):
     c.execute("UPDATE users SET last_access = ?  WHERE  user_id = ?",
             (t_to_DB(datetime.now()), user_id))
     close_db(commit=True)
+
+def user_update_cur_cards_for_t(user_id:int, cur_val):
+    c=open_db()
+    c.execute("UPDATE users SET cur_cards_for_trening = ?  WHERE  user_id = ?",
+            (cur_val, user_id))
+    close_db(commit=True)
+
 
 def user_get_last_tren(user_id:int):
     c=open_db()

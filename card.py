@@ -347,8 +347,8 @@ class TrainingCardSet:
         while 1:
             # 1) есть больше слов чем минимальный набор.
             if n>=self.u.min_cards_for_training:
-                if n>self.u.max_cards_for_training:
-                    n=self.u.max_cards_for_training
+                if n>self.u.cur_cards_for_training:
+                    n=self.u.cur_cards_for_training
                 break
             
             #2) нет слов для изучения
