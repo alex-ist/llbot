@@ -347,12 +347,14 @@ class UI:
 
     async def first_set(self) -> None:
         if self.state_prev != UI.States.FIRST_SET:
-            self.log_info(f"FIRST_SET: prev_st={self.state_prev}")
+            self.log_info(f"FIRST_SET: prev_st={self.state_prev} lang={self.u.foreign_lang}")
             self.selected_button=None
         elif self.ev is not None:
             if self.ev=='kbd:ok':
                 if self.selected_button is not None:
-                    add_words_by_topic(self.user_id, self.selected_button[4:], flang=self.u.foreign_lang, nlang=self.u.native_lang)
+                    topic=self.selected_button[4:]
+                    n=add_words_by_topic(self.user_id, topic, flang=self.u.foreign_lang, nlang=self.u.native_lang)
+                    self.log_info(f"FIRST_SET: add_words n={n} topic={topic}")                
                     self.state=UI.States.TUTOR_SCR1
                     return True
                 elif words_count(self.user_id)>0:
@@ -362,8 +364,10 @@ class UI:
                     return False
             elif self.selected_button==self.ev: #second press the same button
                 self.selected_button=None
+                self.log_info("FIRST_SET: self.selected_button=None")                
             elif self.ev.startswith('kbd:'):
                 self.selected_button=self.ev
+                self.log_info(f"FIRST_SET: self.selected_button={self.ev}")                
             else:
                 return False
 
@@ -379,7 +383,7 @@ class UI:
 
     async def tutor_scr1(self) -> None:
         if self.state_prev != UI.States.TUTOR_SCR1:
-            self.log_info(f"FIRST_RUN1: prev_st={self.state_prev}")
+            self.log_info(f"TUTOR_SCR1: prev_st={self.state_prev}")
 
         if self.state_prev==UI.States.TUTOR_SCR1 and self.ev=='kbd:ok':
             self.state=UI.States.TREN
@@ -391,7 +395,7 @@ class UI:
 
     async def tutor_scr2(self) -> None:
         if self.state_prev != UI.States.TUTOR_SCR2:
-            self.log_info(f"FIRST_RUN2: prev_st={self.state_prev}")
+            self.log_info(f"TUTOR_SCR2: prev_st={self.state_prev}")
 
         if self.state_prev!=UI.States.TUTOR_SCR2:
             await self.m2.clear()
@@ -408,7 +412,7 @@ class UI:
 
     async def tutor_scr3(self) -> None:
         if self.state_prev != UI.States.TUTOR_SCR3:
-            self.log_info(f"FIRST_RUN3: prev_st={self.state_prev}")
+            self.log_info(f"TUTOR_SCR3: prev_st={self.state_prev}")
             await self.m2.clear()
             self.state_prev = UI.States.TUTOR_SCR3
 
@@ -470,7 +474,7 @@ class UI:
         #здесь, если было событие таймера или переход из другого состояния:
         n=self.tcs.TCardsReadyNow()
         if n!=self.sub_state:
-            self.log_info(f"TREN0: {n} cards ready for learning")
+            self.log_info(f"BEFORE_TREN: {n} cards ready for learning")
             self.sub_state=n
             if n>self.u.min_cards_for_training: #напоминаем когда слов много, инече тихо апдейтим
                 await self.m2.clear()
@@ -656,7 +660,7 @@ class UI:
     async def edit_word_state(self) -> None:
         self.timer_stop()
         if self.state_prev != UI.States.EDIT_WORD:
-            self.log_info("EDIT_WORD: prev_st=" + self.state_prev)
+            self.log_info(f"EDIT_WORD: prev_st={self.state_prev} fw={self.edited_word.GetForeign()}")
             if self.state_prev!=UI.States.TREN and self.state_prev!=UI.States.BEFORE_TREN and self.state_prev!=UI.States.ADD_WORD \
                     and self.state_prev!=UI.States.SHOW_WORDS and self.state_prev!=UI.States.HELP_CMD:
                 self.log_warn(f"EDIT_WORD: unknown state_prev: " + self.state_prev)
@@ -704,15 +708,15 @@ class UI:
             elif self.ev.startswith('msg:'):
                 w = self.ev.split('msg:', 1)[1]
                 if self.selected_button=="fw":
-                    self.log_info("EDIT_WORD: fw: rx_msg: "+w)
+                    self.log_info("EDIT_WORD: new fw: "+w)
                     self.edited_word.ChangeForeign(w)
                     self.kbd=self.create_buttons("kbd:fw", "✏️")
                 elif self.selected_button=="nw":
-                    self.log_info("EDIT_WORD: nw: rx_msg: "+w)
+                    self.log_info("EDIT_WORD: new nw: "+w)
                     self.edited_word.ChangeNative(w)
                     self.kbd=self.create_buttons("kbd:nw", "✏️")
                 elif self.selected_button=="ex":
-                    self.log_info("EDIT_WORD: ex: rx_msg: "+w)
+                    self.log_info("EDIT_WORD: new ex: "+w)
                     self.edited_word.ChangeExample(w)
                     self.kbd=self.create_buttons("kbd:ex", "✏️")
                 else:
@@ -1051,7 +1055,7 @@ class UI:
             m2=self.m2.id
             
         #сохранить в базе msg_id у m1, m2 что бы при запуске незаметно восстановится, или удалить сообщения в зависимости от состояния. 
-        #в состоянии TREN0 не удаляем сообщения, а тихо восттанавливаемся
+        #в состоянии BEFORE_TREN не удаляем сообщения, а тихо восттанавливаемся
         save_maintenance_data(self.user_id, self.chat_id, m1, m2 , self.state, self.sub_state, self.reminder, self.reminder_count)
 
 
