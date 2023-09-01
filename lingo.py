@@ -82,6 +82,16 @@ class UI:
 
     def __del__(self):
         logger.warning(f"{self.user_id}: deleted UI object")
+    
+    def log_warn(self, msg, *args, **kwargs):
+        logger.warning(f"{self.user_id}: {msg}", *args, **kwargs)
+
+    def log_err(self, msg, *args, **kwargs):
+        logger.error(f"{self.user_id}: {msg}", *args, **kwargs)
+
+    def log_info(self, msg, *args, **kwargs):
+        logger.info(f"{self.user_id}: {msg}", *args, **kwargs)
+
 
     async def clear_screan(self):
         if self.m0 is not None:
@@ -134,7 +144,7 @@ class UI:
                     break
                 self.ev=None
         except error.Forbidden as e:
-            logger.warning(f"{self.user_id}: {e}: st={self.state} ev={self.ev}")
+            self.log_warn(f"{e}: st={self.state} ev={self.ev}")
             self.timer_stop()
             user_set_status(self.user_id, BLOCKED_BY_USER)
             return 1
@@ -278,7 +288,7 @@ class UI:
 
     async def new_user(self) -> None:
         if self.state_prev != UI.States.NEW_USER:
-            logger.info(f"{self.user_id}: NEW_USER: prev_st={self.state_prev}")
+            self.log_info(f"NEW_USER: prev_st={self.state_prev}")
 
         self.state = UI.States.NEW_USER
         if self.state_prev == UI.States.NEW_USER and self.ev=="kbd:satrt":
@@ -292,7 +302,7 @@ class UI:
 
     async def cfg_lang(self) -> None:
         if self.state_prev != UI.States.CFG_LANG:
-            logger.info(f"{self.user_id}: CFG_LANG: prev_st={self.state_prev}")
+            self.log_info(f"CFG_LANG: prev_st={self.state_prev}")
 
         if self.state_prev != UI.States.CFG_LANG:
             self.selected_button=None
@@ -309,7 +319,7 @@ class UI:
                 parts = self.ev.split(':')
                 if len(parts) != 2 or parts[0] != 'kbd':
                     #fixme: че делать?
-                    logger.error(f"{self.user_id}: CFG_LANG: select lang error: %s", self.ev)
+                    self.log_info("CFG_LANG: select lang error: %s", self.ev)
                     return False
                 self.kbd=self.create_buttons(selected=self.ev, selected2='kbd:ok')
                 self.selected_button=parts[1]
@@ -321,10 +331,10 @@ class UI:
     async def help_cmd(self) -> None:
         self.timer_stop()
         if self.state_prev != UI.States.HELP_CMD:
-            logger.info(f"{self.user_id}: HELP_CMD: prev_st={self.state_prev}")
+            self.log_info(f"HELP_CMD: prev_st={self.state_prev}")
             self.state_prev = UI.States.HELP_CMD
         elif self.ev=="tmr:help_cmd": #таймаут неактивности пользователя
-            logger.info(f"{self.user_id}: HELP_CMD: inactivity timeout")
+            self.log_info("HELP_CMD: inactivity timeout")
             self.reset_state()
             return True
         elif self.ev=="kbd:close":
@@ -337,7 +347,7 @@ class UI:
 
     async def first_set(self) -> None:
         if self.state_prev != UI.States.FIRST_SET:
-            logger.info(f"{self.user_id}: FIRST_SET: prev_st={self.state_prev}")
+            self.log_info(f"FIRST_SET: prev_st={self.state_prev}")
             self.selected_button=None
         elif self.ev is not None:
             if self.ev=='kbd:ok':
@@ -369,7 +379,7 @@ class UI:
 
     async def tutor_scr1(self) -> None:
         if self.state_prev != UI.States.TUTOR_SCR1:
-            logger.info(f"{self.user_id}: FIRST_RUN1: prev_st={self.state_prev}")
+            self.log_info(f"FIRST_RUN1: prev_st={self.state_prev}")
 
         if self.state_prev==UI.States.TUTOR_SCR1 and self.ev=='kbd:ok':
             self.state=UI.States.TREN
@@ -381,7 +391,7 @@ class UI:
 
     async def tutor_scr2(self) -> None:
         if self.state_prev != UI.States.TUTOR_SCR2:
-            logger.info(f"{self.user_id}: FIRST_RUN2: prev_st={self.state_prev}")
+            self.log_info(f"FIRST_RUN2: prev_st={self.state_prev}")
 
         if self.state_prev!=UI.States.TUTOR_SCR2:
             await self.m2.clear()
@@ -398,7 +408,7 @@ class UI:
 
     async def tutor_scr3(self) -> None:
         if self.state_prev != UI.States.TUTOR_SCR3:
-            logger.info(f"{self.user_id}: FIRST_RUN3: prev_st={self.state_prev}")
+            self.log_info(f"FIRST_RUN3: prev_st={self.state_prev}")
             await self.m2.clear()
             self.state_prev = UI.States.TUTOR_SCR3
 
@@ -422,7 +432,7 @@ class UI:
         #if 1:
         lt=self.u.GetLastTren()
         if lt is None:
-            logger.error(f"{self.user_id}: reminder_time: last_tren_time=None!")
+            self.log_info("reminder_time: last_tren_time=None!")
             lt=datetime.now()
         reminder_time = (lt-timedelta(minutes=30)).time()
 
@@ -441,7 +451,7 @@ class UI:
     async def before_tren_state(self) -> None:
         self.timer_stop()
         if self.state_prev != UI.States.BEFORE_TREN:
-            logger.info(f"{self.user_id}: BEFORE_TREN: prev_st=" + self.state_prev)
+            self.log_info("BEFORE_TREN: prev_st=" + self.state_prev)
             self.sub_state=None
         elif self.ev is not None:
             if self.ev=="kbd:satrt":
@@ -460,7 +470,7 @@ class UI:
         #здесь, если было событие таймера или переход из другого состояния:
         n=self.tcs.TCardsReadyNow()
         if n!=self.sub_state:
-            logger.info(f"{self.user_id}: TREN0: {n} cards ready for learning" )
+            self.log_info(f"TREN0: {n} cards ready for learning")
             self.sub_state=n
             if n>self.u.max_cards_for_training/2: #напоминаем когда слов много, инече тихо апдейтим
                 await self.m2.clear()
@@ -482,7 +492,7 @@ class UI:
         elif self.reminder is not None and self.reminder<datetime.now():
             self.reminder=self.reminder_time() #след напоминалка
             self.reminder_count+=1
-            logger.info(f"{self.user_id}: BEFORE_TREN: Reminder count={self.reminder_count}!")
+            self.log_info(f"BEFORE_TREN: Reminder count={self.reminder_count}!")
             await self.m2.clear()
             await self.m1.clear()
             if self.reminder_count>5:
@@ -501,7 +511,7 @@ class UI:
             self.timer_run(timedelta(minutes=10),"tmr:t0")
         elif self.reminder is not None:
             dt=self.reminder - datetime.now() + timedelta(minutes=1)
-            logger.info(f'{self.user_id}: BEFORE_TREN: Reminder timer dt={str(dt).split(".")[0]}') 
+            self.log_info(f'BEFORE_TREN: Reminder timer dt={str(dt).split(".")[0]}') 
 
             self.timer_run(dt,"tmr:t0")
         self.state_prev = UI.States.BEFORE_TREN
@@ -512,7 +522,7 @@ class UI:
         self.timer_stop()
         #вход в состояние
         if self.state_prev != UI.States.TREN:
-            logger.info(f"{self.user_id}: TREN: prev_st=" + self.state_prev)
+            self.log_info("TREN: prev_st=" + self.state_prev)
             if self.state_prev == UI.States.TUTOR_SCR2:
                 self.sub_state="a"
             else:
@@ -540,7 +550,7 @@ class UI:
                 return True
             elif self.ev=="tmr:tren_to":
                 self.u.UpdateStat()
-                logger.info(f"{self.user_id}: TREN: inactivity timeout")
+                self.log_info("TREN: inactivity timeout")
                 self.reset_state()
                 return True
             else:
@@ -598,7 +608,7 @@ class UI:
                     await self.m1.text(f"<i>{self.txt_ex}</i>")
             a = await tc.GetAudio()
             #await self.m2.voice(voice=a, txt=f"<u>{tc.GetForeign()}</u> = {tc.GetNative()}", kbd=self.create_buttons())
-            lnk = await get_dict_link(tc.GetForeign())
+            lnk = await get_dict_link(self.user_id, tc.GetForeign())
             await self.m2.voice(voice=a, txt=f'{lnk} = {tc.GetNative()}', kbd=self.create_buttons())
 
         self.timer_run(timedelta(hours=23), "tmr:tren_to") #запускаем таймер на неактивность пользователя
@@ -607,7 +617,7 @@ class UI:
     async def after_tren_state(self) -> None:
         self.timer_stop()
         if self.state_prev != UI.States.AFTER_TREN:
-            logger.info(f"{self.user_id}: AFTER_TREN: prev_st={self.state_prev}")
+            self.log_info(f"AFTER_TREN: prev_st={self.state_prev}")
             await self.clear_screan()
             self.state_prev = UI.States.AFTER_TREN
         elif self.ev is not None:
@@ -643,17 +653,17 @@ class UI:
     async def edit_word_state(self) -> None:
         self.timer_stop()
         if self.state_prev != UI.States.EDIT_WORD:
-            logger.info(f"{self.user_id}: EDIT_WORD: prev_st=" + self.state_prev)
+            self.log_info("EDIT_WORD: prev_st=" + self.state_prev)
             if self.state_prev!=UI.States.TREN and self.state_prev!=UI.States.BEFORE_TREN and self.state_prev!=UI.States.ADD_WORD \
                     and self.state_prev!=UI.States.SHOW_WORDS and self.state_prev!=UI.States.HELP_CMD:
-                logger.warning(f"{self.user_id}: EDIT_WORD: unknown state_prev: " + self.state_prev)
+                self.log_warn(f"EDIT_WORD: unknown state_prev: " + self.state_prev)
                 return False
             self.selected_button=None
             self.kbd=self.create_buttons()
 
         elif self.state_prev == UI.States.EDIT_WORD and self.ev is not None:
             if self.ev=="tmr:edit_word": #таймаут неактивности пользователя
-                logger.info(f"{self.user_id}: EDIT_WORD: inactivity timeout")
+                self.log_info("EDIT_WORD: inactivity timeout")
                 self.reset_state()
                 return True
             elif self.ev=="kbd:fw":
@@ -691,15 +701,15 @@ class UI:
             elif self.ev.startswith('msg:'):
                 w = self.ev.split('msg:', 1)[1]
                 if self.selected_button=="fw":
-                    logger.info("f{self.user_id}: EDIT_WORD: fw: rx_msg: "+w)
+                    self.log_info("EDIT_WORD: fw: rx_msg: "+w)
                     self.edited_word.ChangeForeign(w)
                     self.kbd=self.create_buttons("kbd:fw", "✏️")
                 elif self.selected_button=="nw":
-                    logger.info("f{self.user_id}: EDIT_WORD: nw: rx_msg: "+w)
+                    self.log_info("EDIT_WORD: nw: rx_msg: "+w)
                     self.edited_word.ChangeNative(w)
                     self.kbd=self.create_buttons("kbd:nw", "✏️")
                 elif self.selected_button=="ex":
-                    logger.info("f{self.user_id}: EDIT_WORD: ex: rx_msg: "+w)
+                    self.log_info("EDIT_WORD: ex: rx_msg: "+w)
                     self.edited_word.ChangeExample(w)
                     self.kbd=self.create_buttons("kbd:ex", "✏️")
                 else:
@@ -709,8 +719,7 @@ class UI:
         
         pg=word_get_progress(self.user_id, self.edited_word.word_id)
         fw=self.edited_word.GetForeign()
-        #lnk = await get_dict_link(fw)
-        rlnk = await get_dict_rawlink(self.edited_word.GetForeign()) #used because it will be open without additional asking in telegram
+        rlnk = await get_dict_rawlink(self.user_id, self.edited_word.GetForeign()) #full raw link is used because it will be open without asking in telegram
         txt2=f"\n{pg} {fw} = {self.edited_word.GetNative()}\n\n<i>{self.edited_word.GetExample()}</i>\n\n{rlnk}"
         if self.selected_button=="reset":
             txt=msg09_reset_prog()+txt2
@@ -756,7 +765,7 @@ class UI:
     async def add_word_state(self) -> None:
         self.timer_stop()
         if self.state_prev != UI.States.ADD_WORD:
-            logger.info(f"{self.user_id}: ADD_WORD: prev_st=" + self.state_prev)
+            self.log_info("ADD_WORD: prev_st=" + self.state_prev)
             await self.m0.clear()
             await self.m1.clear()
             self.selected_button=None
@@ -764,7 +773,7 @@ class UI:
             self.state_prev = UI.States.ADD_WORD            
         elif self.ev is not None:
             if self.ev=="tmr:add_word": #таймаут неактивности пользователя
-                logger.info(f"{self.user_id}: ADD_WORD: inactivity timeout")
+                self.log_info("ADD_WORD: inactivity timeout")
                 self.reset_state()
                 return True
             elif self.ev.startswith('msg:'):
@@ -784,7 +793,7 @@ class UI:
     async def add_from_lib(self) -> None:
         self.timer_stop()
         if self.state_prev != UI.States.ADD_WORDS_FROM_LIB:
-            logger.info(f"{self.user_id}: ADD_WORDS_FROM_LIB: prev_st={self.state_prev}")
+            self.log_info(f"ADD_WORDS_FROM_LIB: prev_st={self.state_prev}")
             await self.m0.clear()
             await self.m1.clear()
             self.selected_button=None
@@ -792,7 +801,7 @@ class UI:
             self.state_prev = UI.States.ADD_WORDS_FROM_LIB
         elif self.ev is not None:
             if self.ev=="tmr:add_word_from_lib": #таймаут неактивности пользователя
-                logger.info(f"{self.user_id}: ADD_WORD_FROM_LIB: inactivity timeout")
+                self.log_info("ADD_WORD_FROM_LIB: inactivity timeout")
                 self.reset_state()
                 return True
             elif self.ev.startswith('msg:'):
@@ -805,7 +814,7 @@ class UI:
             elif self.ev=='kbd:ok':
                 if self.selected_button is not None:
                     n=add_words_by_topic(self.user_id, self.selected_button, flang=self.u.foreign_lang, nlang=self.u.native_lang)
-                    logger.info(f"{self.user_id}: ADD_WORDS_FROM_LIB: added {n} words from word_set[{self.selected_button}]")
+                    self.log_info(f"ADD_WORDS_FROM_LIB: added {n} words from word_set[{self.selected_button}]")
                     self.state=self.states_q.pop() #goto back
                     await self.m2.clear()
                     return True
@@ -824,7 +833,7 @@ class UI:
     async def show_stat(self) -> None:
         self.timer_stop()
         if self.state_prev != UI.States.SHOW_STAT:
-            logger.info(f"{self.user_id}: SHOW_STAT:, prev_st={self.state_prev}")
+            self.log_info(f"SHOW_STAT: prev_st={self.state_prev}")
             await self.m0.clear()
             await self.m1.clear()
             self.list_pos=0
@@ -833,7 +842,7 @@ class UI:
             self.state_prev = UI.States.SHOW_STAT
         elif self.ev is not None:
             if self.ev=="tmr:show_stat": #таймаут неактивности пользователя
-                logger.info(f"{self.user_id}: SHOW_STAT: inactivity timeout")
+                self.log_info("SHOW_STAT: inactivity timeout")
                 self.reset_state()
                 return True
             elif self.ev=='kbd:cancel':
@@ -893,7 +902,7 @@ class UI:
     async def show_words(self) -> None:
         self.timer_stop()
         if self.state_prev != UI.States.SHOW_WORDS:
-            logger.info(f"{self.user_id}: SHOW_WORDS: prev_st={self.state_prev}")
+            self.log_info(f"SHOW_WORDS: prev_st={self.state_prev}")
             self.state_prev = UI.States.SHOW_WORDS
             await self.m0.clear()
             await self.m1.clear()
@@ -904,7 +913,7 @@ class UI:
         elif self.ev is not None:
             if self.ev=="tmr:show_words": #таймаут неактивности пользователя
                 self.reset_state()
-                logger.info(f"{self.user_id}: SHOW_WORDS: inactivity timeout")
+                self.log_info("SHOW_WORDS: inactivity timeout")
                 return True
             elif self.ev=='kbd:cancel':
                 self.show_words_list=None
@@ -1016,9 +1025,9 @@ class UI:
         ui=get_ui(update.effective_user.id, update.effective_chat.id, context)
         text = update.message.text
         if text is None:
-            logger.warning(f"{ui.user_id}: rx_msg text is None!")
+            ui.log_warn("rx_msg text is None!")
         else:
-            logger.info(f"{ui.user_id}: rx_msg: {text}")
+            ui.log_info(f"rx_msg: {text}")
             if await ui.process_ev("msg:"+text):
                 ui.exit_ui()
                 
@@ -1049,15 +1058,15 @@ class UI:
         await self.m1.sticker(sticker06_sq_love())
         await self.m2.text(msg13_inactivity())
         user_set_status(self.user_id, BLOCKED_BY_INACTIVITY)
-        logger.warning(f"{self.user_id}: blocked by inactivity")
+        self.log_warn("blocked by inactivity")
 
     async def stop_ui(self):
         self.timer_stop()
         await self.clear_screan()
-        logger.info(f"{self.user_id}: Stop UI")
+        self.log_info("Stop UI")
 
     def exit_ui(self):
-        logger.info(f"{self.user_id}: Exit UI")
+        self.log_info("Exit UI")
         del ui_set[self.user_id]
 
 
@@ -1117,7 +1126,7 @@ async def start_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     new_user=(n==0) 
     ui=UI(user_id, chat_id, context, new_user)
     ui_set[user_id]=ui
-    logger.info(f"{user_id}: Start UI")
+    ui.log_info("Start UI")
     user_set_status(user_id, UNBLOCKED)
     await ui.process_ev("cmd:start")
 
@@ -1182,9 +1191,9 @@ async def post_init(context):
                 ui=get_ui(user_id, chat_id, context)
 
                 if state!=UI.States.BEFORE_TREN:
-                    logger.info(f"{user_id}: was in state={state}, ss={sub_state}. Run cmd:start for him")
+                    ui.log_info(f"was in state={state}, ss={sub_state}. Run cmd:start for him")
                     if await ui.process_ev("cmd:start"):
-                        logger.error(f"{user_id}: post_init: error in ui.process_ev. What must to do?")
+                        ui.log_err("post_init: error in ui.process_ev. What must to do?")
                         ui.exit_ui()
                     continue
 
@@ -1192,10 +1201,10 @@ async def post_init(context):
                 ui.state_prev = ui.state = state
                 ui.sub_state = int(sub_state) if sub_state else 0 # колличество слов, готовых к изучению перед остановкой
                 if msg_id1 is None or msg_id1<0 or msg_id2 is None or msg_id2<0:
-                    logger.error(f"{user_id}: post_init: was in state={state}, ss={sub_state}. but msg_id1={msg_id1}, msg_id2={msg_id2}")
-                    logger.error(f"{user_id}: post_init: Run cmd:start for him")
+                    ui.log_err(f"post_init: was in state={state}, ss={sub_state}. but msg_id1={msg_id1}, msg_id2={msg_id2}")
+                    ui.log_err("post_init: Run cmd:start for him")
                     if await ui.process_ev("cmd:start"):
-                        logger.error(f"{user_id}: post_init: error in ui.process_ev. What must to do?")
+                        ui.log_err("post_init: error in ui.process_ev. What must to do?")
                         ui.exit_ui()
                     continue
 
@@ -1209,7 +1218,7 @@ async def post_init(context):
                     ui.reminder_count=0
                 
                 #запустим таймер и по нему поапдейтим все данные в before_tren_st()
-                logger.info(f"{user_id}: post_init: restoring state=BEFORE_TREN n={ui.sub_state} reminder={ui.reminder}")
+                ui.log_info(f"post_init: restoring state=BEFORE_TREN n={ui.sub_state} reminder={ui.reminder}")
                 ui.timer_run(timedelta(minutes=1),"tmr:t0")
 
 

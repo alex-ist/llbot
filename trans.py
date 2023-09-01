@@ -54,7 +54,7 @@ import httpx
 from bot_db import *
 
 #Fetches the link for the word from Cambridge Dictionary.
-async def web_get_dictionary_link(fw: str) -> str:
+async def web_get_dictionary_link(user_id, fw: str) -> str:
     src_link='https://dictionary.cambridge.org/dictionary/english/'
     link = src_link + fw.replace(" ", "-")
     
@@ -69,38 +69,30 @@ async def web_get_dictionary_link(fw: str) -> str:
                     return redirect_link
             elif response.status_code == 200:
                 return link
-            logger.error(f"httpx: fw={fw}: response.status_code={response.status_code}")
-            return "-"
+            logger.warning(f"{user_id}: httpx: check cambrige dict fw={fw}: resp.code={response.status_code}")
+            return None
     except Exception as e:
-        logger.error(f"httpx: fw={fw}: web_get_dictionary_link={link} : {e}")
-    return "-"
+        logger.error(f"{user_id}: httpx: check cambrige dict fw={fw}: Exception: {e}")
+    return None
 
-async def get_dict_link(fw: str, lang="en") -> str:
+async def get_dict_rawlink(user_id, fw: str, lang="en") -> str:
     fw2 = fw = fw.strip()
     if fw.startswith('a ') and lang=="en": #remove leading 'a' #Cambridge dict did not not support search with articles
         fw2 = fw[2:]
+    elif fw.startswith('an ') and lang=="en": #remove leading 'an'
+        fw2 = fw[3:]
 
-    link = db_get_dict_link(fw2)
-    
+    link = db_get_dict_link(fw2) #проверим наличие линка в кеше: None - новое слово, ""- слово проверенное раньше, и словарь его не знал
     if link is None: #new word in dict table
-        link = await web_get_dictionary_link(fw2)
-        db_upd_dict_link(fw2, link)
-
-    if link=="-":
-        return fw
-    else:
-        return f'<a href="{link}">{fw}</a>'
-    
-async def get_dict_rawlink(fw: str, lang="en") -> str:
-    fw2 = fw = fw.strip()
-    if fw.startswith('a ') and lang=="en": #remove leading 'a' #Cambridge dict did not not support search with articles
-        fw2 = fw[2:]
-
-    link = db_get_dict_link(fw2)
-    
-    if link is None: #new word in dict table
-        link = await web_get_dictionary_link(fw2)
-        db_upd_dict_link(fw2, link)
+        link = await web_get_dictionary_link(user_id, fw2) #None - нет такого слова
         if link is None:
             link=""
+        db_upd_dict_link(fw2, link)
     return link
+
+async def get_dict_link(user_id, fw: str, lang="en") -> str:
+    lnk=await get_dict_rawlink(user_id, fw, lang)
+    if lnk:
+        return f'<a href="{lnk}">{fw}</a>'
+    else:
+        return fw
