@@ -9,14 +9,14 @@ def reversed_lines(file, key:str):
         for c in reversed(block):
             if c == '\n' and part:
                 line=part[::-1]
-                match = re.search(r'.*- (\d+):.*', line)
+                match = re.search(r'.* (\d{5,}):.*', line)
                 if match is None or match.group(1) == key:                
                     yield line
                 part = ''
             part += c
     if part: 
         line=part[::-1]
-        match = re.search(r'.*"- (\d+):.*', line)
+        match = re.search(r'.*" (\d{5,}):.*', line)
         if match is None or match.group(1) == key:                
             yield line
 

@@ -39,8 +39,8 @@ class User:
     def Get_o_param(self):
         return self.o_param
 
-    def SetLastTren(self):
-        user_update_last_tren(self.user_id)
+    def UpdateLastAccess(self, time:datetime=None):
+        user_update_last_access(self.user_id, time)
 
     def GetLastTren(self):
         return user_get_last_tren(self.user_id)
