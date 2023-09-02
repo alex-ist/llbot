@@ -260,10 +260,12 @@ def user_registration(user_id:int, chat_id, username, first_name, lang_code, is_
               foreign_lang, min_t_interval, min_cards_for_t, max_cards_for_t, cur_cards_for_t, o_param, t, t ))
     close_db(commit=True)
 
-def user_update_last_tren(user_id:int):
+def user_update_last_access(user_id:int, time:datetime=None):
     c=open_db()
+    if time is None:
+        time=datetime.now()
     c.execute("UPDATE users SET last_access = ?  WHERE  user_id = ?",
-            (t_to_DB(datetime.now()), user_id))
+            (t_to_DB(time), user_id))
     close_db(commit=True)
 
 def user_update_cur_cards_for_t(user_id:int, cur_val):

@@ -430,7 +430,7 @@ class TrainingCardSet:
         #         self.audio_examples=True
         #         break
         
-        self.u.SetLastTren()
+        self.u.UpdateLastAccess()
 
     # #есть хотя бы в одой из записей текстовый пример
     # def IsTextExamples(self):

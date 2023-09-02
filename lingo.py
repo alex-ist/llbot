@@ -79,6 +79,7 @@ class UI:
         self.list_pos=0
         self.cnt1=0
         self.ev=None
+        self.last_access=datetime.now()
 
     def __del__(self):
         logger.warning(f"{self.user_id}: deleted UI object")
@@ -552,9 +553,14 @@ class UI:
             elif self.ev.startswith('msg:'):
                 await self.add_word(self.ev)
                 return True
-            elif self.ev=="tmr:tren_to":
+            elif self.ev=="tmr:tren_to1":
                 self.u.UpdateStat()
-                self.log_info("TREN: inactivity timeout")
+                self.u.UpdateLastAccess(self.last_access)
+                self.log_info("TREN: inactivity to 1")
+                self.timer_run(timedelta(hours=23), "tmr:tren_to2") #запускаем таймер на неактивность пользователя
+                return False
+            elif self.ev=="tmr:tren_to2":
+                self.log_info("TREN: inactivity to 2")
                 self.reset_state()
                 return True
             else:
@@ -618,7 +624,8 @@ class UI:
             lnk = await get_dict_link(self.user_id, tc.GetForeign())
             await self.m2.voice(voice=a, txt=f'{lnk} = {tc.GetNative()}', kbd=self.create_buttons())
 
-        self.timer_run(timedelta(hours=23), "tmr:tren_to") #запускаем таймер на неактивность пользователя
+        self.last_access=datetime.now()
+        self.timer_run(timedelta(minutes=30), "tmr:tren_to1") #запускаем таймер на неактивность пользователя
         return False
 
     async def after_tren_state(self) -> None:
