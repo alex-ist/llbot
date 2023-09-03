@@ -11,34 +11,79 @@ def change_db(fw, new_nw):
     c.execute(f"UPDATE word_set SET tr1 = ? WHERE f_word = ?",  (new_nw, fw))
     close_db(True)
 
-fill_db("caulk", "герметик, шпаклевка для швов", "I bought a caulk to seal the gaps in the bathroom tiles.")
-fill_db("AAC blocks", "газобетонный блок", "What thickness of plaster will be applied to the new wall made of AAC blocks?")
-fill_db("a grout", "затирка для плитки", "Could you please confirm the color of the grout we'll be using for the tile joints in the bathroom?")
-fill_db("three-way switch", "проходной выключатель", "We're planning to install a three-way switch for the hallway lights. Is it possible?")
-fill_db("foreman", "прораб", "The foreman hasn't been on the site for the past four days.")
-fill_db("radiator", "Батарея отопления", "When is the deadline to install the new radiators?")
-fill_db("shower pan", "душевой поддон", "The installation of the shower pan is complete, and we're ready to proceed with tiling the shower area.")
-fill_db("soundproofing", "звукоизоляция", "We're considering adding additional soundproofing to the walls.")
-fill_db("tile installation", "укладка плитки", "The tile installation in the kitchen is progressing well, and we'll move on to the bathroom next.")
-fill_db("plastering", "нанесение штукатурки", "The bathroom has good wall geometry with AAC blocks. We will lay the tiles without plastering.")
-fill_db("plasterer", "штукатур", "The plasterer is scheduled to start working on the ceiling repairs tomorrow.")
-fill_db("crown molding", "карниз", "The foreman said that he has run out of special glue for crown moldings.")
-fill_db("drywall", "гкл", "We have 5 sheets of drywall left. We can try to build the structure you were talking about.")
-fill_db("load-bearing", "несущий (напр. стена)", "This is a load-bearing wall, and it's not possible to create niches within it.")
-fill_db("floor screed", "стяжка пола", "How many days will the floor screed need to dry?")
-fill_db("recessed", "встроенный", "We're planning to install recessed lighting in the ceiling with GX-53 sockets.")
-fill_db("surface-mounted", "накладной", "This light fixture is surface-mounted; its instruction manual is included in the box.")
-fill_db("recessed wall niche", "ниша в стене", "And please, don't forget, we're planning to create a recessed wall niche on this particular wall.")
-fill_db("concealed wiring", "скрытая проводка", "If we install a speaker bracket here, will we not damage the concealed wiring?")
-fill_db("sockets installation", "установка розеток", "We're almost done with the sockets installation in the kitchen; just a few more to go.")
-fill_db("to redo", "переделать", "The tile installation doesn't match the flooring layout plan. You need to redo it.")
-fill_db("baseboard", "плинтус", "How should the baseboard meet the door casing?")
-fill_db("lighting fixtures", "осветительные приборы", "All the lighting fixtures have been ordered, and the delivery is scheduled for Friday.")
-fill_db("plumbing", "водопровод и канализация", "I hope that replacing the bathtub with a new one won't require any plumbing work.")
-fill_db("faucet", "водопроводный кран", "It seems, the plumber accidentally switched the faucet models between the bathroom and the restroom.")
-fill_db("sink", "раковина", "Unfortunately, the sink arrived with a crack. The supplier has assured us they will replace it tomorrow.")
-fill_db("flooring", "покрытие пола", "Does your budget allow for hardwood flooring at least in this area?")
-fill_db("renovation", "ремонт", "Our apartment renovation was completed on time! I believe it's not just luck but also due to having a well-defined plan.")
-fill_db("completion deadline", "срок окончания работ", "The completion deadline has passed, but the foreman promises to finish within 3 days.")
-fill_db("stripping out", "демонтаж",  "Before starting the renovation, we'll need to do a complete stripping out of the old interior")
-fill_db("Author's supervision", "авторский надзор", "We really don't want to deal with the foreman every day and handle a bunch of his queries. We're in need of Author's supervision.")
+def change_db2(fw, new_fw, new_nw):
+    c=open_db()
+    c.execute(f"UPDATE word_set SET f_word =?, tr1 = ? WHERE f_word = ?",  (new_fw, new_nw, fw))
+    close_db(True)
+
+
+def db_upd_dict_link(fw, link, lang="en"):
+    c=open_db()
+    c.execute('INSERT OR REPLACE INTO dictionary_links (foreign_w, link, lang_code, date) VALUES (?, ?, ?, ?)',
+            (fw, link, lang, t_to_DB(datetime.now()) ))
+    close_db(commit=True)
+
+def db_get_dict_link(fw, lang="en"):
+    c=open_db()
+    c.execute(f"SELECT link FROM dictionary_links WHERE foreign_w = ? and lang_code = ?", (fw, lang))
+    r = c.fetchone()
+    close_db()
+    if r is None: #нет слова или ссылки
+        return None
+    else:
+        return r[0]
+
+def words_all():
+    c=open_db()
+    c.execute("SELECT foreign_w FROM words")
+    rows = c.fetchall()
+    close_db()
+    return rows
+
+def remove_en_article(fw: str):
+    fw2 = fw = fw.strip().lower()
+    if fw.startswith('a '): #remove leading 'a' #Cambridge dict sometimes did not not support search with an article
+        fw2 = fw[2:]
+    elif fw.startswith('an '): #remove leading 'an'
+        fw2 = fw[3:]
+    elif fw.startswith('the '): #remove leading 'the'
+        fw2 = fw[4:]
+    elif fw.startswith('to '): #remove leading 'to'
+        fw2 = fw[3:]
+    return fw2.strip()
+
+
+import requests
+def web_get_dictionary_link(fw: str) -> str:
+    src_link='https://dictionary.cambridge.org/dictionary/english/'
+    link = src_link + fw.replace(" ", "-")
+    headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'}
+    response = requests.head(link, allow_redirects=False, headers=headers, timeout=3)
+    # Check if the status code is in the redirection range
+    if 300 <= response.status_code < 400:
+        redirect_link = response.headers.get('Location')
+        if redirect_link and redirect_link != src_link:
+            return redirect_link
+    elif response.status_code == 200:
+        return link
+    return None
+
+
+aw=words_all()
+for w in aw:
+    fw=w[0]
+    print (fw)
+    lnk=db_get_dict_link(fw)
+    if lnk is None:
+        fw2=remove_en_article(fw)
+        lnk=web_get_dictionary_link(fw2)
+        if lnk is None:
+            lnk=""
+        db_upd_dict_link(fw, lnk)
+        print ("N "+str(lnk))
+    else:
+        print ("O "+str(lnk))
+
+
+change_db2("clubs", "club", "кружок") #clubs - это масть крести :)
+#fill_db("caulk", "герметик, шпаклевка для швов", "I bought a caulk to seal the gaps in the bathroom tiles.")
