@@ -7,12 +7,13 @@ from g_ttos import google_speach
 from datetime import *
 from user_config import *
 from bot_db import *
+from trans import get_dict_rawlink
 
 def get_hash(input_string):
     return hashlib.md5(input_string.encode()).hexdigest()[:10]
 
 class Word:
-    def __init__(self, user_id, foreign_lang, foreign_w, native_lang, native_w, example=None, word_id=-1):
+    def __init__(self, user_id, foreign_lang, foreign_w, native_lang, native_w, example=None, word_id=-1, lnk=None):
         self.user_id=user_id
         self.word_id=word_id
         self.native_lang=native_lang
@@ -24,7 +25,10 @@ class Word:
         self.example=example
         self.audio=None
         self.audio_example=None
-    
+        self.lnk=lnk
+
+    def GetDictLink(self):
+        return self.lnk
     def GetForeign(self):
         return self.foreign_w
 
@@ -70,12 +74,23 @@ class Word:
             self.word_id=word_add(self.user_id, self.foreign_w, self.native_w, self.foreign_lang, self.native_lang, self.example)
 
     @staticmethod
+    async def CreateWord(user_id, foreign_lang, foreign_w, native_lang, native_w, example=None, word_id=-1, lnk=None):
+        word=Word(user_id, foreign_lang, foreign_w, native_lang, native_w, example, word_id, lnk)
+        await word.SetDictLink()
+        return word
+
+    @staticmethod
     async def ReadFromDb(user_id:int, word_id:int) -> 'Word':
         foreign_w, native_w, foreign_lang, native_lang, example=word_read(user_id, word_id)
         word=Word(user_id, foreign_lang, foreign_w, native_lang, native_w, example, word_id)
+        await word.SetDictLink()
         #await word.SetAudio()
         #await word.SetAudioExample()
         return word
+
+    async def SetDictLink(self):
+        if self.lnk is None:
+            self.lnk=await get_dict_rawlink(self.user_id, self.foreign_w, self.foreign_lang)
 
     #Устанавливает Аудио файл для записи в наборе. Проеверяет есть ли на локальном хранилище этот файл, если нет, то пытается его получить из сети.
     #audio: data/{foreign_lang}/audio_words
@@ -131,13 +146,6 @@ class TrainingCard:
         self.last_training_t=last_training_t #вообще бывают апдейты? или ролмьл заменгяем и все?
         self.u=u
     
-    #создает новую tcard без записи в базе. После окончания редактирования запишем в базу
-    @staticmethod
-    def CreateNewTCard(user_id, u:User, foreign_w, native_w="", example="") -> 'TrainingCard':
-        tc=TrainingCard(training_card_id=-1, user_id=user_id, word_id=-1, direction=-1, next_training_t=None, last_training_t=None, u=u)
-        tc.word=Word(user_id, u.foreign_lang, foreign_w, u.native_lang, native_w, example)
-        return tc        
-
     def SaveToDb(self):
         training_card_update_by_id(self.training_card_id, self.user_id, self.next_training_t, self.last_training_t)
 
@@ -233,6 +241,11 @@ class TrainingCard:
         if self.word is None:
             return None
         return self.word.GetExample()
+    
+    def GetDictLink(self):
+        if self.word is None:
+            return None
+        return self.word.GetDictLink()
 
     def ChangeForeign(self, f):
         if self.word is not None:
@@ -246,13 +259,6 @@ class TrainingCard:
     def ChangeExample(self,e):
         if self.word is not None:
             self.word.ChangeExample(e)
-
-    # def CreateNewTCard(user_id, cfg:UserConfig, foreign_w, native_w="", example="") -> 'TrainingCard':
-    #     tc=TrainingCard(-1, user_id, -1, -1, None, None, cfg)
-    #     tc.card=Card(user_id, cfg.foreign_lang, foreign_w, cfg.native_lang, native_w, example)
-    #     tc.next_training_t=-1
-    #     return tc        
-
 
 class TrainingCardSet:
     def __init__(self, user_id, u:User):

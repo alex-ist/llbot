@@ -52,6 +52,10 @@ def remove_en_article(fw: str):
         fw2 = fw[3:]
     return fw2.strip()
 
+import re
+def remove_brackets(fw: str):
+    fw = fw.strip().lower()
+    return re.sub(r'\([^)]*\)', '', fw).strip()
 
 import requests
 def web_get_dictionary_link(fw: str) -> str:
@@ -63,7 +67,11 @@ def web_get_dictionary_link(fw: str) -> str:
     if 300 <= response.status_code < 400:
         redirect_link = response.headers.get('Location')
         if redirect_link and redirect_link != src_link:
-            return redirect_link
+            if redirect_link.startswith('http'):
+                return redirect_link
+            else:
+                return src_link+redirect_link
+            
     elif response.status_code == 200:
         return link
     return None
@@ -73,17 +81,20 @@ aw=words_all()
 for w in aw:
     fw=w[0]
     print (fw)
+    if fw.startswith("housewarming"):
+        print("house")
+
     lnk=db_get_dict_link(fw)
-    if lnk is None:
+    if lnk is None or not lnk.startswith("http") :
         fw2=remove_en_article(fw)
+        fw2=remove_brackets(fw2)
         lnk=web_get_dictionary_link(fw2)
         if lnk is None:
             lnk=""
         db_upd_dict_link(fw, lnk)
         print ("N "+str(lnk))
-    else:
-        print ("O "+str(lnk))
 
 
-change_db2("clubs", "club", "кружок") #clubs - это масть крести :)
+
+#change_db2("clubs", "club", "кружок") #clubs - это масть крести :)
 #fill_db("caulk", "герметик, шпаклевка для швов", "I bought a caulk to seal the gaps in the bathroom tiles.")

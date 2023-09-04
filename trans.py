@@ -5,57 +5,58 @@
 
 import os
 from google.cloud import translate
-
-gtrans_async_client = None
-# Initialize Translation client
-async def translate_text(flang:str, nlang:str, word:str) -> translate.TranslationServiceClient:
-    global gtrans_async_client
-    if gtrans_async_client is None:
-        gtrans_async_client = translate.TranslationServiceAsyncClient()
-    
-    if flang=="en"and nlang=="ru":
-         if word.isascii():
-            src_lang=flang
-         else:
-            src_lang=nlang
-    else:
-        dl_req=translate.DetectLanguageRequest(
-                content=word,
-                parent="projects/bamboo-antler-386512/locations/global",
-            )        
-        tr = await gtrans_async_client.detect_language(dl_req)
-        detected_lang=tr.languages[0].language_code
-        if detected_lang==flang or detected_lang==nlang:
-            src_lang=detected_lang
-        else:
-            src_lang=flang
-
-    if src_lang==flang:
-        target_lang = nlang
-    else:
-        target_lang = flang
-
-    request={
-        "parent": "projects/bamboo-antler-386512/locations/global",
-        "contents": [word],
-        "mime_type": "text/plain",
-        "source_language_code": src_lang,
-        "target_language_code": target_lang,
-    }
-    response = await gtrans_async_client.translate_text(request) 
-    tr_word = response.translations[0].translated_text
-    if src_lang==flang:
-        return word, tr_word
-    else:
-        return tr_word, word
-
-
+from oai import oai_aget_example
 import httpx
 from bot_db import *
+import asyncio
+
+gtrans_async_client = None
+
+
+async def detect_lang(flang, nlang, word):
+    dl_req=translate.DetectLanguageRequest(
+            content=word,
+            parent="projects/bamboo-antler-386512/locations/global",
+        )        
+    tr = await gtrans_async_client.detect_language(dl_req)
+    detected_lang=tr.languages[0].language_code
+    if detected_lang==flang or detected_lang==nlang:
+        src_lang=detected_lang
+    else:
+        src_lang=flang
+    return src_lang
+
+def remove_en_article(fw: str):
+    fw2 = fw = fw.strip().lower()
+    if fw.startswith('a '): #remove leading 'a' #Cambridge dict sometimes did not not support search with an article
+        fw2 = fw[2:]
+    elif fw.startswith('an '): #remove leading 'an'
+        fw2 = fw[3:]
+    elif fw.startswith('the '): #remove leading 'the'
+        fw2 = fw[4:]
+    elif fw.startswith('to '): #remove leading 'to'
+        fw2 = fw[3:]
+    return fw2.strip()
+
+import re
+def remove_brackets(fw: str):
+    fw = fw.strip().lower()
+    return re.sub(r'\([^)]*\)', '', fw).strip()
+
+async def get_dict_rawlink(user_id, fw: str, lang="en") -> str:
+    link = db_get_dict_link(fw) #проверим наличие линка в кеше: None - новое слово, ""- слово проверенное раньше, и словарь его не знал
+    if link is None: #new word in dict table
+        link = await web_get_en_dictionary_link(user_id, fw) #None - нет такого слова
+        if link is None:
+            link=""
+        db_upd_dict_link(fw, link)
+    return link
 
 #Fetches the link for the word from Cambridge Dictionary.
-async def web_get_dictionary_link(user_id, fw: str) -> str:
+async def web_get_en_dictionary_link(user_id, fw: str) -> str:
     src_link='https://dictionary.cambridge.org/dictionary/english/'
+    fw = remove_en_article(fw)
+    fw = remove_brackets(fw)
     link = src_link + fw.replace(" ", "-")
     
     try:
@@ -75,24 +76,68 @@ async def web_get_dictionary_link(user_id, fw: str) -> str:
         logger.error(f"{user_id}: httpx: check cambrige dict fw={fw}: Exception: {e}")
     return None
 
-async def get_dict_rawlink(user_id, fw: str, lang="en") -> str:
-    fw2 = fw = fw.strip()
-    if fw.startswith('a ') and lang=="en": #remove leading 'a' #Cambridge dict did not not support search with articles
-        fw2 = fw[2:]
-    elif fw.startswith('an ') and lang=="en": #remove leading 'an'
-        fw2 = fw[3:]
 
-    link = db_get_dict_link(fw2) #проверим наличие линка в кеше: None - новое слово, ""- слово проверенное раньше, и словарь его не знал
-    if link is None: #new word in dict table
-        link = await web_get_dictionary_link(user_id, fw2) #None - нет такого слова
-        if link is None:
-            link=""
-        db_upd_dict_link(fw2, link)
-    return link
-
-async def get_dict_link(user_id, fw: str, lang="en") -> str:
-    lnk=await get_dict_rawlink(user_id, fw, lang)
-    if lnk:
-        return f'<a href="{lnk}">{fw}</a>'
+#переводим и проверяем на наличие fw слова в базе,
+# если нет - генерируем пример и создаем ссылку на слово в словаре
+# проверяем на опечатки
+async def translate_text(user_id:int, flang:str, nlang:str, word:str):
+    global gtrans_async_client
+    if gtrans_async_client is None:
+        gtrans_async_client = translate.TranslationServiceAsyncClient()
+    
+    if flang=="en" and nlang=="ru":
+         if word.isascii():
+            src_lang=flang
+            word_id=word_read_by_fw(user_id, word)
+            if word_id:
+                return word_id
+         else:
+            src_lang=nlang
     else:
-        return fw
+        src_lang=await detect_lang(flang, nlang, word) #for future, not tested
+
+    if src_lang==flang:
+        target_lang = nlang
+    else:
+        target_lang = flang
+
+    request={
+        "parent": "projects/bamboo-antler-386512/locations/global",
+        "contents": [word],
+        "mime_type": "text/plain",
+        "source_language_code": src_lang,
+        "target_language_code": target_lang,
+    }
+    response = await gtrans_async_client.translate_text(request) 
+    tr_word = response.translations[0].translated_text
+
+    print(request)
+    print(response)
+
+    if src_lang==flang:
+        fw=word
+        nw=tr_word
+    else:
+        nw=word
+        fw=tr_word
+        word_id=word_read_by_fw(user_id, fw)
+        if word_id:
+            return word_id
+
+    lnk=ex=None
+    if fw==nw:  #для ru-en. гугл не смог первести, когда адская абракадабра была вместо слова ("hiipl-ll-ip"). Это слово уже не спасти
+        return None, fw, nw, ex, lnk
+    
+    lnk, ex = await asyncio.gather(
+        get_dict_rawlink(user_id, fw),
+        oai_aget_example(user_id, fw)
+    )        
+    if lnk is None:
+        #fixme: проверить на опечатки fw
+        pass
+
+    return word_id, fw, nw, ex, lnk
+
+# word_id, fw, nw, ex, lnk=asyncio.run(translate_text(484679683, "en", "ru", "hiipl-ll-ip"))
+# print (word_id, fw, nw, ex, lnk)
+

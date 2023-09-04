@@ -12,7 +12,7 @@ from telegram.ext import Application, CallbackQueryHandler, CommandHandler, Cont
 import telegram 
 import secrets
 
-from trans import translate_text, get_dict_link, get_dict_rawlink
+from trans import translate_text
 from update_dns import update_dns
 
 from card import Word, TrainingCard, TrainingCardSet
@@ -23,6 +23,7 @@ from user_config import *
 from datetime import *
 from oai import *
 from bot_msg import BotMsg
+from bot_db import *
 
 BLOCKED_BY_USER       = "B"
 BLOCKED_BY_INACTIVITY = "I"
@@ -581,6 +582,7 @@ class UI:
             return True
 
         #показ сообщений
+        fw=tc.GetForeign()
         if self.sub_state=="q":
             if self.tutorial_mode==1:
                 await self.m0.text(msg19_tutorial_tren1())
@@ -592,7 +594,7 @@ class UI:
 
             if ae_path is not None:
                 with open(ae_path, 'rb') as f:
-                    self.ma_ex=InputMediaAudio(f, filename=tc.GetForeign(), performer="LingoLink", title="Пример", caption="|\n|")
+                    self.ma_ex=InputMediaAudio(f, filename=fw, performer="LingoLink", title="Пример", caption="|\n|")
             
             if self.ma_ex is not None:
                 await self.m1.audio(media=self.ma_ex)
@@ -614,15 +616,19 @@ class UI:
             if self.ma_ex is not None:
                 ae_path = await tc.GetAudioExample()
                 with open(ae_path, 'rb') as f:
-                    self.ma_ex=InputMediaAudio(f, filename=tc.GetForeign(), performer="LingoLink", title=tc.GetForeign(), caption=f"<i>{self.txt_ex}</i>")
+                    self.ma_ex=InputMediaAudio(f, filename=fw, performer="LingoLink", title=fw, caption=f"<i>{self.txt_ex}</i>")
                 await self.m1.audio(media=self.ma_ex)
             else:
                 if self.txt_ex is not None:
                     await self.m1.text(f"<i>{self.txt_ex}</i>")
             a = await tc.GetAudio()
             #await self.m2.voice(voice=a, txt=f"<u>{tc.GetForeign()}</u> = {tc.GetNative()}", kbd=self.create_buttons())
-            lnk = await get_dict_link(self.user_id, tc.GetForeign())
-            await self.m2.voice(voice=a, txt=f'{lnk} = {tc.GetNative()}', kbd=self.create_buttons())
+            html_lnk=fw
+            lnk = tc.GetDictLink()
+            if lnk:
+                html_lnk=f'<a href="{lnk}">{fw}</a>'
+
+            await self.m2.voice(voice=a, txt=f'{html_lnk} = {tc.GetNative()}', kbd=self.create_buttons())
 
         self.last_access=datetime.now()
         self.timer_run(timedelta(minutes=30), "tmr:tren_to1") #запускаем таймер на неактивность пользователя
@@ -731,9 +737,11 @@ class UI:
             else:
                 return False #ignore other signals (need to log?)
         
-        pg=word_get_progress(self.user_id, self.edited_word.word_id)
-        fw=self.edited_word.GetForeign()
-        rlnk = await get_dict_rawlink(self.user_id, self.edited_word.GetForeign()) #full raw link is used because it will be open without asking in telegram
+        pg = word_get_progress(self.user_id, self.edited_word.word_id)
+        fw = self.edited_word.GetForeign()
+        rlnk = self.edited_word.GetDictLink() #full raw link is used because it will be open without asking in telegram
+        if rlnk is None:
+            rlnk=""
         txt2=f"\n{pg} {fw} = {self.edited_word.GetNative()}\n\n<i>{self.edited_word.GetExample()}</i>\n\n{rlnk}"
         if self.selected_button=="reset":
             txt=msg09_reset_prog()+txt2
@@ -756,10 +764,11 @@ class UI:
 
         w = ev.split('msg:', 1)[1]
         w=w.lower().strip()
-        f,n = await translate_text(self.u.foreign_lang, self.u.native_lang, w)
-        #проверить по fw есть ли такое слово в базе
-        word_id=word_read_by_fw(self.user_id, f)
-        if word_id is not None:
+        #переводим и проверяем на наличие fw слова в базе,
+        # если нет - генерируем пример и создаем ссылку на слово в словаре
+        # проверяем на опечатки
+        word_id, fw, nw, ex, lnk = await translate_text(self.user_id, self.u.foreign_lang, self.u.native_lang, w)
+        if word_id:             #есть уже в базе такое слово в базе
             #проверим есть ли в текщем наборе, если есть возьмем его. если нет вычитаем из базы
             self.edited_word=self.tcs.GetWord(word_id)
             if self.edited_word is None:
@@ -767,12 +776,7 @@ class UI:
             self.call_state(UI.States.EDIT_WORD, "edit_old")
             return True
 
-        if f==n: #вероятно не смогли первести, может абракадабра была вместо слова
-            ex=None
-        else:
-            ex=await oai_aget_example(self.user_id, f)
-
-        self.edited_word=Word(self.user_id, self.u.foreign_lang, f, self.u.native_lang, n, ex)
+        self.edited_word=await Word.CreateWord(self.user_id, self.u.foreign_lang, fw, self.u.native_lang, nw, ex, lnk=lnk)
         self.call_state(UI.States.EDIT_WORD, "edit_new")
         return True
 
