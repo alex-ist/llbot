@@ -9,6 +9,15 @@ app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(os.getcwd(), "data", "ll.db")
 db = SQLAlchemy(app)
 
+class Dict_links(db.Model):
+    __tablename__ = 'dictionary_links'
+    foreign_w = db.Column('foreign_w', db.String, primary_key=True)
+    link = db.Column('link', db.String)
+    lang_code = db.Column('lang_code', db.Text, primary_key=True)
+    date = db.Column('date', db.Integer)
+    def get_date(self):
+        return datetime.fromtimestamp(self.date).strftime('%d.%m.%y %H:%M')
+
 
 class User(db.Model):
     __tablename__ = 'users'
@@ -60,6 +69,11 @@ def show_users():
         return render_template('users_table.html', users=users)
     else:  # Иначе возвращаем полную страницу
         return render_template('users.html', users=users)
+
+@app.route('/dict-links')
+def show_dl():
+    dict_links = Dict_links.query.order_by(Dict_links.foreign_w).all()
+    return render_template('dict_links.html', dict_links=dict_links)
 
 
 @app.route('/words/<int:user_id>')
