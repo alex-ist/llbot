@@ -144,3 +144,29 @@ async def oai_aget_example(user_id, fword, n=0, fw2=None):
 #w="overhasty"
 #w="get away with"
 #ex =oai_get_example(123, w)
+
+async def oai_spell(fw):
+    temp=0.05
+    try:
+        m=[
+                {"role": "system", "content": "Your are an English spell checker. Give me back only corrected word or words."},
+                {'role': 'user', 'content': fw}
+            ]
+        #logger.info(m)
+        response = await openai.ChatCompletion.acreate(
+            model='gpt-3.5-turbo',
+            messages=m,
+            temperature=temp,
+            max_tokens=40,
+        )
+    except RateLimitError as e:
+        logger.error("openAI RateLimitError: "+str(e))
+        return None, None
+    except APIError as e:
+        logger.error("openAI - APIError: "+str(e))
+        return None, None 
+    except ValueError as e:
+        logger.error(f"openAI - ValueError: {e}")
+        return None, None 
+    r=response['choices'][0]['message']['content'].strip()
+    return r, response

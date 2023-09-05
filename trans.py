@@ -5,13 +5,10 @@
 
 import os
 from google.cloud import translate
-from oai import oai_aget_example
+from oai import oai_aget_example, oai_spell
 import httpx
 from bot_db import *
 import asyncio
-
-gtrans_async_client = None
-
 
 async def detect_lang(flang, nlang, word):
     dl_req=translate.DetectLanguageRequest(
@@ -76,15 +73,27 @@ async def web_get_en_dictionary_link(user_id, fw: str) -> str:
         logger.error(f"{user_id}: httpx: check cambrige dict fw={fw}: Exception: {e}")
     return None
 
+gtrans_async_client = None
+async def g_translate(word:str, src_lang="en", target_lang="ru"):
+    global gtrans_async_client
+    if gtrans_async_client is None:
+        gtrans_async_client = translate.TranslationServiceAsyncClient()
+    request={
+        "parent": "projects/bamboo-antler-386512/locations/global",
+        "contents": [word],
+        "mime_type": "text/plain",
+        "source_language_code": src_lang,
+        "target_language_code": target_lang,
+    }
+    response = await gtrans_async_client.translate_text(request) 
+    tr_word = response.translations[0].translated_text
+    return tr_word
+
 
 #переводим и проверяем на наличие fw слова в базе,
 # если нет - генерируем пример и создаем ссылку на слово в словаре
 # проверяем на опечатки
 async def translate_text(user_id:int, flang:str, nlang:str, word:str):
-    global gtrans_async_client
-    if gtrans_async_client is None:
-        gtrans_async_client = translate.TranslationServiceAsyncClient()
-    
     if flang=="en" and nlang=="ru":
          if word.isascii():
             src_lang=flang
@@ -101,19 +110,7 @@ async def translate_text(user_id:int, flang:str, nlang:str, word:str):
     else:
         target_lang = flang
 
-    request={
-        "parent": "projects/bamboo-antler-386512/locations/global",
-        "contents": [word],
-        "mime_type": "text/plain",
-        "source_language_code": src_lang,
-        "target_language_code": target_lang,
-    }
-    response = await gtrans_async_client.translate_text(request) 
-    tr_word = response.translations[0].translated_text
-
-    print(request)
-    print(response)
-
+    tr_word = await g_translate(word, src_lang, target_lang)
     if src_lang==flang:
         fw=word
         nw=tr_word
@@ -132,9 +129,28 @@ async def translate_text(user_id:int, flang:str, nlang:str, word:str):
         get_dict_rawlink(user_id, fw),
         oai_aget_example(user_id, fw)
     )        
-    if lnk is None:
+    if not lnk and src_lang=="en":
         #fixme: проверить на опечатки fw
-        pass
+        fw2, response = await oai_spell(fw)
+        if fw2!=fw:
+            logger.warning(f"{user_id}: spell correction {fw} -> {fw2}")
+            if ex and remove_en_article(fw2) in ex: #there was corrected example. no need new one
+                tr2, lnk2 = await asyncio.gather(
+                    g_translate(fw2, src_lang, target_lang),
+                    get_dict_rawlink(user_id, fw2)
+                )
+                ex2=ex
+            else:
+                tr2, lnk2, ex2 = await asyncio.gather(
+                    g_translate(fw2, src_lang, target_lang),
+                    get_dict_rawlink(user_id, fw2),
+                    oai_aget_example(user_id, fw2)
+                )
+            if tr2==tr_word:
+                logger.warning(f"{user_id}: spell correction OK, like in google translate")
+                fw=fw2
+                lnk=lnk2
+                ex=ex2
 
     return word_id, fw, nw, ex, lnk
 
