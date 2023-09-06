@@ -1,3 +1,8 @@
+CREATE TABLE user_notifications (
+    id        INTEGER PRIMARY KEY AUTOINCREMENT,
+    ch_msg_id INTEGER
+);
+
 PRAGMA foreign_keys = 0;
 
 CREATE TABLE sqlitestudio_temp_table AS SELECT *
@@ -25,7 +30,8 @@ CREATE TABLE users (
     last_access           INTEGER,
     shown_words_count     INTEGER,
     current_forget_rate   REAL,
-    status                TEXT (1)    DEFAULT A
+    status                TEXT (1)    DEFAULT A,
+    sent_nid              INTEGER     DEFAULT (0) 
 );
 
 INSERT INTO users (
@@ -43,6 +49,7 @@ INSERT INTO users (
                       min_trening_interval,
                       min_cards_for_trening,
                       max_cards_for_trening,
+                      cur_cards_for_trening,
                       first_access,
                       last_access,
                       shown_words_count,
@@ -63,6 +70,7 @@ INSERT INTO users (
                          min_trening_interval,
                          min_cards_for_trening,
                          max_cards_for_trening,
+                         cur_cards_for_trening,
                          first_access,
                          last_access,
                          shown_words_count,
@@ -73,5 +81,3 @@ INSERT INTO users (
 DROP TABLE sqlitestudio_temp_table;
 
 PRAGMA foreign_keys = 1;
-
-UPDATE users SET min_cards_for_trening=8, max_cards_for_trening=16, cur_cards_for_trening=8;

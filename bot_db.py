@@ -330,3 +330,25 @@ def get_tcards(user_id, n):
         close_db()
         return result1
 
+def get_sent_nid(user_id:int):
+    c=open_db()
+    c.execute(f"SELECT sent_nid FROM users WHERE user_id = {user_id}")
+    r = c.fetchone()
+    close_db()
+    return r[0]
+
+def update_sent_nid(user_id, last_sent_nid):
+    c=open_db()
+    c.execute(f"UPDATE users SET sent_nid = {last_sent_nid}  WHERE user_id = {user_id}")
+    close_db(commit=True)
+
+def get_last_notification():
+    c=open_db()
+    c.execute(f"SELECT id, ch_msg_id FROM user_notifications WHERE id = (SELECT MAX(id) FROM user_notifications)")
+    r = c.fetchone()
+    close_db()
+    if r:
+        return r[0], r[1]
+    else:
+        return 0, 1
+

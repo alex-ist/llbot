@@ -634,6 +634,17 @@ class UI:
         self.timer_run(timedelta(minutes=30), "tmr:tren_to1") #запускаем таймер на неактивность пользователя
         return False
 
+
+    #проверяем есть ли польз. объявления,  которые еще не отправили.
+    #если есть - отправляем
+    async def user_notification(self)-> None:
+        last_sent_nid=get_sent_nid(self.user_id)
+        get_last_id, msg_id=get_last_notification()
+        if last_sent_nid<get_last_id:
+            if msg_id:
+                await self.bot.forward_message(self.chat_id, from_chat_id="@lingolinkInsider", message_id=msg_id)
+            update_sent_nid(self.user_id, get_last_id)
+
     async def after_tren_state(self) -> None:
         self.timer_stop()
         if self.state_prev != UI.States.AFTER_TREN:
@@ -655,6 +666,7 @@ class UI:
         else:
             self.sub_state="is_to_learn"
 
+        await self.user_notification()
         await self.m1.sticker(sticker04_tren3())
         await self.m2.text(msg04_tren3(n, self.u.current_forget_rate), kbd=self.create_buttons())
         self.timer_run(timedelta(minutes=5), "tmr:t3")
@@ -1031,6 +1043,7 @@ class UI:
     @staticmethod
     async def stat_cmd_(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         await context.bot.delete_message(update.effective_chat.id, update.effective_message.id)
+        #await context.bot.forward_message(update.effective_chat.id, from_chat_id=-1001929709685, message_id=6)
         ui=get_ui(update.effective_user.id, update.effective_chat.id, context)
         if await ui.process_ev("cmd:stat"):
             ui.exit_ui()
@@ -1051,9 +1064,9 @@ class UI:
 
     @staticmethod
     async def rx_msg_(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-        await context.bot.delete_message(update.effective_chat.id, update.effective_message.id)
-        if update.effective_user.id is None: #это если вдруг добавят в чатик и там его тагнут
+        if update.effective_user is None: #это если вдруг добавят в чатик и там его тагнут
             return
+        await context.bot.delete_message(update.effective_chat.id, update.effective_message.id)
         ui=get_ui(update.effective_user.id, update.effective_chat.id, context)
         text = update.message.text
         if text is None:
