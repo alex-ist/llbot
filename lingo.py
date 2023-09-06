@@ -643,6 +643,7 @@ class UI:
         if last_sent_nid<get_last_id:
             if msg_id:
                 await self.bot.forward_message(self.chat_id, from_chat_id="@lingolinkInsider", message_id=msg_id)
+                logger.info(f"{self.user_id}: user_notification: message_id={msg_id}")
             update_sent_nid(self.user_id, get_last_id)
 
     async def after_tren_state(self) -> None:
