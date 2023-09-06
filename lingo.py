@@ -1017,6 +1017,18 @@ class UI:
         words_delete(update.effective_user.id)
 
     @staticmethod
+    async def dump_all(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        await context.bot.delete_message(update.effective_chat.id, update.effective_message.id)
+        if update.effective_user.id == 484679683:
+            logger.info(f"{update.effective_user.id}: dump states")
+            with open('log/dump.txt', 'w') as f:
+                f.write(f"Dump {datetime.now()}\n")
+                global ui_set
+                for i in ui_set.values():
+                    f.write(f"{i.user_id}: ST={i.state} PREV={i.state_prev}  SS={i.sub_state}")
+            
+
+    @staticmethod
     async def stat_cmd_(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         await context.bot.delete_message(update.effective_chat.id, update.effective_message.id)
         ui=get_ui(update.effective_user.id, update.effective_chat.id, context)
@@ -1040,6 +1052,8 @@ class UI:
     @staticmethod
     async def rx_msg_(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         await context.bot.delete_message(update.effective_chat.id, update.effective_message.id)
+        if update.effective_user.id is None: #это если вдруг добавят в чатик и там его тагнут
+            return
         ui=get_ui(update.effective_user.id, update.effective_chat.id, context)
         text = update.message.text
         if text is None:
@@ -1269,6 +1283,7 @@ def main() -> None:
     application.add_handler(CommandHandler("edit", UI.edit_cmd_))
     application.add_handler(CommandHandler("stat", UI.stat_cmd_))
     application.add_handler(CommandHandler("del_words",UI.del_words)) #delete all words
+    application.add_handler(CommandHandler("dump_all",UI.dump_all)) #dump all instances 
     # application.add_handler(CommandHandler("settings", settings_cmd))
     application.add_handler(MessageHandler(None, callback=UI.rx_msg_))
     application.add_handler(CallbackQueryHandler(UI.process_buttons_))
