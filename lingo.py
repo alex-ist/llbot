@@ -1038,7 +1038,7 @@ class UI:
                 f.write(f"Dump {datetime.now()}\n")
                 global ui_set
                 for i in ui_set.values():
-                    f.write(f"{i.user_id}: ST={i.state} PREV={i.state_prev}  SS={i.sub_state}")
+                    f.write(f"{i.user_id}: ST={i.state} PREV={i.state_prev}  SS={i.sub_state}\n")
             
 
     @staticmethod
@@ -1182,6 +1182,34 @@ async def settings_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         chat_id=update.effective_chat.id
     await context.bot.send_message(chat_id=chat_id, text="Здесь будут настройки")
 
+import traceback
+import html
+import json
+DEVELOPER_CHAT_ID = 484679683
+async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE):
+    logger.warning(f'Update {update} caused error {context.error}')    
+    logger.error("Exception while handling an update:", exc_info=context.error)
+
+    # traceback.format_exception returns the usual python message about an exception, but as a
+    # list of strings rather than a single string, so we have to join them together.
+    tb_list = traceback.format_exception(None, context.error, context.error.__traceback__)
+    tb_string = "".join(tb_list)
+
+    # Build the message with some markup and additional information about what happened.
+    # You might need to add some logic to deal with messages longer than the 4096 character limit.
+    update_str = update.to_dict() if isinstance(update, Update) else str(update)
+    message = (
+        f"An exception was raised while handling an update\n"
+        f"<pre>update = {html.escape(json.dumps(update_str, indent=2, ensure_ascii=False))}"
+        "</pre>\n\n"
+        f"<pre>context.chat_data = {html.escape(str(context.chat_data))}</pre>\n\n"
+        f"<pre>context.user_data = {html.escape(str(context.user_data))}</pre>\n\n"
+        f"<pre>{html.escape(tb_string)}</pre>"
+    )
+
+    # Finally, send the message
+    await context.bot.send_message(chat_id=DEVELOPER_CHAT_ID, text=message)
+
 #установка меню
 async def post_init(context):
     if False:
@@ -1301,6 +1329,7 @@ def main() -> None:
     # application.add_handler(CommandHandler("settings", settings_cmd))
     application.add_handler(MessageHandler(None, callback=UI.rx_msg_))
     application.add_handler(CallbackQueryHandler(UI.process_buttons_))
+    application.add_error_handler(error_handler)
 
     if use_web_hook:
         application.run_webhook(
