@@ -1119,10 +1119,18 @@ class UI:
     @staticmethod
     async def process_buttons_(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         global ui_set
-        query = update.callback_query
-        await query.answer()
         user_id=update.effective_user.id
-        #user_id=1 #fixme
+        query = update.callback_query
+        #sometimes error was here:
+        try:
+            st_t=datetime.now()
+            await query.answer()
+        except Exception as e:
+            t=datetime.now()-st_t
+            logger.error(f"{user_id}: process_buttons_: query.answer: timeout={t}")
+            logger.error(f"{user_id}: process_buttons_: query.answer: e: {e}")
+            await inform_devel(context, f"query.answer timeout={t}", update)
+
         if user_id in ui_set:
             ui=ui_set[user_id]
             if await ui.process_ev(query.data):
@@ -1182,33 +1190,32 @@ async def settings_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         chat_id=update.effective_chat.id
     await context.bot.send_message(chat_id=chat_id, text="Здесь будут настройки")
 
+
 import traceback
 import html
 import json
 DEVELOPER_CHAT_ID = 484679683
+async def inform_devel(context, txt=None, update=None):
+    msg="<u>ERROR in LL</u>\n"
+    if update:
+        update_str = update.to_dict() if isinstance(update, Update) else str(update)
+        msg+=f"<pre>update = {html.escape(json.dumps(update_str, indent=2, ensure_ascii=False))}</pre>\n\n"
+
+    if txt:
+        msg+=f"<pre>{html.escape(txt)}</pre>"
+
+    await context.bot.send_message(chat_id=DEVELOPER_CHAT_ID, text=msg)
+
 async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE):
-    logger.warning(f'Update {update} caused error {context.error}')    
+    logger.error(f'Update {update} caused error {context.error}')    
     logger.error("Exception while handling an update:", exc_info=context.error)
 
     # traceback.format_exception returns the usual python message about an exception, but as a
     # list of strings rather than a single string, so we have to join them together.
     tb_list = traceback.format_exception(None, context.error, context.error.__traceback__)
     tb_string = "".join(tb_list)
+    await inform_devel(context, tb_string, update)
 
-    # Build the message with some markup and additional information about what happened.
-    # You might need to add some logic to deal with messages longer than the 4096 character limit.
-    update_str = update.to_dict() if isinstance(update, Update) else str(update)
-    message = (
-        f"An exception was raised while handling an update\n"
-        f"<pre>update = {html.escape(json.dumps(update_str, indent=2, ensure_ascii=False))}"
-        "</pre>\n\n"
-        f"<pre>context.chat_data = {html.escape(str(context.chat_data))}</pre>\n\n"
-        f"<pre>context.user_data = {html.escape(str(context.user_data))}</pre>\n\n"
-        f"<pre>{html.escape(tb_string)}</pre>"
-    )
-
-    # Finally, send the message
-    await context.bot.send_message(chat_id=DEVELOPER_CHAT_ID, text=message)
 
 #установка меню
 async def post_init(context):

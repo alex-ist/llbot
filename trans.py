@@ -99,7 +99,7 @@ async def translate_text(user_id:int, flang:str, nlang:str, word:str):
             src_lang=flang
             word_id=word_read_by_fw(user_id, word)
             if word_id:
-                return word_id
+                return word_id, None, None, None, None
          else:
             src_lang=nlang
     else:
@@ -119,7 +119,7 @@ async def translate_text(user_id:int, flang:str, nlang:str, word:str):
         fw=tr_word
         word_id=word_read_by_fw(user_id, fw)
         if word_id:
-            return word_id
+            return word_id, None, None, None, None
 
     lnk=ex=None
     if fw==nw:  #для ru-en. гугл не смог первести, когда адская абракадабра была вместо слова ("hiipl-ll-ip"). Это слово уже не спасти
