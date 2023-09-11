@@ -68,7 +68,7 @@ def word_read(user_id:int, word_id:int):
     if row:
         return row[0],row[1],row[2],row[3],row[4]
     else:
-        return None
+        return None, None, None, None, None
 
 def word_read_by_fw(user_id:int, fw:str):
     c=open_db()

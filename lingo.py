@@ -1129,7 +1129,7 @@ class UI:
             t=datetime.now()-st_t
             logger.error(f"{user_id}: process_buttons_: query.answer: timeout={t}")
             logger.error(f"{user_id}: process_buttons_: query.answer: e: {e}")
-            await inform_devel(context, f"query.answer timeout={t}", update)
+            await inform_devel(context.bot, f"query.answer exception: {e}\ntimeout={t}", update)
 
         if user_id in ui_set:
             ui=ui_set[user_id]
@@ -1189,32 +1189,6 @@ async def settings_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     if update is not None:
         chat_id=update.effective_chat.id
     await context.bot.send_message(chat_id=chat_id, text="Здесь будут настройки")
-
-
-import traceback
-import html
-import json
-DEVELOPER_CHAT_ID = 484679683
-async def inform_devel(context, txt=None, update=None):
-    msg="<u>ERROR in LL</u>\n"
-    if update:
-        update_str = update.to_dict() if isinstance(update, Update) else str(update)
-        msg+=f"<pre>update = {html.escape(json.dumps(update_str, indent=2, ensure_ascii=False))}</pre>\n\n"
-
-    if txt:
-        msg+=f"<pre>{html.escape(txt)}</pre>"
-
-    await context.bot.send_message(chat_id=DEVELOPER_CHAT_ID, text=msg)
-
-async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE):
-    logger.error(f'Update {update} caused error {context.error}')    
-    logger.error("Exception while handling an update:", exc_info=context.error)
-
-    # traceback.format_exception returns the usual python message about an exception, but as a
-    # list of strings rather than a single string, so we have to join them together.
-    tb_list = traceback.format_exception(None, context.error, context.error.__traceback__)
-    tb_string = "".join(tb_list)
-    await inform_devel(context, tb_string, update)
 
 
 #установка меню

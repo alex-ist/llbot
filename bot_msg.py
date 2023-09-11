@@ -1,6 +1,7 @@
 import asyncio
 from telegram import Bot, InlineKeyboardMarkup, InputMediaAudio, error 
 from botlog import logger
+from utils import inform_devel
 
 class BotMsg:
     def __init__(self,  bot:Bot, chat_id:int, pos=0):
@@ -22,8 +23,11 @@ class BotMsg:
                 await self.bot.delete_message(self.chat_id, self.id)
             except error.BadRequest as e:
                 logger.warning(f"{self.chat_id}: {e}")
+            except Exception as e:
+                logger.error(f"{self.chat_id}: delete_message: {e}")
+                await inform_devel(self.bot, f"{self.chat_id}: delete_message:\n{e}")
             self.id=None
-            
+
         self.txt=None
         self.kbd=None
         self.type=None
@@ -42,20 +46,20 @@ class BotMsg:
             await self.clear()
 
         if self.id is None: #1) new message
+            m=await self.bot.send_message(chat_id=self.chat_id, text=txt, reply_markup=kbd, disable_web_page_preview=disable_web_page_preview)
             self.txt=txt
             self.kbd=kbd
             self.type="txt"
-            m=await self.bot.send_message(chat_id=self.chat_id, text=txt, reply_markup=kbd, disable_web_page_preview=disable_web_page_preview)
             self.id=m.message_id
         elif txt is None: #2)замена кнопок
-            self.kbd=kbd
             m=await self.bot.edit_message_text(text=self.txt, chat_id=self.chat_id, message_id=self.id, reply_markup=kbd,disable_web_page_preview=disable_web_page_preview)
+            self.kbd=kbd
             self.id=m.message_id
         elif self.txt!=txt or not BotMsg.kbd_eq(self.kbd, kbd): 
             #3) замена текста или кнопок
+            await self.bot.edit_message_text(text=txt, chat_id=self.chat_id, message_id=self.id, reply_markup=kbd, disable_web_page_preview=disable_web_page_preview)
             self.kbd=kbd
             self.txt=txt
-            await self.bot.edit_message_text(text=txt, chat_id=self.chat_id, message_id=self.id, reply_markup=kbd, disable_web_page_preview=disable_web_page_preview)
 
     #вернет  0 - если ничего не поменялось (старая позиция сообщения)
     async def sticker(self, stick:str):
@@ -124,11 +128,18 @@ class BotMsg:
             try:
                 await self.bot.edit_message_media(media=media, chat_id=self.chat_id, message_id=self.id)
             except error.BadRequest as e:
-                logger.warning(f"chat_id={self.chat_id}: {e}")
                 self.id=None
-        
-        if self.id is None:
-            m=(await self.bot.send_media_group(chat_id=self.chat_id, media=[media]))[0]
+                logger.warning(f"{self.chat_id}: edit_message_media: {e}")
+            except Exception as e:
+                self.id=None
+                logger.error(f"{self.chat_id}: edit_message_media: {e}")
+                await inform_devel(self.bot, f"{self.chat_id}: edit_message_media:\n{e}")
+        else:
+            try:
+                m=(await self.bot.send_media_group(chat_id=self.chat_id, media=[media]))[0]
+            except Exception as e:
+                logger.error(f"{self.chat_id}: send_media_group: {e}")
+                await inform_devel(self.bot, f"{self.chat_id}: send_media_group:\n{e}")
             self.id=m.message_id
             self.type="au"            
             self.txt=None
@@ -138,10 +149,15 @@ class BotMsg:
     async def voice(self, voice=None, txt:str=None, kbd:InlineKeyboardMarkup=None):
         await self.clear() #нельязя редактировать войс, вроде. Да нам и не надо
 
+        try:
+            m=await self.bot.send_voice(chat_id=self.chat_id, voice=voice, caption=txt, reply_markup=kbd)
+        except Exception as e:
+            logger.error(f"{self.chat_id}: send_voice: {e}")
+            await inform_devel(self.bot, f"{self.chat_id}: send_voice:\n{e}")
+
         self.type="vo"
         self.kbd=kbd
         self.txt=txt
         self.prev_vo=voice
-        m=await self.bot.send_voice(chat_id=self.chat_id, voice=self.prev_vo, caption=txt, reply_markup=kbd)
         self.id=m.message_id
 

@@ -1,24 +1,5 @@
-import random
 from telegram import InputMediaAudio
 from botlog import logger
-
-EMPTY_SOUNDS = [
-        ["data/wav/_beach", "🏖🏝👯‍♀️"],
-        ["data/wav/_birds", "🦩🦢"], 
-        ["data/wav/_cosmos", "🚀👽"],
-        ["data/wav/_heart", "💓❤️"],
-        ["data/wav/_moto", "🏎"], 
-    ]
-
-
-def get_empty_InputMediaAudio()->InputMediaAudio:
-        n=random.randint(0, 4)
-        with open(EMPTY_SOUNDS[n][0]+'.m4a', 'rb') as f:
-            ma=InputMediaAudio(f, filename="---", performer="lsbot", title="---", caption=EMPTY_SOUNDS[n][1])
-        return ma
-
-
-from typing import List
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 
 def select_button(kbd, selected: str, sel_symb:str, after=False) -> InlineKeyboardMarkup:
@@ -49,3 +30,30 @@ def format_button_text(txt:str, max_l:int):
     
     return txt
 
+
+import traceback
+import html
+import json
+from telegram import Update, Bot, error
+from telegram.ext import ContextTypes
+
+DEVELOPER_CHAT_ID = 484679683
+async def inform_devel(bot, txt=None, update=None):
+    msg="<u>ERROR in LL</u>\n"
+    if update:
+        update_str = update.to_dict() if isinstance(update, Update) else str(update)
+        msg+=f"<pre>update = {html.escape(json.dumps(update_str, indent=2, ensure_ascii=False))}</pre>\n\n"
+
+    if txt:
+        txt = txt[:2000] #максимальная длина текстового сообщения в Telegram - 4096 символов
+        msg+=f"<pre>{html.escape(txt)}</pre>"
+
+    await bot.send_message(chat_id=DEVELOPER_CHAT_ID, text=msg)
+
+async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE):
+    u_str=f"update = {json.dumps(update.to_dict(), indent=2, ensure_ascii=False)}"
+    logger.error(f'error_handler: {context.error}: {u_str}\n', exc_info=context.error)    
+
+    tb_list = traceback.format_exception(None, context.error, context.error.__traceback__)
+    tb_string = "".join(tb_list)
+    await inform_devel(context.bot, tb_string, update)
