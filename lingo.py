@@ -540,9 +540,9 @@ class UI:
         
         #обработка событий
         elif self.ev:
-            if self.ev=="kbd:?":
+            if self.sub_state=="q" and self.ev=="kbd:?":
                 self.sub_state="a"
-            elif self.ev=='kbd:+' or self.ev=='kbd:-':
+            elif self.sub_state=="a" and (self.ev=='kbd:+' or self.ev=='kbd:-'):
                 self.last_answer = True if self.ev=='kbd:+' else False
                 self.tcs.SetAnswer(self.last_answer)
                 self.sub_state="q"
