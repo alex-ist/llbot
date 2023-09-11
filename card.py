@@ -41,11 +41,21 @@ class Word:
         return self.example
 
     def ChangeForeign(self, new_fw):
-        self.foreign_w=new_fw
+        if new_fw[0]=="+":
+            if new_fw[1].isalpha():
+                self.foreign_w+=", "
+            self.foreign_w+=new_fw[1:]
+        else:
+            self.foreign_w=new_fw
         self.audio=None
 
     def ChangeNative(self, new_nw):
-        self.native_w=new_nw
+        if new_nw[0]=="+":
+            if new_nw[1].isalpha():
+                self.native_w+=", "
+            self.native_w+=new_nw[1:]
+        else:
+            self.native_w=new_nw
 
     def ChangeExample(self, new_ex):
         if new_ex=="":
