@@ -1,0 +1,133 @@
+html {
+    -webkit-text-size-adjust: 100%;
+    font-family: sans-serif;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    min-height: 100%;
+    background-color: #fbdc9d;
+}
+
+img {
+    border: 0;
+    max-width: 100%;
+    vertical-align: middle;
+    display: inline-block;
+}
+
+.container {
+    background-color: #fbdc9d;
+    font-family: Open Sans, sans-serif;
+    font-size: 20px;
+    line-height: 24px;
+    color: #fff;
+}
+
+.flash {
+    min-height: 400px;
+    background-color: #ce925b;
+    padding: 10px;
+    bottom: 15px;
+    left: 15px;
+    right: 15px;
+    border-radius: 18px;
+    border: 2px solid #ab794d;
+    flex-direction: column;
+    justify-content: space-around;
+    display: flex;
+    position: absolute;
+}
+
+.counter {
+    text-align: right;
+    margin-right: 15px;
+}
+
+.txt-counter {
+    color: #94825d;
+    font-size: 28px;
+    line-height: 28px;
+}
+
+.hdr {
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 15px;
+    display: flex;
+}
+
+.speaker {
+    margin-left: 15px;
+}
+
+.first {
+    justify-content: center;
+    align-items: center;
+    display: flex;
+}
+
+.second {
+    margin-top: 20px;
+}
+
+.third {
+    align-items: center;
+    display: flex;
+}
+
+.f-left {
+    flex: none;
+    margin-right: 10px;
+    display: block;
+}
+
+.t-left {
+    flex: none;
+    margin-right: 10px;
+}
+
+.f-text {
+    text-align: left;
+    flex: 0 auto;
+    font-size: 36px;
+    line-height: 36px;
+    display: block;
+}
+
+.s-text {
+    text-align: center;
+    justify-content: center;
+    align-items: center;
+    font-size: 24px;
+    font-weight: 300;
+    line-height: 28px;
+    display: flex;
+}
+
+.t-text {
+    font-size: 18px;
+    font-style: italic;
+    line-height: 22px;
+}
+
+.f-and-s {
+    flex-direction: column;
+    flex: 0 auto;
+    justify-content: center;
+    display: flex;
+}
+
+.spacer {
+    height: 10px;
+    max-height: 10px;
+    max-width: 46px;
+    min-width: 0;
+    flex: 1;
+    padding-bottom: 0;
+    padding-right: 0;
+}

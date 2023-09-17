@@ -2,7 +2,7 @@
 import asyncio
 from botlog import logger
 
-from telegram import Update, BotCommand, error 
+from telegram import Update, BotCommand, error, WebAppInfo
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from telegram import KeyboardButton, ReplyKeyboardMarkup
 from telegram import InputMediaAudio
@@ -13,8 +13,6 @@ import telegram
 import secrets
 
 from trans import translate_text
-from update_dns import update_dns
-
 from card import Word, TrainingCard, TrainingCardSet
 from msg_txt import *
 
@@ -1200,7 +1198,6 @@ async def post_init(context):
             BotCommand('edit',  'Edit word'),
             BotCommand('add' ,  'Add a word'),
             BotCommand('lib',   'Add words from lib'),
-            BotCommand('stat',  'stat'),
         ]
         await context.bot.delete_my_commands(language_code='')
         await context.bot.set_my_commands(commands_en, language_code=None)
@@ -1281,8 +1278,38 @@ async def post_stop(a):
     for ui in ui_set.values():
         await ui.stop_chat_for_maint()
 
-def main() -> None:
-    use_web_hook=update_dns() #dns updated, there is free dns key -> work on server
+
+from telegram import KeyboardButton, ReplyKeyboardMarkup, ReplyKeyboardRemove, Update, WebAppInfo
+from telegram.ext import Application, CommandHandler, ContextTypes, MessageHandler, filters
+
+async def web_test(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    #await context.bot.delete_message(update.effective_chat.id, update.effective_message.id)
+    if update.effective_user.id == 484679683:
+        logger.info(f"{update.effective_user.id}: web_test")
+        #b=InlineKeyboardButton("test", web_app=telegram.WebAppInfo("https://ll.du:5500/web_app/ll.html"))
+        b=InlineKeyboardButton("test", web_app=telegram.WebAppInfo("https://lingolink.bot.nu/ll.html"))
+        kbd = InlineKeyboardMarkup([[b]])
+        await context.bot.send_message(chat_id=update.effective_chat.id, text="run web test", reply_markup=kbd)
+
+async def web_app_data(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    data = update.effective_message.web_app_data.data
+    await update.message.reply_text(
+        text=f"{data}",
+    )
+
+application = None
+async def bot_stop() -> None:
+    global application
+    if application is not None:
+        if application.updater.running:
+            await application.updater.stop()  # type: ignore[union-attr]
+        if application.running:
+            await application.stop()
+        await post_stop(application)
+        await application.shutdown()
+
+
+async def bot_run(use_web_hook) -> None:
     try:
         with open("keys/tg-token.txt", 'r') as f:
             token = f.readline().strip()
@@ -1297,6 +1324,7 @@ def main() -> None:
             
     init_oai()
 
+    global application
     bot_def=telegram.ext.Defaults(parse_mode="HTML", disable_notification=True)
     application = Application.builder().token(token).post_init(post_init).post_stop(post_stop).defaults(bot_def).build()
     application.add_handler(CommandHandler("start", start_cmd))
@@ -1307,23 +1335,42 @@ def main() -> None:
     application.add_handler(CommandHandler("stat", UI.stat_cmd_))
     application.add_handler(CommandHandler("del_words",UI.del_words)) #delete all words
     application.add_handler(CommandHandler("dump_all",UI.dump_all)) #dump all instances 
+    application.add_handler(CommandHandler("x", web_test)) #dump all instances 
     # application.add_handler(CommandHandler("settings", settings_cmd))
+
     application.add_handler(MessageHandler(None, callback=UI.rx_msg_))
     application.add_handler(CallbackQueryHandler(UI.process_buttons_))
     application.add_error_handler(error_handler)
 
+    await application.initialize()
+    await post_init(application)
     if use_web_hook:
-        application.run_webhook(
+        await application.updater.start_webhook(
             listen='0.0.0.0',
             port=8443,
-#            url_path='1',
             secret_token=secrets.token_urlsafe(16),
             key='keys/private.key',
             cert='keys/cert.pem',
             webhook_url='https://lingolink.bot.nu:8443'
         )
     else:
-        application.run_polling()
+        await application.updater.start_polling()
+    await application.start()
+    logger.warning(f"!!! Bot satrted")
 
-if __name__ == "__main__":
-    main()
+from telegram.constants import ParseMode
+from uuid import uuid4
+from telegram import Bot, InlineQueryResult, InlineQueryResultArticle, InputTextMessageContent
+async def send_w(q, txt):
+#     r=InlineQueryResultArticle(
+#         id=str(uuid4()),
+#         title="Italic",
+#         input_message_content=InputTextMessageContent(
+#         f"<i>Italic msg</i>", parse_mode=ParseMode.HTML
+#         ),
+#     ),
+    r = InlineQueryResultArticle("12121", "title", InputTextMessageContent(txt))
+    await application.bot.answerWebAppQuery(q, r)
+
+async def send_b(chat_id, txt):
+    await application.bot.send_message(chat_id=chat_id, text=txt)

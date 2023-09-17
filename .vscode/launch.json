@@ -8,7 +8,7 @@
             "name": "Run bot",
             "type": "python",
             "request": "launch",
-            "program": "${workspaceFolder}/lingo.py",
+            "program": "${workspaceFolder}/main.py",
             "console": "integratedTerminal",
             "justMyCode": true
         },
