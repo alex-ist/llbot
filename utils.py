@@ -51,9 +51,12 @@ async def inform_devel(bot, txt=None, update=None):
     await bot.send_message(chat_id=DEVELOPER_CHAT_ID, text=msg)
 
 async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE):
-    u_str=f"update = {json.dumps(update.to_dict(), indent=2, ensure_ascii=False)}"
-    logger.error(f'error_handler: {context.error}: {u_str}\n', exc_info=context.error)    
+    u_str="error_handler:"
+    if update:
+        u_str+=f"update = {json.dumps(update.to_dict(), indent=2, ensure_ascii=False)}"
+    else:
+        u_str+="update = None"
+    u_str+="error_handler: {context.error}: {u_str}"
+    logger.error('u_str\n', exc_info=context.error)    
+    await inform_devel(context.bot, u_str)
 
-    tb_list = traceback.format_exception(None, context.error, context.error.__traceback__)
-    tb_string = "".join(tb_list)
-    await inform_devel(context.bot, tb_string, update)

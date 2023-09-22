@@ -1,4 +1,5 @@
 let tg=window.Telegram.WebApp;
+tg.expand()
 tg.ready()
 const socket = new WebSocket('wss://lingolink.bot.nu/tren-wh/');
 let chat_id = "484679683";    

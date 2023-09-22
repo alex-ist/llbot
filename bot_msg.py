@@ -23,6 +23,9 @@ class BotMsg:
                 await self.bot.delete_message(self.chat_id, self.id)
             except error.BadRequest as e:
                 logger.warning(f"{self.chat_id}: {e}")
+            except error.TimedOut as e:
+                logger.error(f"{self.chat_id}: {e}")
+                await inform_devel(self.bot, f"{self.chat_id}: delete_message:\n{e}")
             except Exception as e:
                 logger.error(f"{self.chat_id}: delete_message: {e}")
                 await inform_devel(self.bot, f"{self.chat_id}: delete_message:\n{e}")

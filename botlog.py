@@ -23,7 +23,7 @@ def log_init():
     logging.getLogger('httpx').setLevel(logging.WARNING)
     logging.getLogger('apscheduler').setLevel(logging.WARNING)
     logging.getLogger('openai').setLevel(logging.WARNING)
-    logging.getLogger('aiohttp').setLevel(logging.DEBUG)
+    ##logging.getLogger('aiohttp').setLevel(logging.DEBUG)
 
     ll_handler.setFormatter(logging.Formatter(ll_fmt))
     ll_handler.setLevel(logging.INFO)

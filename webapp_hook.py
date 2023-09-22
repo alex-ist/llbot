@@ -19,13 +19,10 @@ async def websocket_handler(request):
     ws = web.WebSocketResponse()
     await ws.prepare(request)
     chat_id = None
-    logger.warning("websocket_handler")
 
     async for msg in ws:
         try:
             if msg.type == WSMsgType.TEXT:
-                logger.warning(f"{msg.data}")
-
                 parsed_data = json.loads(msg.data)
                 if chat_id is None:
                     chat_id = parsed_data.get('chat_id')
@@ -44,12 +41,12 @@ async def websocket_handler(request):
                 await send_b(chat_id, err_msg)
             logger.warning(err_msg)
         except Exception as e:
-            logger.warning(f"An unexpected error occurred: {e}")
+            logger.warning(f"ws:unexpected error occurred: {e}")
 
     if ws.closed:
         if chat_id:
             await send_b(chat_id, "app closed")
-        logger.warning(f"WebSocket connection closed. Close code: {ws.close_code}")
+        logger.warning(f"ws connection closed. Close code: {ws.close_code}")
     return ws
 
 def init_app():
