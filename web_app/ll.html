@@ -4,7 +4,7 @@
         <meta charset="utf-8"/>
         <title>Lingo Link</title>
         <meta content="width=device-width, initial-scale=1" name="viewport"/>
-        <link href="ll.css" rel="stylesheet" type="text/css"/>
+        <link href="ll.css?v=5" rel="stylesheet" type="text/css"/>
         <link href="https://fonts.googleapis.com" rel="preconnect"/>
         <link href="https://fonts.gstatic.com" rel="preconnect" crossorigin="anonymous"/>
         <link href="img/favicon.ico" rel="shortcut icon" type="image/x-icon"/>
@@ -21,44 +21,45 @@
                 </div>
             </div>
             <div class="middle"></div>
-            <div class="flash" id="flash0">
-                <div class="f-and-s">
-                    <div class="first">
-                        <div class="f-left">
-                            <img src="img/play.png" alt="" width="36"/>
+            <div class="perspective-container"> 
+                <div class="flash" id="flash0">
+                    <div class="front">
+                        <div class="corner-box corner-box-left">забыл</div>                    
+                        <div class="corner-box corner-box-right">знаю</div>
+                            <div class="foreign">
+                            <div class="f-left">
+                                <img src="img/play.png" alt="" width="36"/>
+                            </div>
+                            <div class="foreign-text">[ask foreign word]</div>
+                            <div class="spacer"></div>
                         </div>
-                        <div class="f-text">[foreign word]</div>
-                        <div class="spacer"></div>
-                    </div>
-                    <div class="second">
-                        <div class="s-text">[native word]</div>
-                    </div>
-                </div>
-                <div class="third">
-                    <div class="t-left">
-                        <img src="img/play.png" width="28" alt=""/>
-                    </div>
-                    <div class="t-text">[exemple]</div>
-                </div>
-            </div>
-            <div class="flash" id="flash1">
-                <div class="f-and-s">
-                    <div class="first">
-                        <div class="f-left">
-                            <img src="img/play.png" alt="" width="36"/>
+                        <div class="native">
+                            <div class="native-text">[ask native word]</div>
                         </div>
-                        <div class="f-text">[foreign word]</div>
-                        <div class="spacer"></div>
+                        <div class="q-text">??</div>
                     </div>
-                    <div class="second">
-                        <div class="s-text">[native word]</div>
+                    <div class="back">
+                        <div class="corner-box corner-box-left">забыл</div>                    
+                        <div class="corner-box corner-box-right">знаю</div>
+                        <div class="f-and-s">
+                            <div class="foreign">
+                                <div class="f-left">
+                                    <img src="img/play.png" alt="" width="36"/>
+                                </div>
+                                <div class="foreign-text">[foreign word]</div>
+                                <div class="spacer"></div>
+                            </div>
+                            <div class="back-native">
+                                <div class="native-text">[native word]</div>
+                            </div>
+                        </div>
+                        <div class="back-example">
+                            <div class="t-left">
+                                <img src="img/play.png" width="28" alt=""/>
+                            </div>
+                            <div class="example-text">[exemple]</div>
+                        </div>
                     </div>
-                </div>
-                <div class="third">
-                    <div class="t-left">
-                        <img src="img/play.png" width="28" alt=""/>
-                    </div>
-                    <div class="t-text">[exemple]</div>
                 </div>
             </div>
         </div>
@@ -66,5 +67,6 @@
     <script src="https://hammerjs.github.io/dist/hammer.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <script src="ll.js"></script>
+    <script src="ll.js?v=2"></script>
 </html>
+

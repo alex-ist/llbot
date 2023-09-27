@@ -9,6 +9,13 @@ class Card {
         this.dictLnk = dictLnk;
         this.answer = -1;  // not showed card
     }
+    //вернет слово для изучения
+    getA(){
+        if (this.direction==0)
+            return this.foreignW;
+        else
+            return this.nativeW;
+    }
 }
 
 class CardSet {
@@ -56,28 +63,50 @@ class CardSet {
 
 // Создание тестового CardSet
 let cardSet = new CardSet();
-cardSet.addCard(new Card(1, 1, 0, "0 front curtain", "занавес", "In the middle of the scene, the front curtain unexpectedly started to lower, catching the actors off-guard.", "reconvene"));
-cardSet.addCard(new Card(3, 2, 0, "1 reconvene", "вновь собраться", "After a short break, the meeting will reconvene at 2:00 PM in the boardroom.", "reconvene"));
-cardSet.addCard(new Card(2, 1, 1, "2 front curtain", "занавес", "In the middle of the scene, the front curtain unexpectedly started to lower, catching the actors off-guard.", "reconvene"));
-cardSet.addCard(new Card(4, 2, 1, "3 reconvene", "вновь собраться", "After a short break, the meeting will reconvene at 2:00 PM in the boardroom.", "reconvene"));
+cardSet.addCard(new Card(1, 1, 0, "front curtain", "занавес", "ex", "reconvene"));
+cardSet.addCard(new Card(3, 2, 0, "reconvene", "вновь собраться", "After a short break, the meeting will reconvene at 2:00 PM in the boardroom.", "reconvene"));
+cardSet.addCard(new Card(2, 1, 1, "front curtain", "занавес", "In the middle of the scene, the front curtain unexpectedly started to lower, catching the actors off-guard.", "reconvene"));
+cardSet.addCard(new Card(4, 2, 1, "reconvene", "вновь собраться", "After a short break, the meeting will reconvene at 2:00 PM in the boardroom.", "reconvene"));
 
 var container = document.getElementById('container');
-var maxMidth=container.offsetWidth
+var maxMidth=container.offsetWidth;
 var flash0 = document.getElementById('flash0');
-var flash1 = document.getElementById('flash1');
-var upFlash=flash0
-var downFlash=flash1
+
+var flash1 = flash0.cloneNode(true);
+flash1.id = 'flash1';
+flash1.style.zIndex = -1;
+flash0.parentNode.insertBefore(flash1, flash0.nextSibling); // Вставляем новый элемент сразу после оригинала
+var upFlash=flash0;
+var downFlash=flash1;
+var ss='q';
+
+
 
 function updateCardUI(fl, card) {
     if (card) {
-        fl.querySelector(".f-text").textContent = card.foreignW;
-        fl.querySelector(".s-text").textContent = card.nativeW;
-        fl.querySelector(".t-text").textContent = card.example;
-        fl.style.display='flex'
+        let front=fl.querySelector(".front");
+        let frontForeign = front.querySelector(".foreign");
+        let frontNative = front.querySelector(".native");
+        let back=fl.querySelector(".back");
+        if (card.direction==0)  { //show foreign
+            frontForeign.querySelector(".foreign-text").textContent = card.foreignW;
+            frontNative.style.display = "none";
+            frontForeign.style.display = "flex";
+        } else {
+            frontNative.querySelector(".native-text").textContent = card.nativeW;
+            frontForeign.style.display = "none";
+            frontNative.style.display = "flex";
+        }
+        front.style.display = "flex";
+        back.querySelector(".foreign-text").textContent = card.foreignW;
+        back.querySelector(".native-text").textContent = card.nativeW;
+        back.querySelector(".example-text").textContent = card.example;
+        back.style.display = "flex";
     }
     else
         fl.style.display = "none";
 }
+
 
 updateCardUI(upFlash, cardSet.getCurrentCard())
 upFlash.style.zIndex = 0;
@@ -85,7 +114,7 @@ upFlash.style.zIndex = 0;
 updateCardUI(downFlash, cardSet.getNextCard())
 downFlash.style.zIndex = -2;
 
-var BREAK_POINT = maxMidth / 4;
+var BREAK_POINT = maxMidth / 6;
 var mc = new Hammer.Manager(container);
 mc.add(new Hammer.Pan({
     direction: Hammer.DIRECTION_ALL,
@@ -93,15 +122,29 @@ mc.add(new Hammer.Pan({
     pointers: 0
 }));
 
+
+
+
 mc.add(new Hammer.Tap());
 mc.on("tap", function (ev) {
-    console.log('tap');
-    gsap.to(upFlash, 0.2, {ease: Cubic.easeInOut, scaleX: 0.0, repeat:1, yoyo: true});
+    ss=(ss=='q')?'a':'q';
+    if (ss=='a')
+        gsap.to(upFlash, {duration: 0.7, rotationY:180, ease:Back.easeOut});
+    else
+        gsap.to(upFlash, {duration: 0.7, rotationY:0, ease:Back.easeOut});
 });
 
 mc.on("panleft panright panup", function (ev) {
-    rot=25*ev.deltaX/(maxMidth/2);
+    let rot=-48.0*ev.deltaX/maxMidth;
+    let op=Math.min(Math.abs(4.0*ev.deltaX)/maxMidth, 1.0);
     gsap.set(upFlash, {x: ev.deltaX, y: ev.deltaY, rotation: rot});
+    if (ev.deltaX<0) {
+        gsap.set(".corner-box-left", {opacity: op});
+        gsap.set(".corner-box-right", {opacity: 0});
+    } else {
+        gsap.set(".corner-box-right", {opacity: op});
+        gsap.set(".corner-box-left", {opacity: 0});
+    }
 });
 
 function endPan(ev) {
@@ -133,17 +176,19 @@ function endPan(ev) {
         gsap.to(upFlash, .2, {
             ease: Cubic.easeInOut,
             x: '0%',
-            y: '0%',
-            rotation: 0
+            y: '0%',            
+            rotation: 0            
         });
+        gsap.to(".corner-box",  .2, {opacity: 0});
+
 }
 
 mc.on("panend pancancel", endPan);
 
 
-//let tg=window.Telegram.WebApp;
-//tg.expand()
-//tg.ready()
+let tg=window.Telegram.WebApp;
+tg.expand()
+tg.ready()
 //const socket = new WebSocket('wss://lingolink.bot.nu/tren-wh/');
 //let chat_id = "484679683";    
 
