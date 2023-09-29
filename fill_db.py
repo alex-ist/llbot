@@ -96,5 +96,40 @@ def web_get_dictionary_link(fw: str) -> str:
 
 #change_db2("clubs", "club", "кружок") #clubs - это масть крести :)
 #fill_db("caulk", "герметик, шпаклевка для швов", "I bought a caulk to seal the gaps in the bathroom tiles.")
-word_add(365341983, "front curtain", "занавес", "en", "ru", "In the middle of the scene, the front curtain unexpectedly started to lower, catching the actors off-guard.")
+#word_add(365341983, "front curtain", "занавес", "en", "ru", "In the middle of the scene, the front curtain unexpectedly started to lower, catching the actors off-guard.")
 #word_add(484679683, "front curtain", "занавес", "en", "ru", "In the middle of the scene, the front curtain unexpectedly started to lower, catching the actors off-guard.")
+
+
+import os
+import hashlib
+
+# Функция для вычисления SHA-256 хеша
+def sha256_hash(input_string):
+    return hashlib.sha256(input_string.encode()).hexdigest()[:12]
+
+def get_hash(input_string):
+    return hashlib.md5(input_string.encode()).hexdigest()[:10]
+
+
+# 1. Прочитать файл `_map.txt`.
+with open("_map.txt", "r") as file:
+    lines = file.readlines()
+
+new_lines = []
+renaming_map = {}  # Словарь для отображения старого имени файла на новое
+
+for line in lines:
+    print (line)
+    old_hash, text = line.strip().split(';', 1)
+    new_hash = sha256_hash(text)
+    #new_hash = get_hash(text)
+    new_lines.append(f"{new_hash};{text}\n")
+    renaming_map[old_hash + ".ogg"] = new_hash + ".ogg"
+
+# 2. Записать новые строки в файл `_map.txt`.
+with open("_map2.txt", "w") as file:
+    file.writelines(new_lines)
+
+# 3. Переименовать файлы
+for old_name, new_name in renaming_map.items():
+    os.rename(old_name, new_name)

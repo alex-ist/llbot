@@ -9,8 +9,12 @@ from user_config import *
 from bot_db import *
 from trans import get_dict_rawlink
 
-def get_hash(input_string):
-    return hashlib.md5(input_string.encode()).hexdigest()[:10]
+# def get_hash(input_string):
+#     return hashlib.md5(input_string.encode()).hexdigest()[:10]
+
+def get_hash_sha256(input_string):
+    return hashlib.sha256(input_string.encode()).hexdigest()[:12]
+
 
 class Word:
     def __init__(self, user_id, foreign_lang, foreign_w, native_lang, native_w, example=None, word_id=-1, lnk=None):
@@ -103,9 +107,9 @@ class Word:
             self.lnk=await get_dict_rawlink(self.user_id, self.foreign_w, self.foreign_lang)
 
     #Устанавливает Аудио файл для записи в наборе. Проеверяет есть ли на локальном хранилище этот файл, если нет, то пытается его получить из сети.
-    #audio: data/{foreign_lang}/audio_words
+    #audio: data/{foreign_lang}/w
     async def SetAudio(self):
-        p=f"data/{self.foreign_lang}/audio_words/{self.foreign_w}.ogg"
+        p=f"data/{self.foreign_lang}/w/{self.foreign_w}.ogg"
         if os.path.isfile(p):
             self.audio=p
         else:
@@ -114,16 +118,16 @@ class Word:
             await google_speach(self.foreign_w, self.foreign_lang, p)
             self.audio=p
 
-    #audio: data/{foreign_lang}/audio_examples/{hash}.m4a
+    #audio: data/{foreign_lang}/e/{hash}.m4a
     async def SetAudioExample(self):
         if self.example is not None:
-            hash=get_hash(self.example)
-            p=f"data/{self.foreign_lang}/audio_examples/{hash}.ogg"
+            hash=get_hash_sha256(self.example)
+            p=f"data/{self.foreign_lang}/e/{hash}.ogg"
             if os.path.isfile(p):
                 self.audio_example=p
             else:
                 #save mapping
-                map_file=f"data/{self.foreign_lang}/audio_examples/_map.txt"
+                map_file=f"data/{self.foreign_lang}/e/_map.txt"
                 dir_name = os.path.dirname(map_file)  # получить имя директории из полного пути файла
                 if not os.path.exists(dir_name):  # проверить, существует ли уже директория
                     os.makedirs(dir_name)  # создать директорию, если ее еще нет
