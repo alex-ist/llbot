@@ -1,11 +1,13 @@
 from datetime import *
 from bot_db import *
 from botlog import logger
+from singleton import Singleton
 
+   
 
-class User:
+class User(Singleton):
     OPTIMAL_FORGET_RATE=0.1 #доля забытых слов, к которому нужно стремиться 
-    def __init__(self, user_id, new_user):
+    def __init__(self, user_id):
         
         self.user_id=user_id
         cursor=open_db()
@@ -32,7 +34,6 @@ class User:
 
         self.username = r[8]
         close_db()
-        self.new_user=new_user
         self.first_interval=timedelta(minutes=60) #черз сколько повторять первое слов
         self.native_lang="ru"
 

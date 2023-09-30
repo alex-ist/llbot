@@ -1,12 +1,10 @@
 class Card {
-    constructor(cardId, wordId, direction, foreignW, nativeW, example, dictLnk) {
+    constructor(cardId, direction, foreignW, nativeW, example) {
         this.cardId = cardId;
-        this.wordId = wordId;
         this.direction = direction;
         this.foreignW = foreignW;
         this.nativeW = nativeW;
         this.example = example;
-        this.dictLnk = dictLnk;
         this.answer = -1;  // not showed card
     }
     //вернет слово для изучения
@@ -53,6 +51,7 @@ class CardSet {
             if (this.currentCardIndex >= this.cards.length) {
                 this.currentCardIndex = 0;
             }
+            document.querySelector('.txt-counter').textContent =this.cards.length;
     
         } else if (val == 0) {
             let card = this.cards.splice(this.currentCardIndex, 1)[0];
@@ -61,26 +60,51 @@ class CardSet {
     }
 }
 
+async function getHash(inputString) {
+    const encoder = new TextEncoder();
+    const data = encoder.encode(inputString);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    return hashHex.substring(0, 12);
+}
+
+//playAudio("https://lingolink.bot.nu/au/en/audio_words/disposal.ogg");
 // Создание тестового CardSet
-let cardSet = new CardSet();
-cardSet.addCard(new Card(1, 1, 0, "front curtain", "занавес", "ex", "reconvene"));
-cardSet.addCard(new Card(3, 2, 0, "reconvene", "вновь собраться", "After a short break, the meeting will reconvene at 2:00 PM in the boardroom.", "reconvene"));
-cardSet.addCard(new Card(2, 1, 1, "front curtain", "занавес", "In the middle of the scene, the front curtain unexpectedly started to lower, catching the actors off-guard.", "reconvene"));
-cardSet.addCard(new Card(4, 2, 1, "reconvene", "вновь собраться", "After a short break, the meeting will reconvene at 2:00 PM in the boardroom.", "reconvene"));
-
+cardSet = new CardSet();
 var container = document.getElementById('container');
-var maxMidth=container.offsetWidth;
-var flash0 = document.getElementById('flash0');
-
-var flash1 = flash0.cloneNode(true);
+var maxWidth=container.offsetWidth;
+let flash0 = document.getElementById('flash0');
+let flash1 = flash0.cloneNode(true);
 flash1.id = 'flash1';
 flash1.style.zIndex = -1;
 flash0.parentNode.insertBefore(flash1, flash0.nextSibling); // Вставляем новый элемент сразу после оригинала
-var upFlash=flash0;
-var downFlash=flash1;
-var ss='q';
+upFlash=flash0;
+downFlash=flash1;
+ss='q';
 
-
+function playAudio(audioSrc) {
+    let s_link="/au/en/";
+    let c=cardSet.getCurrentCard();
+    if (c) {
+        if (audioSrc == "fw") {
+            s_link+="w/"+c.foreignW+".ogg";
+            const audio = new Audio(s_link);
+            audio.play();
+            console.log("F:"+s_link);
+        }
+        else if  (audioSrc == "ex")
+            getHash(c.example).then(hash => {
+                console.log(hash + ":"+ c.example);
+                s_link+="e/"+hash+".ogg";
+                const audio = new Audio(s_link);
+                audio.play();
+                console.log("E:"+s_link);
+            });
+        else
+            return;
+    }
+}
 
 function updateCardUI(fl, card) {
     if (card) {
@@ -107,14 +131,7 @@ function updateCardUI(fl, card) {
         fl.style.display = "none";
 }
 
-
-updateCardUI(upFlash, cardSet.getCurrentCard())
-upFlash.style.zIndex = 0;
-
-updateCardUI(downFlash, cardSet.getNextCard())
-downFlash.style.zIndex = -2;
-
-var BREAK_POINT = maxMidth / 6;
+var BREAK_POINT = maxWidth / 6;
 var mc = new Hammer.Manager(container);
 mc.add(new Hammer.Pan({
     direction: Hammer.DIRECTION_ALL,
@@ -123,20 +140,20 @@ mc.add(new Hammer.Pan({
 }));
 
 
-
-
 mc.add(new Hammer.Tap());
 mc.on("tap", function (ev) {
-    ss=(ss=='q')?'a':'q';
-    if (ss=='a')
+    if (ev.target.closest('img'))
+        return;
+
+    if (ss=='q') {
+        ss='a';
         gsap.to(upFlash, {duration: 0.7, rotationY:180, ease:Back.easeOut});
-    else
-        gsap.to(upFlash, {duration: 0.7, rotationY:0, ease:Back.easeOut});
+    }
 });
 
 mc.on("panleft panright panup", function (ev) {
-    let rot=-48.0*ev.deltaX/maxMidth;
-    let op=Math.min(Math.abs(4.0*ev.deltaX)/maxMidth, 1.0);
+    let rot=-48.0*ev.deltaX/maxWidth;
+    let op=Math.min(Math.abs(4.0*ev.deltaX)/maxWidth, 1.0);
     gsap.set(upFlash, {x: ev.deltaX, y: ev.deltaY, rotation: rot});
     if (ev.deltaX<0) {
         gsap.set(".corner-box-left", {opacity: op});
@@ -169,7 +186,8 @@ function endPan(ev) {
                 else {
                     updateCardUI(upFlash, null);
                 }
-                gsap.set(v, {x: '0%', y: '0%', rotation: 0});
+                ss='q';
+                gsap.set(v, {x: '0%', y: '0%', rotation: 0, rotationY:0});
             }
         });
     } else
@@ -182,34 +200,62 @@ function endPan(ev) {
         gsap.to(".corner-box",  .2, {opacity: 0});
 
 }
-
 mc.on("panend pancancel", endPan);
 
 
 let tg=window.Telegram.WebApp;
 tg.expand()
-tg.ready()
-//const socket = new WebSocket('wss://lingolink.bot.nu/tren-wh/');
-//let chat_id = "484679683";    
 
+let user_id = tg.initDataUnsafe.user ? tg.initDataUnsafe.user.id : 484679683; //fixme - if no tg, close app
+console.log("user_id:" + user_id);
+let protocol = window.location.protocol == 'https:' ? 'wss:' : 'ws:';
+let addr=protocol + '//' + window.location.hostname + ':8001'+ '/tren-wh/';
+console.log("WS addr:" + addr);
+const ws = new WebSocket(addr);
+
+tg.ready()
 
 function startConn() {
-    const dataToSend = { chat_id: chat_id };
-    //socket.send(JSON.stringify(dataToSend));
+    console.log("connected");
+    const dataToSend = {
+         user_id: user_id,
+         req: "start-tren" 
+        };
+    
+    let r=JSON.stringify(dataToSend)
+    ws.send(r);
+    console.log("sent:" + r);
 }
 
 function sendMessage(msg) {
     const dataToSend = { value: msg };
-    //socket.send(JSON.stringify(dataToSend));
+    ws.send(JSON.stringify(dataToSend));
 }
 
-//socket.addEventListener('open', () => {
-//  startConn()
-//});
-
-let f = document.getElementById("flash0");
-f.addEventListener("click", () => {
-    //sendMessage("click")
-    //tg.close()
+ws.addEventListener('open', () => {
+  startConn()
 });
 
+ws.addEventListener('close', () => {
+    console.log("close ws");
+    tg.close()
+});
+
+ws.addEventListener('message', (event) => {
+    const receivedData = JSON.parse(event.data);
+    console.log("Rx data:", receivedData);
+
+    if (receivedData.type === "tren-data") {
+        receivedData.card.forEach(cardData => {
+            cardSet.addCard(new Card(cardData.cid, cardData.dir, cardData.fw, cardData.nw, cardData.ex));
+        });
+    }
+    
+    document.querySelector('.txt-counter').textContent =cardSet.cards.length;
+
+    updateCardUI(upFlash, cardSet.getCurrentCard())
+    upFlash.style.zIndex = 0;
+    
+    updateCardUI(downFlash, cardSet.getNextCard())
+    downFlash.style.zIndex = -2;
+});

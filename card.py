@@ -8,13 +8,13 @@ from datetime import *
 from user_config import *
 from bot_db import *
 from trans import get_dict_rawlink
+from singleton import Singleton
 
 # def get_hash(input_string):
 #     return hashlib.md5(input_string.encode()).hexdigest()[:10]
 
 def get_hash_sha256(input_string):
     return hashlib.sha256(input_string.encode()).hexdigest()[:12]
-
 
 class Word:
     def __init__(self, user_id, foreign_lang, foreign_w, native_lang, native_w, example=None, word_id=-1, lnk=None):
@@ -274,17 +274,16 @@ class TrainingCard:
         if self.word is not None:
             self.word.ChangeExample(e)
 
-class TrainingCardSet:
-    def __init__(self, user_id, u:User):
+class TrainingCardSet(Singleton):
+    def __init__(self, user_id):
         self.user_id=user_id
         self.tcard_set=[]
         self.current_pos=0
         self.audio_words=False
         self.text_examples=False
         self.audio_examples=False
-        self.u=u
+        self.u=User(user_id)
 
-    
     #возвращает текущую карту или ноне
     def GetCurrentTCard(self) ->TrainingCard:
         l=len(self.tcard_set)
@@ -463,4 +462,20 @@ class TrainingCardSet:
     # #есть хотя бы в одой из записей озвучка слова? , смотрим ближайшую ротацию +12 карт.
     # def IsAudioWords(self):
     #     return self.audio_words
+    def Len(self):
+        return len(self.tcard_set)
     
+    def __iter__(self):
+        count = 0
+        pos = self.current_pos
+
+        while count < len(self.tcard_set):
+            yield self.tcard_set[pos]
+            pos += 1
+            count += 1
+            if pos >= len(self.tcard_set):
+                pos = 0
+
+
+
+

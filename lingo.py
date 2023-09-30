@@ -26,6 +26,7 @@ from bot_db import *
 BLOCKED_BY_USER       = "B"
 BLOCKED_BY_INACTIVITY = "I"
 UNBLOCKED =             "A"
+debug_bot=None
 
 
 ui_set={}
@@ -57,7 +58,7 @@ class UI:
         self.m0=BotMsg(self.bot, chat_id, pos=0)
         self.m1=BotMsg(self.bot, chat_id, pos=1)
         self.m2=BotMsg(self.bot, chat_id, pos=2)
-        self.u=User(user_id, new_user)
+        self.u=User(user_id)
         self.reminder=None
         self.reminder_count=0
         
@@ -67,7 +68,7 @@ class UI:
         else:
             self.tutorial_mode=-1
 
-        self.tcs=TrainingCardSet(user_id, self.u)
+        self.tcs=TrainingCardSet(user_id)
         self.edited_word=None
         self.state= UI.States.ST_UNDEF  
         self.state_prev= UI.States.ST_UNDEF
@@ -179,7 +180,17 @@ class UI:
 
         if state == UI.States.BEFORE_TREN:
             if self.sub_state>0:
-                kbd = [[InlineKeyboardButton("   Начать  ", callback_data="kbd:satrt")]]
+                if self.user_id == 484679683 or self.user_id == 5800537837: #or 365341983 #кнопка для веб-апп
+                    if debug_bot==1:
+                        wa=telegram.WebAppInfo("https://192.168.0.16:5500/ll.html")
+                        logger.info("WAPP="+"https://192.168.0.16:5500/ll.html")
+                    else:
+                        wa=telegram.WebAppInfo("https://lingolink.bot.nu/ll.html")
+                        logger.info("WAPP="+"https://lingolink.bot.nu/ll.html")
+
+                    kbd = [[InlineKeyboardButton("Начать!💥", web_app=wa), InlineKeyboardButton("Начать", callback_data="kbd:satrt")]]
+                else:
+                    kbd = [[wInlineKeyboardButton("Начать", callback_data="kbd:satrt")]]
             else:
                 return None
         elif state == UI.States.TREN:
@@ -1344,7 +1355,9 @@ async def bot_run(use_web_hook) -> None:
 
     await application.initialize()
     await post_init(application)
+    global debug_bot
     if use_web_hook:
+        debug_bot=0
         await application.updater.start_webhook(
             listen='0.0.0.0',
             port=8443,
@@ -1354,9 +1367,10 @@ async def bot_run(use_web_hook) -> None:
             webhook_url='https://lingolink.bot.nu:8443'
         )
     else:
+        debug_bot=1
         await application.updater.start_polling()
     await application.start()
-    logger.warning(f"!!! Bot satrted")
+    logger.warning("!!! Bot satrted")
 
 from telegram.constants import ParseMode
 from uuid import uuid4
