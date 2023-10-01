@@ -3,8 +3,6 @@ from bot_db import *
 from botlog import logger
 from singleton import Singleton
 
-   
-
 class User(Singleton):
     OPTIMAL_FORGET_RATE=0.1 #доля забытых слов, к которому нужно стремиться 
     def __init__(self, user_id):
