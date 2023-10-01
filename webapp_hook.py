@@ -5,6 +5,7 @@ from botlog import logger
 from aiohttp import web, WSMsgType
 import json
 from card import Word, TrainingCard, TrainingCardSet
+from lingo import web_app_after_tren_cb, web_app_before_tren_cb
 
 
 async def handle_options(request):
@@ -14,17 +15,11 @@ async def handle_options(request):
         'Access-Control-Allow-Headers': 'Content-Type',
     })
 
-from lingo import send_w, send_b
 
-#we will send
-#{len
-# {tcid, direction, foreignW, nativeW, example}
-# {tcid, direction, foreignW, nativeW, example}
-#}
 
 active_connections = {}
 async def websocket_handler(request):
-    logger.warning("ws: new incoming connection")
+    logger.warning("WA: ws: new incoming connection")
     ws = web.WebSocketResponse()
     await ws.prepare(request)
     user_id = None
@@ -33,7 +28,7 @@ async def websocket_handler(request):
         try:
             await ws.close()
         except Exception as e:
-            logger.warning(f"ws.close: {e}")
+            logger.warning(f"WA: ws.close: {e}")
 
     #ждем 10 секунд на получение сообщения - с user_id, если нет грохаем соединение
     async def close_if_no_user_id():
@@ -43,29 +38,32 @@ async def websocket_handler(request):
 
     timer_task = asyncio.create_task(close_if_no_user_id())
 
+    tcs=None
+    err_code="err"
     async for msg in ws:
         try:
             if msg.type == WSMsgType.TEXT:
                 parsed_data = json.loads(msg.data)
                 if user_id is not None:
-                    logger.warning(f"{user_id}: parsed_data: {parsed_data}")
+                    logger.warning(f"{user_id}: WA: parsed_data: {parsed_data}")
                 if user_id is None:             #means this is first msg from web_app
                     user_id = parsed_data.get('user_id')
-                    logger.warning(f"{user_id}: parsed_data: {parsed_data}")
+                    logger.warning(f"{user_id}: WA: parsed_data: {parsed_data}")
                     if user_id is None:         #first msg dosn't contain user_id - this is error
                         await close_ws(ws)      #close current connection
-                        logger.warning("user_id wasn't received, close ws connection.")
+                        logger.warning("WA: user_id wasn't received, close ws connection.")
                         break
                     elif user_id in active_connections:
                         await close_ws(active_connections[user_id]) #close previous connection
                     active_connections[user_id] = ws
                     #check commands
-                req = parsed_data.get('req')
-                if req=="start-tren":
+                req_type = parsed_data.get('type')
+                if req_type=="start-tren":
+                    await web_app_before_tren_cb(user_id)
                     tcs=TrainingCardSet(user_id)
                     await tcs.Create()
                     l=tcs.Len()
-                    logger.warning(f"{user_id}: start-tren, set len={l}")
+                    logger.warning(f"{user_id}: WA: start-tren, sent len={l}")
                     data_obj = { 'type': "tren-data", 'len' : l, 'card' : []}
                     for card in tcs:
                         data_obj['card'].append({'cid': card.training_card_id, 'dir': card.direction, 'fw': card.GetForeign(), 'nw':card.GetNative(), 'ex':card.GetExample()})
@@ -74,13 +72,25 @@ async def websocket_handler(request):
                     try:
                         await ws.send_str(json_str)
                     except Exception as e:
-                        logger.warning(f"{user_id}: Error sending data via ws: {e}")
+                        logger.warning(f"{user_id}: WA: Error sending data via ws: {e}")
                         break
+                elif req_type=="answer":
+                    cid = parsed_data.get('cid')
+                    a = parsed_data.get('a')
+                    c=tcs.GetCard(cid)
+                    logger.warning(f"{user_id}: WA: answer={a} cid={cid} fw={c.GetForeign()}")
+                    c.SetCorrect(a) #todo - remove from tcs? #защитить tcs от работы из обычного приложения?
+                elif req_type=="stop-tren":
+                    logger.warning(f"{user_id}: WA: stop-tren")
+                    await close_ws(ws)
+                    tcs.UpdateStat() #обновить пользовательскую статистику
+                    err_code="ok"
+                    break
             elif msg.type == WSMsgType.ERROR:
-                logger.warning(f'ws err = {ws.exception()}')
+                logger.warning(f'WA: ws err = {ws.exception()}')
                 break
         except Exception as e:
-            logger.warning(f"ws:unexpected error occurred: {e}")
+            logger.warning(f"WA: ws:unexpected error occurred: {e}")
             break
 
     timer_task.cancel()         #let stop timer
@@ -90,6 +100,7 @@ async def websocket_handler(request):
     if user_id is not None:
         active_connections.pop(user_id, None)
         logger.warning(f"{user_id}: ws connection closed. Close code: {ws.close_code}")
+        await web_app_after_tren_cb(user_id, err_code) 
     else:
         logger.warning(f"ws connection closed. Close code: {ws.close_code}")
     return ws
@@ -115,10 +126,5 @@ async def webapp_hook_run(production_bot):
     app.router.add_get('/tren-wh/', websocket_handler)
     runner = web.AppRunner(app)
     await runner.setup()
-    if production_bot:
-        site = web.TCPSite(runner, port=8001) 
-    else:
-        ssl_context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
-        ssl_context.load_cert_chain('cert/server2.crt', 'cert/server2.key')
-        site = web.TCPSite(runner, port=8001, ssl_context=ssl_context)
+    site = web.TCPSite(runner, port=8001) 
     await site.start()

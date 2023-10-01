@@ -284,6 +284,13 @@ class TrainingCardSet(Singleton):
         self.audio_examples=False
         self.u=User(user_id)
 
+    #возвращает карту по training_card_id (cid), если она есть в наборе. если нету - None
+    def GetCard(self, cid) ->TrainingCard:
+        for tc in self.tcard_set:
+            if tc.training_card_id==cid:
+                return tc
+        return None
+
     #возвращает текущую карту или ноне
     def GetCurrentTCard(self) ->TrainingCard:
         l=len(self.tcard_set)
@@ -475,6 +482,11 @@ class TrainingCardSet(Singleton):
             count += 1
             if pos >= len(self.tcard_set):
                 pos = 0
+
+    def UpdateStat(self):
+        self.u.UpdateStat() #обновить пользовательскую статистику
+        self.u.UpdateLastAccess(datetime.now())
+
 
 
 

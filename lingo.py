@@ -42,6 +42,7 @@ class UI:
         TUTOR_SCR3 = "tutor_scr3_st"
         BEFORE_TREN ="before_tren_st"
         TREN ="tren_st"
+        TREN_WA ="tren_wa_st"
         AFTER_TREN ="after_tren_st"
         EDIT_WORD ="edit_word_st"
         ADD_WORD ="add_word_st"
@@ -173,6 +174,17 @@ class UI:
         if await ui.process_ev(user_data):
             ui.exit_ui()
 
+    def create_wa(self):
+        wa=None
+        if self.user_id == 484679683 or self.user_id == 5800537837: #or 365341983 #кнопка для веб-апп
+            if debug_bot==1:
+                wa=telegram.WebAppInfo("https://192.168.0.16:5500/ll.html")
+                logger.info("WAPP="+"https://192.168.0.16:5500/ll.html")
+            else:
+                wa=telegram.WebAppInfo("https://lingolink.bot.nu/ll.html")
+                logger.info("WAPP="+"https://lingolink.bot.nu/ll.html")
+        return wa
+        
 
     def create_buttons(self, selected=None, sel_symb=None, selected2=None, sel_symb2=None, state=None):
         if state is None:
@@ -180,17 +192,11 @@ class UI:
 
         if state == UI.States.BEFORE_TREN:
             if self.sub_state>0:
-                if self.user_id == 484679683 or self.user_id == 5800537837: #or 365341983 #кнопка для веб-апп
-                    if debug_bot==1:
-                        wa=telegram.WebAppInfo("https://192.168.0.16:5500/ll.html")
-                        logger.info("WAPP="+"https://192.168.0.16:5500/ll.html")
-                    else:
-                        wa=telegram.WebAppInfo("https://lingolink.bot.nu/ll.html")
-                        logger.info("WAPP="+"https://lingolink.bot.nu/ll.html")
-
+                wa=self.create_wa()
+                if wa:
                     kbd = [[InlineKeyboardButton("Начать!💥", web_app=wa), InlineKeyboardButton("Начать", callback_data="kbd:satrt")]]
                 else:
-                    kbd = [[wInlineKeyboardButton("Начать", callback_data="kbd:satrt")]]
+                    kbd = [[InlineKeyboardButton("Начать", callback_data="kbd:satrt")]]
             else:
                 return None
         elif state == UI.States.TREN:
@@ -205,7 +211,16 @@ class UI:
             if self.sub_state=="no_to_learn":
                 kbd = [[InlineKeyboardButton("Ok", callback_data="kbd:enough"),]]
             else:
-                kbd = [[
+                wa=self.create_wa()
+                if wa:
+                    kbd = [[
+                        InlineKeyboardButton("Продолжить!💥", web_app=wa),
+                        InlineKeyboardButton("Продолжить", callback_data="kbd:again"),
+                        ],[
+                        InlineKeyboardButton("Пока что - хорош!", callback_data="kbd:enough"),
+                        ]]
+                else:
+                    kbd = [[
                         InlineKeyboardButton("Пока что - хорош!", callback_data="kbd:enough"),
                         InlineKeyboardButton("Продолжить", callback_data="kbd:again"),
                         ]]
@@ -479,6 +494,9 @@ class UI:
                 return True
             elif self.ev=="tmr:t0":
                 pass
+            elif self.ev=="wa:tren_start":
+                self.state=UI.States.TREN_WA
+                return True        
             else:
                 return False
         
@@ -531,6 +549,26 @@ class UI:
             self.timer_run(dt,"tmr:t0")
         self.state_prev = UI.States.BEFORE_TREN
         return False
+
+
+    async def tren_wa_state(self) -> None:
+        self.timer_stop()
+        #вход в состояние
+        if self.state_prev != UI.States.TREN_WA:
+            self.log_info("TREN_WA: prev_st=" + self.state_prev)
+            self.state_prev = UI.States.TREN_WA
+        #обработка событий
+        elif self.ev:
+            if self.ev=="wa:tren_completed":
+                self.state=UI.States.AFTER_TREN #goto AFTER_TREN
+                return True
+            elif self.ev=="wa:tren_canceled":
+                self.reset_state()
+                return True
+            return False
+
+        await self.m1.clear()
+        await self.m2.text("работа в графическом интерфейсе")
 
     #основное состояние тренировки
     async def tren_state(self) -> None:
@@ -587,6 +625,8 @@ class UI:
         tc=self.tcs.GetCurrentTCard()  
         if tc is None: #Больше нет карт для запоминания
             self.u.UpdateStat() #обновить пользовательскую статистику
+            self.last_access=datetime.now()
+            self.u.UpdateLastAccess(self.last_access)
             self.state=UI.States.AFTER_TREN #goto AFTER_TREN
             return True
 
@@ -668,6 +708,9 @@ class UI:
             elif self.ev=='kbd:again':
                 self.state=UI.States.TREN #goto tren,
                 return True
+            elif self.ev=="wa:tren_start":
+                self.state=UI.States.TREN_WA
+                return True            
             return False
 
         n=self.tcs.TCardsReadyNow()
@@ -994,6 +1037,7 @@ class UI:
     state_functions = {
         States.BEFORE_TREN:     before_tren_state,
         States.TREN:            tren_state,
+        States.TREN_WA:            tren_wa_state,
         States.AFTER_TREN:      after_tren_state,
         States.EDIT_WORD:       edit_word_state,
         States.ADD_WORD:        add_word_state,
@@ -1149,13 +1193,16 @@ class UI:
             logger.info(f"{user_id}: try to repair ui (start_cmd)")
             await start_cmd(update, context)
 
-def get_ui(user_id, chat_id, context):
+def get_ui(user_id, chat_id=None, context=None):
     global ui_set
     if user_id in ui_set:
         ui=ui_set[user_id]
+    elif chat_id is None or context is None:
+        return None
     else:
         ui=UI(user_id, chat_id, context)
         ui_set[user_id]=ui
+
     return ui
 
 # останавливаем ui если он существовал - stop_ui()
@@ -1375,16 +1422,25 @@ async def bot_run(use_web_hook) -> None:
 from telegram.constants import ParseMode
 from uuid import uuid4
 from telegram import Bot, InlineQueryResult, InlineQueryResultArticle, InputTextMessageContent
-async def send_w(q, txt):
-#     r=InlineQueryResultArticle(
-#         id=str(uuid4()),
-#         title="Italic",
-#         input_message_content=InputTextMessageContent(
-#         f"<i>Italic msg</i>", parse_mode=ParseMode.HTML
-#         ),
-#     ),
-    r = InlineQueryResultArticle("12121", "title", InputTextMessageContent(txt))
-    await application.bot.answerWebAppQuery(q, r)
+#веб приложение успешно завершено
 
-async def send_b(chat_id, txt):
-    await application.bot.send_message(chat_id=chat_id, text=txt)
+
+async def web_app_before_tren_cb(user_id):
+    ui=get_ui(user_id)
+    if ui is None:
+        logger.error(f"{user_id}: web_app_before_tren_cb: ui is None")
+    elif await ui.process_ev("wa:tren_start"):
+        logger.error(f"{user_id}: ui.process_ev returns 1 (user blocked)")
+
+async def web_app_after_tren_cb(user_id, status):
+    ui=get_ui(user_id)
+    if ui is None:
+        logger.error(f"{user_id}: web_app_before_tren_cb: ui is None")
+    else:
+        if status=="ok":
+            r=await ui.process_ev("wa:tren_completed")
+        else:
+            r=await ui.process_ev("wa:tren_canceled")
+        
+        if r:
+            logger.error(f"{user_id}: ui.process_ev returns 1 (user blocked)")

@@ -1,6 +1,6 @@
 class Card {
-    constructor(cardId, direction, foreignW, nativeW, example) {
-        this.cardId = cardId;
+    constructor(cid, direction, foreignW, nativeW, example) {
+        this.cid = cid;
         this.direction = direction;
         this.foreignW = foreignW;
         this.nativeW = nativeW;
@@ -166,13 +166,22 @@ mc.on("panleft panright panup", function (ev) {
 
 function endPan(ev) {
     if (Math.abs(ev.deltaX) > BREAK_POINT) {
+        const dataToSend = {
+            type:   "answer",
+            cid:    cardSet.getCurrentCard().cid,
+            a:      ev.deltaX>0?1:0,
+        };
+        let r=JSON.stringify(dataToSend)
+        ws.send(r);
+        console.log("sent:" + r);
+        cardSet.setAnswer(ev.deltaX>0 ? 1 : 0 );
+
         gsap.to(upFlash, 0.3, { 
             ease: Cubic.easeInOut, 
             x: ev.deltaX>0 ? '120%' : '-120%', 
             onCompleteParams: [upFlash],
             onComplete: function(v) {
                 v.style.zIndex -= 2;
-                cardSet.setAnswer(ev.deltaX>0 ? 1 : 0 );
                 if (cardSet.getLen()>=2) {
                     u=upFlash;
                     upFlash=downFlash;
@@ -185,6 +194,13 @@ function endPan(ev) {
                 }
                 else {
                     updateCardUI(upFlash, null);
+                    const dataToSend = {
+                        type: "stop-tren"
+                    };
+                    let r=JSON.stringify(dataToSend)
+                    ws.send(r);
+                    console.log("sent:" + r);
+                    //конец, нет больше карточек
                 }
                 ss='q';
                 gsap.set(v, {x: '0%', y: '0%', rotation: 0, rotationY:0});
@@ -209,7 +225,7 @@ tg.expand()
 let user_id = tg.initDataUnsafe.user ? tg.initDataUnsafe.user.id : 484679683; //fixme - if no tg, close app
 console.log("user_id:" + user_id);
 let protocol = window.location.protocol == 'https:' ? 'wss:' : 'ws:';
-let addr=protocol + '//' + window.location.hostname + ':8001'+ '/tren-wh/';
+let addr=protocol + '//' + window.location.host + '/tren-wh/';
 console.log("WS addr:" + addr);
 const ws = new WebSocket(addr);
 
@@ -219,17 +235,12 @@ function startConn() {
     console.log("connected");
     const dataToSend = {
          user_id: user_id,
-         req: "start-tren" 
+         type: "start-tren" 
         };
     
     let r=JSON.stringify(dataToSend)
     ws.send(r);
     console.log("sent:" + r);
-}
-
-function sendMessage(msg) {
-    const dataToSend = { value: msg };
-    ws.send(JSON.stringify(dataToSend));
 }
 
 ws.addEventListener('open', () => {
