@@ -176,7 +176,7 @@ class UI:
 
     def create_wa(self):
         wa=None
-        if self.user_id == 484679683 or self.user_id == 5800537837: #or 365341983 #кнопка для веб-апп
+        if self.user_id == 484679683 or self.user_id == 5800537837  or self.user_id == 365341983: #кнопка для веб-апп
             if debug_bot==1:
                 wa=telegram.WebAppInfo("https://192.168.0.16:5500/ll.html")
                 logger.info("WAPP="+"https://192.168.0.16:5500/ll.html")
