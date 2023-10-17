@@ -106,25 +106,43 @@ async def websocket_handler(request):
     return ws
 
 
-                # if chat_id is None:
-                #     chat_id = parsed_data.get('chat_id')
-                #     await send_b(chat_id, 'web app open')
-                # else:
-                #     v = parsed_data.get('value')
-                #     await send_b(chat_id, v)
+async def generate_audio_ex(request):
+    logger.warning("generate_audio_ex")
+    uid = request.rel_url.query.get('uid')
+    cid = request.rel_url.query.get('cid')
+    logger.warning(f"{uid}: request au_ex cid={cid}")
+    if not uid  or not cid:
+        logger.error(f"{uid}:cid={cid}: generate_audio_ex")
+        return web.Response(status=400, text="UID or CID is missing")
+    
+    wd=await Word.ReadFromDb_by_cid(uid, cid)
+    if not wd:
+        logger.error(f"{uid}:cid={cid}: generate_audio_ex: can't get word")
+        return web.Response(status=400, text="UID or CID is wrong")
 
-                    # tcs.SetAnswer(self.last_answer)
-                # self.u.UpdateStat()
-                # self.u.UpdateLastAccess(self.last_access)
-                #     tcs.GetCurrentTCard()                      
+    await wd.SetAudioExample()
+    audio_path=wd.audio_example
+    return web.FileResponse(audio_path)
+
 
 async def webapp_hook_run(production_bot):
     logger.warning(f"webapp_hook run")
 
-    app = web.Application()
-    app.router.add_route('OPTIONS', '/tren-wh/', handle_options)
-    app.router.add_get('/tren-wh/', websocket_handler)
-    runner = web.AppRunner(app)
-    await runner.setup()
-    site = web.TCPSite(runner, port=8001) 
-    await site.start()
+    app1 = web.Application()
+    app1.router.add_route('OPTIONS', '/tren-wh/', handle_options)
+    app1.router.add_get('/tren-wh/', websocket_handler)
+    runner1 = web.AppRunner(app1)
+    await runner1.setup()
+    site1 = web.TCPSite(runner1, port=8001) 
+    await site1.start()
+    
+    app2 = web.Application()
+    app2.router.add_route('GET', '/generate-au-ex', generate_audio_ex)
+    runner2 = web.AppRunner(app2)
+    await runner2.setup()
+    site2 = web.TCPSite(runner2, port=8002) 
+    await site2.start()
+ 
+
+
+

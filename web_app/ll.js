@@ -96,7 +96,7 @@ function playAudio(audioSrc) {
         else if  (audioSrc == "ex")
             getHash(c.example).then(hash => {
                 console.log(hash + ":"+ c.example);
-                s_link+="e/"+hash+".ogg";
+                s_link+="e/"+hash+".ogg?uid="+user_id+"&cid="+c.cid;
                 const audio = new Audio(s_link);
                 audio.play();
                 console.log("E:"+s_link);

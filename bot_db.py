@@ -70,6 +70,20 @@ def word_read(user_id:int, word_id:int):
     else:
         return None, None, None, None, None
 
+def word_read_by_cid(uid:int, cid:int):
+    c=open_db()
+    c.execute("""
+SELECT w.word_id, w.foreign_w, w.native_w, w.foreign_lang, w.native_lang, w.example FROM words AS w
+JOIN training_cards AS tc ON w.word_id = tc.word_id
+WHERE w.user_id = ? AND tc.training_card_id = ?;              
+              """,(uid, cid))
+    row = c.fetchone()
+    close_db()
+    if row:
+        return row[0],row[1],row[2],row[3], row[4], row[5]
+    else:
+        return None, None, None, None, None, None
+
 def word_read_by_fw(user_id:int, fw:str):
     c=open_db()
     c.execute("SELECT word_id FROM words WHERE user_id = ? AND foreign_w = ?", (user_id, fw))

@@ -102,6 +102,18 @@ class Word:
         #await word.SetAudioExample()
         return word
 
+    @staticmethod
+    async def ReadFromDb_by_cid(uid:int, cid:int) -> 'Word':
+        word_id, foreign_w, native_w, foreign_lang, native_lang, example=word_read_by_cid(uid, cid)
+        if word_id:
+            word=Word(uid, foreign_lang, foreign_w, native_lang, native_w, example, word_id)
+            await word.SetDictLink()
+            return word
+        else:
+            logger.warning(f"{uid}: cid={cid}: can't get word")
+            return None
+
+
     async def SetDictLink(self):
         if self.lnk is None:
             self.lnk=await get_dict_rawlink(self.user_id, self.foreign_w, self.foreign_lang)
@@ -435,6 +447,10 @@ class TrainingCardSet(Singleton):
                 else:
                     tc.word = await Word.ReadFromDb(self.user_id, tc.word_id)
                     cards_dict[tc.word_id] = tc.word
+
+        #создать озвучку всех иностранных слов, создать ссылки на cambreage dict, #создать озвучку примеров?
+        # for tc in self.tcard_set:
+        #     if tc.
 
         #выясним есть ли в наборе IsTextExample, IsAudioExample,IsAudioWord
         # self.text_examples=False

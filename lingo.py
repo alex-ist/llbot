@@ -194,7 +194,7 @@ class UI:
             if self.sub_state>0:
                 wa=self.create_wa()
                 if wa:
-                    kbd = [[InlineKeyboardButton("Начать!💥", web_app=wa), InlineKeyboardButton("Начать", callback_data="kbd:satrt")]]
+                    kbd = [[InlineKeyboardButton("Начать!💥", web_app=wa), InlineKeyboardButton("Начать (txt)", callback_data="kbd:satrt")]]
                 else:
                     kbd = [[InlineKeyboardButton("Начать", callback_data="kbd:satrt")]]
             else:
@@ -1217,7 +1217,7 @@ async def start_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     logger.info(f"{user_id}: start_cmd")
 
     #msg_id=update.effective_message.id
-    username=update.effective_user.first_name
+    username=update.effective_user.username
     first_name=update.effective_user.first_name
     lang_code=update.effective_user.language_code
     is_premium=update.effective_user.is_premium
