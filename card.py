@@ -421,7 +421,7 @@ class TrainingCardSet(Singleton):
     
     #берет из базы тренировочные карты у которых next_training_t минимальное.
     #новые карты берет, токо если нет старых
-    async def Create(self):
+    async def Create(self, create_au=False):
         #сколько всего тренировочных карт?
         n =self.TCardsReadyNow()
         if n<1: 
@@ -447,6 +447,10 @@ class TrainingCardSet(Singleton):
                 else:
                     tc.word = await Word.ReadFromDb(self.user_id, tc.word_id)
                     cards_dict[tc.word_id] = tc.word
+
+        if create_au:
+            for tc in self.tcard_set:
+                await tc.word.SetAudio()
 
         #создать озвучку всех иностранных слов, создать ссылки на cambreage dict, #создать озвучку примеров?
         # for tc in self.tcard_set:

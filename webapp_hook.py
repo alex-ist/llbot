@@ -63,7 +63,7 @@ async def websocket_handler(request):
                 if req_type=="start-tren":
                     await web_app_before_tren_cb(user_id)
                     tcs=TrainingCardSet(user_id)
-                    await tcs.Create()
+                    await tcs.Create(create_au=True)
                     l=tcs.Len()
                     logger.warning(f"{user_id}: WA: start-tren, sent len={l}")
                     data_obj = { 'type': "tren-data", 'len' : l, 'card' : []}

@@ -72,6 +72,7 @@ async function getHash(inputString) {
 //playAudio("https://lingolink.bot.nu/au/en/audio_words/disposal.ogg");
 // Создание тестового CardSet
 cardSet = new CardSet();
+isSoundEnabled = true
 var container = document.getElementById('container');
 var maxWidth=container.offsetWidth;
 let flash0 = document.getElementById('flash0');
@@ -116,6 +117,8 @@ function updateCardUI(fl, card) {
             frontForeign.querySelector(".foreign-text").textContent = card.foreignW;
             frontNative.style.display = "none";
             frontForeign.style.display = "flex";
+            if (isSoundEnabled)
+                playAudio("fw");
         } else {
             frontNative.querySelector(".native-text").textContent = card.nativeW;
             frontForeign.style.display = "none";
@@ -147,7 +150,15 @@ mc.on("tap", function (ev) {
 
     if (ss=='q') {
         ss='a';
-        gsap.to(upFlash, {duration: 0.7, rotationY:180, ease:Back.easeOut});
+        gsap.to(upFlash, {duration: 0.7, rotationY:180, ease:Back.easeOut,
+            onComplete: function(v) {
+                if (isSoundEnabled) {
+                    let card=cardSet.getCurrentCard();
+                    if (card && card.direction!=0) 
+                        playAudio("fw");    
+                }
+            }
+        });
     }
 });
 
@@ -269,4 +280,20 @@ ws.addEventListener('message', (event) => {
     
     updateCardUI(downFlash, cardSet.getNextCard())
     downFlash.style.zIndex = -2;
+});
+
+
+var speakerE = document.querySelector('.speaker-e');
+var speakerD = document.querySelector('.speaker-d');
+
+speakerE.addEventListener('click', function() {
+    isSoundEnabled=false
+    speakerE.style.display = 'none';
+    speakerD.style.display = 'inline-block';
+});
+
+speakerD.addEventListener('click', function() {
+    isSoundEnabled=true
+    speakerD.style.display = 'none';
+    speakerE.style.display = 'inline-block';
 });

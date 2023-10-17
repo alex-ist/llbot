@@ -48,6 +48,14 @@ img {
     margin-left: 15px;
 }
 
+.speaker-e {
+    display: inline-block;
+}
+
+.speaker-d {
+    display: None;
+}
+
 .container {
     background-color: #fbdc9d;
     font-family: Open Sans, sans-serif;
