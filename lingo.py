@@ -4,11 +4,8 @@ from botlog import logger
 
 from telegram import Update, BotCommand, error, WebAppInfo
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
-from telegram import KeyboardButton, ReplyKeyboardMarkup
 from telegram import InputMediaAudio
-from telegram import InputFile
-from telegram import ForceReply
-from telegram.ext import Application, CallbackQueryHandler, CommandHandler, ContextTypes, MessageHandler, filters, Defaults
+from telegram.ext import Application, CallbackQueryHandler, CommandHandler, ContextTypes, MessageHandler
 import telegram 
 import secrets
 
@@ -565,10 +562,13 @@ class UI:
             elif self.ev=="wa:tren_canceled":
                 self.reset_state()
                 return True
+            elif self.ev=="kbd:close_wa":
+                from webapp_hook import close_wa_by_user
+                await close_wa_by_user(self.user_id)
             return False
 
         await self.m1.clear()
-        await self.m2.text("работа в графическом интерфейсе")
+        await self.m2.text("работа в графическом интерфейсе", kbd=InlineKeyboardMarkup([[InlineKeyboardButton("Закрыть", callback_data="kbd:close_wa")]]))
 
     #основное состояние тренировки
     async def tren_state(self) -> None:

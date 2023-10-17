@@ -1,11 +1,9 @@
 #!/usr/bin/env python
 import asyncio
-import ssl
 from botlog import logger
 from aiohttp import web, WSMsgType
 import json
 from card import Word, TrainingCard, TrainingCardSet
-from lingo import web_app_after_tren_cb, web_app_before_tren_cb
 
 
 async def handle_options(request):
@@ -16,19 +14,21 @@ async def handle_options(request):
     })
 
 
+async def close_ws(ws):
+    if ws is None: #already closed
+        return
+    try:
+        await ws.close()
+    except Exception as e:
+        logger.warning(f"WA: ws.close: {e}")
 
 active_connections = {}
 async def websocket_handler(request):
+    global active_connections
     logger.warning("WA: ws: new incoming connection")
     ws = web.WebSocketResponse()
     await ws.prepare(request)
     user_id = None
-
-    async def close_ws(ws):
-        try:
-            await ws.close()
-        except Exception as e:
-            logger.warning(f"WA: ws.close: {e}")
 
     #ждем 10 секунд на получение сообщения - с user_id, если нет грохаем соединение
     async def close_if_no_user_id():
@@ -40,6 +40,7 @@ async def websocket_handler(request):
 
     tcs=None
     err_code="err"
+    from lingo import web_app_after_tren_cb, web_app_before_tren_cb
     async for msg in ws:
         try:
             if msg.type == WSMsgType.TEXT:
@@ -54,7 +55,8 @@ async def websocket_handler(request):
                         logger.warning("WA: user_id wasn't received, close ws connection.")
                         break
                     elif user_id in active_connections:
-                        await close_ws(active_connections[user_id]) #close previous connection
+                        old_ws = active_connections.get(user_id, None)
+                        await close_ws(old_ws) #close previous connection
                     active_connections[user_id] = ws
                     #check commands
                 req_type = parsed_data.get('type')
@@ -105,18 +107,31 @@ async def websocket_handler(request):
         logger.warning(f"ws connection closed. Close code: {ws.close_code}")
     return ws
 
+async def close_wa_by_user(user_id): #not thread safe?
+    global active_connections
+    logger.warning(f"{user_id}: close_wa_by_user")
+    ws = active_connections.get(user_id, None)
+    if ws is not None:
+        await close_ws(ws)
+        active_connections.pop(user_id, None)
+    else:
+        logger.warning(f"{user_id}: close_wa_by_user: ws=None")
 
+
+
+#request for creating audio for example that has cid defined as parameter
+#creates *.ogg  file in audio examples folder and returns it in the http connection
 async def generate_audio_ex(request):
     logger.warning("generate_audio_ex")
     uid = request.rel_url.query.get('uid')
     cid = request.rel_url.query.get('cid')
     logger.warning(f"{uid}: request au_ex cid={cid}")
-    if not uid  or not cid:
+    if uid is None or cid is None:
         logger.error(f"{uid}:cid={cid}: generate_audio_ex")
         return web.Response(status=400, text="UID or CID is missing")
     
     wd=await Word.ReadFromDb_by_cid(uid, cid)
-    if not wd:
+    if wd is None:
         logger.error(f"{uid}:cid={cid}: generate_audio_ex: can't get word")
         return web.Response(status=400, text="UID or CID is wrong")
 
