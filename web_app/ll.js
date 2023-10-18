@@ -117,8 +117,6 @@ function updateCardUI(fl, card) {
             frontForeign.querySelector(".foreign-text").textContent = card.foreignW;
             frontNative.style.display = "none";
             frontForeign.style.display = "flex";
-            if (isSoundEnabled)
-                playAudio("fw");
         } else {
             frontNative.querySelector(".native-text").textContent = card.nativeW;
             frontForeign.style.display = "none";
@@ -154,8 +152,9 @@ mc.on("tap", function (ev) {
             onComplete: function(v) {
                 if (isSoundEnabled) {
                     let card=cardSet.getCurrentCard();
-                    if (card && card.direction!=0) 
-                        playAudio("fw");    
+                    if (card && card.direction!=0){
+                        playAudio("fw");
+                        console.log("play1: d=" + card.direction+"  fw="+card.foreignW);}
                 }
             }
         });
@@ -186,6 +185,13 @@ function endPan(ev) {
         ws.send(r);
         console.log("sent:" + r);
         cardSet.setAnswer(ev.deltaX>0 ? 1 : 0 );
+        if (isSoundEnabled) {
+            let card=cardSet.getCurrentCard();
+            if (card && card.direction==0){
+                playAudio("fw");
+                console.log("play1: d=" + card.direction+"  fw="+card.foreignW);
+            }
+        }
 
         gsap.to(upFlash, 0.3, { 
             ease: Cubic.easeInOut, 
