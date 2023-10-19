@@ -274,6 +274,8 @@ ws.addEventListener('message', (event) => {
     console.log("Rx data:", receivedData);
 
     if (receivedData.type === "tren-data") {
+        if ('autoplay' in receivedData) 
+            setAutoPlay(receivedData.autoplay, by_ui=false);
         receivedData.card.forEach(cardData => {
             cardSet.addCard(new Card(cardData.cid, cardData.dir, cardData.fw, cardData.nw, cardData.ex));
         });
@@ -292,14 +294,36 @@ ws.addEventListener('message', (event) => {
 var speakerE = document.querySelector('.speaker-e');
 var speakerD = document.querySelector('.speaker-d');
 
-speakerE.addEventListener('click', function() {
-    isSoundEnabled=false
-    speakerE.style.display = 'none';
-    speakerD.style.display = 'inline-block';
-});
+function save_auto_play() {
+    const dataToSend = {
+        type:   "autoplay",
+        val:   isSoundEnabled?1:0
+    };
+    let r=JSON.stringify(dataToSend)
+    ws.send(r);
+}
 
-speakerD.addEventListener('click', function() {
-    isSoundEnabled=true
-    speakerD.style.display = 'none';
-    speakerE.style.display = 'inline-block';
-});
+function setAutoPlay(new_val, by_ui=true) {
+    if (new_val==false){
+        isSoundEnabled=false
+        speakerE.style.display = 'none';
+        speakerD.style.display = 'inline-block';    
+    }
+    else 
+    {
+        isSoundEnabled=true
+        speakerD.style.display = 'none';
+        speakerE.style.display = 'inline-block';    
+    }
+    if (by_ui)
+        save_auto_play()
+}
+
+function invertAutoPlay() {
+    console.log("invertAutoPlay1 -a");
+    setAutoPlay(!isSoundEnabled, by_ui=true);
+    console.log("invertAutoPlay1 -b");
+}
+
+speakerE.addEventListener('click', invertAutoPlay);
+speakerD.addEventListener('click', invertAutoPlay);

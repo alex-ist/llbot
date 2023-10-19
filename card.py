@@ -378,7 +378,7 @@ class TrainingCardSet(Singleton):
 
     #сколько карт готово прямо сейчас.
     def TCardsReadyNow(self):
-        cursor = open_db()
+        db, cursor = open_db()
         tn = datetime.now()     # tn = текущее время
         cursor.execute(f"SELECT COUNT(*) FROM training_cards WHERE user_id = {self.user_id} AND next_training_t <= ?", (t_to_DB(tn),))        
         n = cursor.fetchone()[0]
@@ -416,7 +416,7 @@ class TrainingCardSet(Singleton):
             #else:  #за доп период не появятся еще слова, показываем сколько ксть
             break
 
-        close_db()
+        close_db(db)
         return n  #N=колличество карт для обучения прямо сейчас
     
     #берет из базы тренировочные карты у которых next_training_t минимальное.

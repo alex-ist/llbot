@@ -2,42 +2,42 @@ from bot_db import *
 
 def fill_db(fw, nw, ex):
     topic="renovation"
-    c=open_db()
+    db, c=open_db()
     c.execute("INSERT OR IGNORE INTO word_set (f_word, f_lang, f_example, topic, tr1_lang, tr1) VALUES (?, 'en', ?, ?, 'ru', ?)", (fw, ex, topic, nw))
-    close_db(True)
+    close_db(db, True)
 
 def change_db(fw, new_nw):
-    c=open_db()
+    db, c=open_db()
     c.execute(f"UPDATE word_set SET tr1 = ? WHERE f_word = ?",  (new_nw, fw))
-    close_db(True)
+    close_db(db, True)
 
 def change_db2(fw, new_fw, new_nw):
-    c=open_db()
+    db, c=open_db()
     c.execute(f"UPDATE word_set SET f_word =?, tr1 = ? WHERE f_word = ?",  (new_fw, new_nw, fw))
-    close_db(True)
+    close_db(db, True)
 
 
 def db_upd_dict_link(fw, link, lang="en"):
-    c=open_db()
+    db, c=open_db()
     c.execute('INSERT OR REPLACE INTO dictionary_links (foreign_w, link, lang_code, date) VALUES (?, ?, ?, ?)',
             (fw, link, lang, t_to_DB(datetime.now()) ))
-    close_db(commit=True)
+    close_db(db, commit=True)
 
 def db_get_dict_link(fw, lang="en"):
-    c=open_db()
+    db, c=open_db()
     c.execute(f"SELECT link FROM dictionary_links WHERE foreign_w = ? and lang_code = ?", (fw, lang))
     r = c.fetchone()
-    close_db()
+    close_db(db)
     if r is None: #нет слова или ссылки
         return None
     else:
         return r[0]
 
 def words_all():
-    c=open_db()
+    db, c=open_db()
     c.execute("SELECT foreign_w FROM words")
     rows = c.fetchall()
-    close_db()
+    close_db(db)
     return rows
 
 def remove_en_article(fw: str):

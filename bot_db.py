@@ -5,19 +5,12 @@ from datetime import *
 from botlog import logger
 
 DB='data/ll.db'
-db_conn=None
-
 
 def open_db():
-    global db_conn
-    if db_conn is not None:
-        logger.error("!!!!!DB already oppened!!!!!!!!!!!!!")
-
     db_conn = sqlite3.connect(DB) 
-    return db_conn.cursor()
+    return db_conn, db_conn.cursor()
 
-def close_db(commit=False):
-    global db_conn
+def close_db(db_conn, commit=False):
     if commit:
         db_conn.commit()
     db_conn.close()
@@ -38,90 +31,90 @@ def t_to_DB(time:datetime) ->int:
         return int(time.timestamp())
 
 def save_maintenance_data(user_id:int, chat_id:int, msg_id1:int, msg_id2:int, state:str, sub_state:str, reminder, reminder_count):
-    c=open_db()
+    db, c=open_db()
     c.execute("INSERT INTO maintenance_data (user_id, chat_id, msg_id1, msg_id2, state, sub_state, reminder, reminder_count) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
              (user_id, chat_id, msg_id1, msg_id2, state, sub_state, t_to_DB(reminder), reminder_count))
-    close_db(commit=True)
+    close_db(db, commit=True)
 
 def load_maintenance_data():
-    c=open_db()
+    db, c=open_db()
     c.execute("SELECT user_id, chat_id, msg_id1, msg_id2, state, sub_state, reminder, reminder_count FROM maintenance_data")
     rows=c.fetchall()
     c.execute("DELETE FROM maintenance_data")
-    close_db(commit=True)
+    close_db(db, commit=True)
     return rows
 
 
 def words_read(user_id:int):
-    c=open_db()
+    db, c=open_db()
     c.execute("SELECT word_id, foreign_w, native_w FROM words WHERE user_id = ? ORDER BY foreign_w ASC", (user_id,))
     rows = c.fetchall()
-    close_db()
+    close_db(db)
     return rows
 
 def word_read(user_id:int, word_id:int):
-    c=open_db()
+    db, c=open_db()
     c.execute("SELECT foreign_w, native_w, foreign_lang, native_lang, example FROM words WHERE user_id = ? AND word_id = ?",
                     (user_id, word_id))
     row = c.fetchone()
-    close_db()
+    close_db(db)
     if row:
         return row[0],row[1],row[2],row[3],row[4]
     else:
         return None, None, None, None, None
 
 def word_read_by_cid(uid:int, cid:int):
-    c=open_db()
+    db, c=open_db()
     c.execute("""
 SELECT w.word_id, w.foreign_w, w.native_w, w.foreign_lang, w.native_lang, w.example FROM words AS w
 JOIN training_cards AS tc ON w.word_id = tc.word_id
 WHERE w.user_id = ? AND tc.training_card_id = ?;              
               """,(uid, cid))
     row = c.fetchone()
-    close_db()
+    close_db(db)
     if row:
         return row[0],row[1],row[2],row[3], row[4], row[5]
     else:
         return None, None, None, None, None, None
 
 def word_read_by_fw(user_id:int, fw:str):
-    c=open_db()
+    db, c=open_db()
     c.execute("SELECT word_id FROM words WHERE user_id = ? AND foreign_w = ?", (user_id, fw))
     row = c.fetchone()
-    close_db()
+    close_db(db)
     if row is not None:
         return row[0]
     else:
         return None
 
 def word_delete(user_id:int, word_id:int):
-    c=open_db()
+    db, c=open_db()
     c.execute(f"DELETE FROM words WHERE word_id = {word_id} and user_id = {user_id}")
-    close_db(commit=True)
+    close_db(db, commit=True)
 
 def words_delete(user_id:int):
-    c=open_db()
+    db, c=open_db()
     c.execute("DELETE FROM words WHERE user_id = ?", (user_id,))
-    close_db(True)
+    close_db(db, True)
 
 def word_update(user_id:int, word_id:int, foreign_w, native_w, example):
-    c=open_db()
+    db, c=open_db()
     c.execute("UPDATE words SET foreign_w = ?, native_w = ?, example = ? WHERE word_id = ? AND user_id = ?", 
              (foreign_w, native_w, example, word_id, user_id))
-    close_db(commit=True)
+    close_db(db, commit=True)
 
 def word_add(user_id:int, foreign_w, native_w, foreign_lang, native_lang, example=None):
-    c=open_db()
+    db, c=open_db()
     #fixme: должно ли быть foreign_w уникальным для каждого юзера? если да:
     #if not cursor.execute("SELECT * FROM words WHERE user_id = ? AND foreign_w = ?", (user_id, foreign_w,)).fetchone():
     c.execute("INSERT INTO words (user_id, foreign_w, native_w, foreign_lang, native_lang, example) VALUES (?, ?, ?, ?, ?, ?)",
              (user_id, foreign_w, native_w, foreign_lang, native_lang, example))
     word_id=c.lastrowid
-    close_db(commit=True)
+    close_db(db, commit=True)
     return word_id
 
 def add_words_by_topic(user_id:int, topic:str, flang= "en", nlang="ru"):
-    c=open_db()
+    db, c=open_db()
     #fixme подумать с переводом на другие языки
     sql = f"""
 INSERT INTO words (user_id, foreign_w, native_w, foreign_lang, native_lang, example)
@@ -132,21 +125,21 @@ WHERE topic = ? and f_lang= '{flang}' AND NOT EXISTS
 """
     c.execute(sql, (user_id, topic, user_id))
     n=c.rowcount
-    close_db(commit=True)
+    close_db(db, commit=True)
     return n
 
 def tcards_count(user_id:int):
-    c = open_db()
+    db, c = open_db()
     c.execute("SELECT COUNT(*) FROM training_cards WHERE user_id = ?", (user_id,))
     n = c.fetchone()[0]
-    close_db()
+    close_db(db)
     return n
 
 def words_count(user_id:int):
-    c = open_db()
+    db, c = open_db()
     c.execute("SELECT COUNT(*) FROM words WHERE user_id = ?", (user_id,))
     n = c.fetchone()[0]
-    close_db()
+    close_db(db)
     return n
 
 
@@ -165,19 +158,19 @@ def get_progr (t:int ):
 
 
 def card_reset_progress(user_id:int, cid:int):
-    c=open_db()
+    db, c=open_db()
     c.execute(f"UPDATE training_cards SET next_training_t=-1, last_training_t=-1 WHERE word_id = {cid} and user_id = {user_id}")
-    close_db(commit=True)
+    close_db(db, commit=True)
 
 
 def word_get_progress(user_id:int, word_id:int):
     if word_id<0:
         return get_progr(0)
 
-    c=open_db()
+    db, c=open_db()
     c.execute(f"SELECT next_training_t, last_training_t FROM training_cards WHERE user_id = {user_id} AND word_id = {word_id}")
     r = c.fetchall()
-    close_db()
+    close_db(db)
     total=0
     for v in r:
         if v[0]==-1 or v[1]==-1:
@@ -187,10 +180,10 @@ def word_get_progress(user_id:int, word_id:int):
     return get_progr(total)
 
 def cards_stat(user_id:int, len, offset=0):
-    c=open_db()
+    db, c=open_db()
     c.execute(f"SELECT words.foreign_w, words.native_w, training_cards.next_training_t, training_cards.last_training_t, training_cards.direction FROM training_cards INNER JOIN words ON training_cards.word_id = words.word_id WHERE training_cards.user_id = {user_id} ORDER BY training_cards.next_training_t ASC LIMIT {len} OFFSET {offset}")
     rows = c.fetchall()
-    close_db()
+    close_db(db)
     r=""
     for v in rows:
         nt=v[2]
@@ -222,101 +215,107 @@ def cards_stat(user_id:int, len, offset=0):
     return r
 
 def user_exist(user_id:int):
-    c=open_db()
+    db, c=open_db()
     c.execute(f"SELECT user_id FROM users WHERE user_id = {user_id}")
     r = c.fetchone()
-    close_db()
+    close_db(db)
     if r is None: #нет конфига
         return False
     else:
         return True
 
 def user_update(user_id:int, chat_id, username, first_name, lang_code, is_premium, name):
-    c=open_db()
+    db, c=open_db()
     t=t_to_DB(datetime.now())
     c.execute(f"UPDATE users SET chat_id = ?, username = ?, first_name = ?, lang_code = ?, is_premium = ?, name = ?, last_access = ? WHERE user_id = {user_id}",
              (chat_id, username, first_name, lang_code, is_premium, name, t))
-    close_db(commit=True)
+    close_db(db, commit=True)
 
 #1)нет слова в таблице ->None
 #2)нет ссылки со словом (например fw=абракадабра) ->fw
 #3)есть норм ссылка ->str
 def db_get_dict_link(fw, lang="en"):
-    c=open_db()
+    db, c=open_db()
     c.execute(f"SELECT link FROM dictionary_links WHERE foreign_w = ? and lang_code = ?", (fw, lang))
     r = c.fetchone()
-    close_db()
+    close_db(db)
     if r is None: #нет слова или ссылки
         return None
     else:
         return r[0]
 
 def db_upd_dict_link(fw, link, lang="en"):
-    c=open_db()
+    db, c=open_db()
     c.execute('INSERT OR REPLACE INTO dictionary_links (foreign_w, link, lang_code, date) VALUES (?, ?, ?, ?)',
             (fw, link, lang, t_to_DB(datetime.now()) ))
-    close_db(commit=True)
+    close_db(db, commit=True)
 
 #block_status='B' - bot blocked by user
 #block_status='I' - instance stopped by inactivity
 #block_status='A' - active
 def user_set_status(user_id:int, block_status:str):
-    c=open_db()
+    db, c=open_db()
     c.execute("UPDATE users SET status = ? WHERE user_id = ?", (block_status, user_id))
-    close_db(commit=True)
+    close_db(db, commit=True)
 
 
 def user_registration(user_id:int, chat_id, username, first_name, lang_code, is_premium, name,
                       foreign_lang, min_t_interval, min_cards_for_t, max_cards_for_t, cur_cards_for_t, o_param):
-    c=open_db()
+    db, c=open_db()
     t=t_to_DB(datetime.now())
     c.execute(f"""INSERT INTO users (user_id, chat_id, username, first_name, lang_code, is_premium, name, 
               foreign_lang, min_trening_interval, min_cards_for_trening, max_cards_for_trening, cur_cards_for_trening, o_param, first_access, last_access)
                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
              (user_id, chat_id, username, first_name, lang_code, is_premium, name, 
               foreign_lang, min_t_interval, min_cards_for_t, max_cards_for_t, cur_cards_for_t, o_param, t, t ))
-    close_db(commit=True)
+    close_db(db, commit=True)
 
 def user_update_last_access(user_id:int, time:datetime=None):
-    c=open_db()
+    db, c=open_db()
     if time is None:
         time=datetime.now()
     c.execute("UPDATE users SET last_access = ?  WHERE  user_id = ?",
             (t_to_DB(time), user_id))
-    close_db(commit=True)
+    close_db(db, commit=True)
+
+def user_update_auto_play(user_id:int, auto_play):
+    db, c=open_db()
+    if auto_play==0 or auto_play==1:
+        c.execute("UPDATE users SET auto_play_audio = ?  WHERE  user_id = ?", (auto_play, user_id))
+    close_db(db, commit=True)
 
 def user_update_cur_cards_for_t(user_id:int, cur_val):
-    c=open_db()
+    db, c=open_db()
     c.execute("UPDATE users SET cur_cards_for_trening = ?  WHERE  user_id = ?",
             (cur_val, user_id))
-    close_db(commit=True)
+    close_db(db, commit=True)
 
 
 def user_get_last_tren(user_id:int):
-    c=open_db()
+    db, c=open_db()
     c.execute(f"SELECT last_access FROM users WHERE user_id = {user_id}")
     row = c.fetchone()
-    close_db()
+    close_db(db)
     if row is not None:
         return t_from_DB(row[0])
     else:
         return None
 
 def user_update_stat(user_id:int, shown_words_count, forget_rate):
-    cursor=open_db()
+    db, cursor=open_db()
     cursor.execute("UPDATE users SET shown_words_count = ?, current_forget_rate = ?  WHERE  user_id = ?",
             (shown_words_count, forget_rate, user_id))
-    close_db(commit=True)
+    close_db(db, commit=True)
 
 def training_card_update_by_id(training_card_id, user_id, next_training_t, last_training_t):
-    cursor=open_db()
+    db, cursor=open_db()
     cursor.execute("UPDATE training_cards SET next_training_t = ?, last_training_t = ? WHERE training_card_id = ? AND user_id = ?",
              (t_to_DB(next_training_t), t_to_DB(last_training_t), training_card_id, user_id))
-    close_db(commit=True)
+    close_db(db, commit=True)
 
 
 def get_tcards(user_id, n):
-        cursor=open_db()
+        db, cursor=open_db()
         #выбирает сначала старые карты для поаторения, если их нехватает то дополняет новыми
         #новые карты у которых next_training_t = -1 выбирает в случайном порядке.
         #сразу отсортирует по направлению
@@ -341,26 +340,26 @@ def get_tcards(user_id, n):
         
         result1 = sorted(result1, key=lambda x: x[2])
 
-        close_db()
+        close_db(db)
         return result1
 
 def get_sent_nid(user_id:int):
-    c=open_db()
+    db, c=open_db()
     c.execute(f"SELECT sent_nid FROM users WHERE user_id = {user_id}")
     r = c.fetchone()
-    close_db()
+    close_db(db)
     return r[0]
 
 def update_sent_nid(user_id, last_sent_nid):
-    c=open_db()
+    db, c=open_db()
     c.execute(f"UPDATE users SET sent_nid = {last_sent_nid}  WHERE user_id = {user_id}")
-    close_db(commit=True)
+    close_db(db, commit=True)
 
 def get_last_notification():
-    c=open_db()
+    db, c=open_db()
     c.execute(f"SELECT id, ch_msg_id FROM user_notifications WHERE id = (SELECT MAX(id) FROM user_notifications)")
     r = c.fetchone()
-    close_db()
+    close_db(db)
     if r:
         return r[0], r[1]
     else:

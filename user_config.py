@@ -8,12 +8,13 @@ class User(Singleton):
     def __init__(self, user_id):
         
         self.user_id=user_id
-        cursor=open_db()
-        cursor.execute("""SELECT foreign_lang, min_trening_interval, min_cards_for_trening, max_cards_for_trening, cur_cards_for_trening, o_param, shown_words_count, current_forget_rate, username
+        db, cursor=open_db()
+        cursor.execute("""SELECT foreign_lang, min_trening_interval, min_cards_for_trening, max_cards_for_trening, cur_cards_for_trening, o_param, shown_words_count, current_forget_rate, username, auto_play_audio
                           FROM users 
                           WHERE user_id = ?""",
                     (self.user_id,))
         r = cursor.fetchone()
+        close_db(db)
 
         self.foreign_lang=r[0]
         self.min_training_interval=timedelta(seconds=r[1])
@@ -31,7 +32,7 @@ class User(Singleton):
             self.current_forget_rate=User.OPTIMAL_FORGET_RATE
 
         self.username = r[8]
-        close_db()
+        self.auto_play_audio = r[9]
         self.first_interval=timedelta(minutes=60) #черз сколько повторять первое слов
         self.native_lang="ru"
 
@@ -43,6 +44,9 @@ class User(Singleton):
 
     def GetLastTren(self):
         return user_get_last_tren(self.user_id)
+
+    def UpdateAutoPlayAudio(self, auto_play):
+        user_update_auto_play(self.user_id, auto_play)
 
     @staticmethod
     def Update(user_id, chat_id, username, first_name, lang_code, is_premium, name):

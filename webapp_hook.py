@@ -4,7 +4,7 @@ from botlog import logger
 from aiohttp import web, WSMsgType
 import json
 from card import Word, TrainingCard, TrainingCardSet
-
+from user_config import User
 
 async def handle_options(request):
     return web.Response(headers={
@@ -49,7 +49,7 @@ async def websocket_handler(request):
                     logger.warning(f"{user_id}: WA: parsed_data: {parsed_data}")
                 if user_id is None:             #means this is first msg from web_app
                     user_id = parsed_data.get('user_id')
-                    logger.warning(f"{user_id}: WA: parsed_data: {parsed_data}")
+                    #logger.warning(f"{user_id}: WA: parsed_data: {parsed_data}")
                     if user_id is None:         #first msg dosn't contain user_id - this is error
                         await close_ws(ws)      #close current connection
                         logger.warning("WA: user_id wasn't received, close ws connection.")
@@ -62,11 +62,13 @@ async def websocket_handler(request):
                 req_type = parsed_data.get('type')
                 if req_type=="start-tren":
                     await web_app_before_tren_cb(user_id)
+                    
                     tcs=TrainingCardSet(user_id)
                     await tcs.Create(create_au=True)
                     l=tcs.Len()
                     logger.warning(f"{user_id}: WA: start-tren, sent len={l}")
-                    data_obj = { 'type': "tren-data", 'len' : l, 'card' : []}
+                    u=User(user_id)
+                    data_obj = { 'type': "tren-data", 'autoplay': u.auto_play_audio, 'len' : l, 'card' : []}
                     for card in tcs:
                         data_obj['card'].append({'cid': card.training_card_id, 'dir': card.direction, 'fw': card.GetForeign(), 'nw':card.GetNative(), 'ex':card.GetExample()})
                     json_str = json.dumps(data_obj)
@@ -80,10 +82,14 @@ async def websocket_handler(request):
                     cid = parsed_data.get('cid')
                     a = parsed_data.get('a')
                     c=tcs.GetCard(cid)
-                    logger.warning(f"{user_id}: WA: answer={a} cid={cid} fw={c.GetForeign()}")
+                    logger.info(f"{user_id}: WA: answer={a} cid={cid} fw={c.GetForeign()}")
                     c.SetCorrect(a) #todo - remove from tcs? #защитить tcs от работы из обычного приложения?
+                elif req_type=="autoplay":
+                    val = parsed_data.get('val')
+                    logger.info(f"{user_id}: WA: autoplay={val}")
+                    u.UpdateAutoPlayAudio(val)
                 elif req_type=="stop-tren":
-                    logger.warning(f"{user_id}: WA: stop-tren")
+                    logger.info(f"{user_id}: WA: stop-tren")
                     await close_ws(ws)
                     tcs.UpdateStat() #обновить пользовательскую статистику
                     err_code="ok"
