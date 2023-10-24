@@ -178,8 +178,8 @@ class UI:
                 wa=telegram.WebAppInfo("https://192.168.0.16:5500/ll.html")
                 logger.info("WAPP="+"https://192.168.0.16:5500/ll.html")
             else:
-                wa=telegram.WebAppInfo("https://lingolink.bot.nu/ll.html")
-                logger.info("WAPP="+"https://lingolink.bot.nu/ll.html")
+                wa=telegram.WebAppInfo("https://lingolink.soon.it/ll.html")
+                logger.info("WAPP="+"https://lingolink.soon.it/ll.html")
         return wa
         
 
@@ -1345,7 +1345,7 @@ async def web_test(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if update.effective_user.id == 484679683:
         logger.info(f"{update.effective_user.id}: web_test")
         #b=InlineKeyboardButton("test", web_app=telegram.WebAppInfo("https://ll.du:5500/web_app/ll.html"))
-        b=InlineKeyboardButton("test", web_app=telegram.WebAppInfo("https://lingolink.bot.nu/ll.html"))
+        b=InlineKeyboardButton("test", web_app=telegram.WebAppInfo("https://lingolink.soon.it/ll.html"))
         kbd = InlineKeyboardMarkup([[b]])
         await context.bot.send_message(chat_id=update.effective_chat.id, text="run web test", reply_markup=kbd)
 
@@ -1411,7 +1411,7 @@ async def bot_run(use_web_hook) -> None:
             secret_token=secrets.token_urlsafe(16),
             key='keys/private.key',
             cert='keys/cert.pem',
-            webhook_url='https://lingolink.bot.nu:8443'
+            webhook_url='https://lingolink.soon.it:8443'
         )
     else:
         debug_bot=1
