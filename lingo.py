@@ -1406,11 +1406,9 @@ async def bot_run(use_web_hook) -> None:
     if use_web_hook:
         debug_bot=0
         await application.updater.start_webhook(
-            listen='0.0.0.0',
-            port=8443,
+            listen='127.0.0.1',
+            port=8444, # специально не 8443
             secret_token=secrets.token_urlsafe(16),
-            key='keys/private.key',
-            cert='keys/cert.pem',
             webhook_url='https://lingolink.soon.it:8443'
         )
     else:
