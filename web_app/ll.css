@@ -8,6 +8,7 @@
 html {
     -webkit-text-size-adjust: 100%;
     font-family: sans-serif;
+    height: 100vh;
 }
 
 * {
@@ -16,9 +17,28 @@ html {
 
 body {
     margin: 0;
-    min-height: 100%;
-    background-color: #fbdc9d;
+    min-height: 100vh;
+    /*background-color: #fbdc9d;*/
+    background: linear-gradient(180deg, #E8813E, #FBDC9D);
+    background-image: url('img/l1.png'), url('img/l2.png'), url('img/l3.png'), linear-gradient(180deg, #E8813E, #FBDC9D);
+    background-position: 8% 10%, 40% 29%, 95% 15%, center;
+    background-repeat: no-repeat, no-repeat, no-repeat, no-repeat; 
+    background-size:  30%, 30%, 33%,  cover; 
+    background-attachment: fixed, fixed, fixed, fixed; 
 }
+
+.container {
+    /*background-color: #fbdc9d;*/
+    background-color: rgba(0, 0, 0, 0);
+    font-family: Open Sans, sans-serif;
+    font-size: 20px;
+    line-height: 24px;
+    color: #fff;
+    padding-top: 15px;
+    opacity: 1;
+
+}
+
 
 img {
     border: 0;
@@ -40,7 +60,6 @@ img {
 .hdr {
     justify-content: space-between;
     align-items: center;
-    margin-top: 15px;
     display: flex;
 }
 
@@ -54,14 +73,6 @@ img {
 
 .speaker-d {
     display: None;
-}
-
-.container {
-    background-color: #fbdc9d;
-    font-family: Open Sans, sans-serif;
-    font-size: 20px;
-    line-height: 24px;
-    color: #fff;
 }
 
 .perspective-container {

@@ -239,7 +239,9 @@ mc.on("panend pancancel", endPan);
 let tg=window.Telegram.WebApp;
 tg.expand()
 
-let user_id = tg.initDataUnsafe.user ? tg.initDataUnsafe.user.id : 484679683; //fixme - if no tg, close app
+let user_id   = tg.initDataUnsafe.user ? tg.initDataUnsafe.user.id : 484679683; //fixme - if no tg, close app
+let init_data = tg.initData ? tg.initData: "NoInitData"
+
 console.log("user_id:" + user_id);
 let protocol = window.location.protocol == 'https:' ? 'wss:' : 'ws:';
 let addr=protocol + '//' + window.location.host + '/tren-wh/';
@@ -251,7 +253,7 @@ tg.ready()
 function startConn() {
     console.log("connected");
     const dataToSend = {
-         user_id: user_id,
+         init_data: tg.initData,
          type: "start-tren" 
         };
     
