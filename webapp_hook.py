@@ -205,7 +205,6 @@ async def generate_audio_ex(request):
 async def webapp_hook_run(production_bot, bot_token):
     global webapp_skey
     webapp_skey=hmac.new("WebAppData".encode(), bot_token.encode(), hashlib.sha256).digest()
-
     logger.warning(f"webapp_hook run")
 
     app1 = web.Application()
