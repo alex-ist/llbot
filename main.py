@@ -22,9 +22,22 @@ async def main_async():
     for sig in stop_signals:
         loop.add_signal_handler(sig, _raise_system_exit)
 
+
     try:
-        await bot_run(production_bot)
-        await webapp_hook_run(production_bot)
+        with open("keys/tg-token.txt", 'r') as f:
+            token = f.readline().strip()
+            logger.info("Running LL test bot")
+    except FileNotFoundError:
+        try:
+            with open("keys/lingolink.txt", 'r') as f:
+                token = f.readline().strip()
+                logger.info("Running LL production bot")
+        except FileNotFoundError:
+            logger.error("No telegram token found")
+  
+    try:
+        await bot_run(production_bot, token)
+        await webapp_hook_run(production_bot, token)
         while True:
             await asyncio.sleep(1)
 

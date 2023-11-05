@@ -6,6 +6,58 @@ import json
 from card import Word, TrainingCard, TrainingCardSet
 from user_config import User
 
+import hmac
+import hashlib
+from urllib.parse import parse_qs
+
+
+webapp_skey=None
+def verify_telegram_data(init_data):
+    data_dict = parse_qs(init_data)
+    received_hash = data_dict.pop('hash', [None])[0]
+    if received_hash is None:
+        return False, None, None
+    query_id = data_dict.get('query_id', [None])[0]
+
+    # Extract and parse user information
+    user_json = data_dict.get('user', [None])[0]
+    try:
+        user_info = json.loads(user_json or '{}')
+        user_id = user_info.get('id')
+    except json.JSONDecodeError as e:
+        logger.error(f"Error decoding user JSON: {e}")
+        return False, None, None
+
+    if user_id is None or query_id is None:
+        return False, None, None
+
+    data_check_string = '\n'.join(
+        f"{key}={data_dict[key][0]}" for key in sorted(data_dict)
+    )
+
+    hmac_signature = hmac.new(
+        webapp_skey,
+        data_check_string.encode(),
+        hashlib.sha256
+    ).hexdigest()
+
+    is_valid = hmac_signature == received_hash
+    return is_valid, user_id, query_id    
+
+
+    # Сортировка ключей и создание строки для проверки
+    data_check_string = '\n'.join(f'{key}={value[0]}' for key, value in sorted(data_dict.items()))
+    # Подсчет HMAC для проверки строки
+    calculated_hash = hmac.new(secret_key, data_check_string.encode('utf-8'), hashlib.sha256).hexdigest()
+
+    # Сравнение рассчитанного и полученного хеша
+    if calculated_hash == received_hash:
+        return True
+    else:
+        return False
+
+
+
 async def handle_options(request):
     return web.Response(headers={
         'Access-Control-Allow-Origin': '*',
@@ -25,18 +77,21 @@ async def close_ws(ws):
 active_connections = {}
 async def websocket_handler(request):
     global active_connections
-    logger.warning("WA: ws: new incoming connection")
+    logger.warning("WA: new incoming ws connection")
     ws = web.WebSocketResponse()
     await ws.prepare(request)
+    init_data= None
+    is_valid=False
     user_id = None
 
-    #ждем 10 секунд на получение сообщения - с user_id, если нет грохаем соединение
-    async def close_if_no_user_id():
+    #ждем 10 секунд на получение сообщения - с init_data, и аутенфикацией, если нет грохаем соединение.
+    async def close_if_no_valid():
         await asyncio.sleep(10)
-        if user_id is None:
+        if not is_valid:
             await close_ws(ws)
+            logger.error(f"WA: ws connection setup timeout")
 
-    timer_task = asyncio.create_task(close_if_no_user_id())
+    timer_task = asyncio.create_task(close_if_no_valid())
 
     tcs=None
     err_code="err"
@@ -45,22 +100,24 @@ async def websocket_handler(request):
         try:
             if msg.type == WSMsgType.TEXT:
                 parsed_data = json.loads(msg.data)
-                if user_id is not None:
+                if is_valid:
                     logger.warning(f"{user_id}: WA: parsed_data: {parsed_data}")
-                if user_id is None:             #means this is first msg from web_app
-                    user_id = parsed_data.get('user_id')
-                    #logger.warning(f"{user_id}: WA: parsed_data: {parsed_data}")
-                    if user_id is None:         #first msg dosn't contain user_id - this is error
+                if not is_valid:             #means this is first msg from web_app
+                    init_data = parsed_data.get('init_data')
+                    is_valid, user_id, query_id = verify_telegram_data(init_data)
+                    if not is_valid or not user_id:
                         await close_ws(ws)      #close current connection
-                        logger.warning("WA: user_id wasn't received, close ws connection.")
+                        logger.error(f"WA: verify_telegram_data={is_valid}, user_id={user_id}. close ws connection.")
                         break
-                    elif user_id in active_connections:
+                    elif is_valid and user_id in active_connections:
                         old_ws = active_connections.get(user_id, None)
+                        logger.warning(f"WA: second connections. close previous ws connection.")
                         await close_ws(old_ws) #close previous connection
                     active_connections[user_id] = ws
                     #check commands
                 req_type = parsed_data.get('type')
                 if req_type=="start-tren":
+                    # logger.warning (parsed_data)
                     await web_app_before_tren_cb(user_id)
                     
                     tcs=TrainingCardSet(user_id)
@@ -145,8 +202,10 @@ async def generate_audio_ex(request):
     audio_path=wd.audio_example
     return web.FileResponse(audio_path)
 
+async def webapp_hook_run(production_bot, bot_token):
+    global webapp_skey
+    webapp_skey=hmac.new("WebAppData".encode(), bot_token.encode(), hashlib.sha256).digest()
 
-async def webapp_hook_run(production_bot):
     logger.warning(f"webapp_hook run")
 
     app1 = web.Application()

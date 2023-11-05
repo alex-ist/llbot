@@ -1364,20 +1364,7 @@ async def bot_stop() -> None:
         await post_stop(application)
         await application.shutdown()
 
-
-async def bot_run(use_web_hook) -> None:
-    try:
-        with open("keys/tg-token.txt", 'r') as f:
-            token = f.readline().strip()
-            logger.info("Running LL test bot")
-    except FileNotFoundError:
-        try:
-            with open("keys/lingolink.txt", 'r') as f:
-                token = f.readline().strip()
-                logger.info("Running LL production bot")
-        except FileNotFoundError:
-            logger.error("No telegram token found")
-            
+async def bot_run(use_web_hook, token) -> None:
     init_oai()
 
     global application
