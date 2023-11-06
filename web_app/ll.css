@@ -52,7 +52,7 @@ img {
 }
 
 .txt-counter {
-    color: #94825d;
+    color: #8E4F2D;
     font-size: 28px;
     line-height: 28px;
 }
@@ -92,6 +92,7 @@ img {
     border: 2px solid #ab794d;
     position: absolute;
     transform-style: preserve-3d;
+    box-shadow: 0px 4px 4px 0px rgba(0, 0, 0, 0.25);
 }
 
 .corner-box {

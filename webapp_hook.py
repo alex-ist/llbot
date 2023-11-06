@@ -3,12 +3,14 @@ import asyncio
 from botlog import logger
 from aiohttp import web, WSMsgType
 import json
-from card import Word, TrainingCard, TrainingCardSet
-from user_config import User
-
 import hmac
 import hashlib
 from urllib.parse import parse_qs
+
+from card import Word, TrainingCard, TrainingCardSet
+from user_config import User
+
+WA_VER=10
 
 
 webapp_skey=None
@@ -113,6 +115,14 @@ async def websocket_handler(request):
                         old_ws = active_connections.get(user_id, None)
                         logger.warning(f"WA: second connections. close previous ws connection.")
                         await close_ws(old_ws) #close previous connection
+                    wa_ver=parsed_data.get('ver')
+                    if wa_ver<WA_VER:
+                        logger.error(f"WA: version from client={wa_ver} is less the actual={WA_VER}. Try to reload")
+                        try:
+                            await ws.send_str(json.dumps({ 'type': 'reload'}))
+                        except Exception as e:
+                            logger.warning(f"{user_id}: WA: Error sending reload cmd via ws: {e}")
+                        break
                     active_connections[user_id] = ws
                     #check commands
                 req_type = parsed_data.get('type')

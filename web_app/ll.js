@@ -1,3 +1,5 @@
+const VER = 10
+
 class Card {
     constructor(cid, direction, foreignW, nativeW, example) {
         this.cid = cid;
@@ -254,7 +256,8 @@ function startConn() {
     console.log("connected");
     const dataToSend = {
          init_data: tg.initData,
-         type: "start-tren" 
+         type: "start-tren",
+         ver: VER
         };
     
     let r=JSON.stringify(dataToSend)
@@ -274,8 +277,10 @@ ws.addEventListener('close', () => {
 ws.addEventListener('message', (event) => {
     const receivedData = JSON.parse(event.data);
     console.log("Rx data:", receivedData);
-
-    if (receivedData.type === "tren-data") {
+    if (receivedData.type === "cmd-reload") {
+        window.location.reload(true);
+    }
+    else if (receivedData.type === "tren-data") {
         if ('autoplay' in receivedData) 
             setAutoPlay(receivedData.autoplay, by_ui=false);
         receivedData.card.forEach(cardData => {

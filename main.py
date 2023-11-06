@@ -22,7 +22,6 @@ async def main_async():
     for sig in stop_signals:
         loop.add_signal_handler(sig, _raise_system_exit)
 
-
     try:
         with open("keys/tg-token.txt", 'r') as f:
             token = f.readline().strip()
