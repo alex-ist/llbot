@@ -13,18 +13,71 @@ html {
 
 * {
     box-sizing: border-box;
+}a {
+    color: inherit; /* Наследует цвет текста от родителя */
 }
+
+
 
 body {
     margin: 0;
     min-height: 100vh;
-    /*background-color: #fbdc9d;*/
-    background: linear-gradient(180deg, #E8813E, #FBDC9D);
-    background-image: url('img/l1.png'), url('img/l2.png'), url('img/l3.png'), linear-gradient(180deg, #E8813E, #FBDC9D);
-    background-position: 8% 10%, 40% 29%, 95% 15%, center;
-    background-repeat: no-repeat, no-repeat, no-repeat, no-repeat; 
-    background-size:  30%, 30%, 33%,  cover; 
-    background-attachment: fixed, fixed, fixed, fixed; 
+    background-image: linear-gradient(0deg, #7E69B0 0%, #A27189 28.87%, #E8813E 100%);
+    background-position: center;
+    background-size:  cover; 
+    background-attachment: fixed; 
+    background-repeat: no-repeat; 
+}
+.bg-image1 {
+    position: absolute;
+    top: 7%;
+    left: 5%;
+    width: auto;
+    height: auto;
+    z-index: 0;
+}
+.bg-image2 {
+    position: absolute;
+    top: 14%;
+    right: 40%;
+    width: auto;
+    height: auto;
+    z-index: 0;
+}
+.bg-image3 {
+    position: absolute;
+    top: 10%;
+    right: 16px;
+    width: auto;
+    height: auto;
+    z-index: 0;
+}
+.bg-image4 {
+    position: absolute;
+    top: 28%;
+    right: 11%;
+    width: auto;
+    height: auto;
+    z-index: 0;
+}
+.bg-image5 {
+    position: absolute;
+    top: 30%;
+    left: 7%;
+    transform: rotate(145deg);
+    width: auto;
+    height: auto;
+    z-index: 0;
+}
+
+.bg-image6 {
+    position: absolute;
+    top: 40%;
+    left: 25%;
+    transform: rotate(145deg);
+    width: auto;
+    height: auto;
+    z-index: 0;
 }
 
 .container {
@@ -88,8 +141,9 @@ img {
     height: 100%;
     width: 100%;
     border-radius: 18px;
-    background-color: #ce925b;
-    border: 2px solid #ab794d;
+    border-radius: 18px;
+    border: 2px solid #834B2B;    
+    background: linear-gradient(0deg, #CE5A3C 0%, #FFBF60 100%);
     position: absolute;
     transform-style: preserve-3d;
     box-shadow: 0px 4px 4px 0px rgba(0, 0, 0, 0.25);

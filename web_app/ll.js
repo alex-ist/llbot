@@ -1,4 +1,4 @@
-const VER = 10
+const VER = 14
 
 class Card {
     constructor(cid, direction, foreignW, nativeW, example) {
@@ -269,15 +269,12 @@ ws.addEventListener('open', () => {
   startConn()
 });
 
-ws.addEventListener('close', () => {
-    console.log("close ws");
-    tg.close()
-});
-
+cmd_reload=0;
 ws.addEventListener('message', (event) => {
     const receivedData = JSON.parse(event.data);
     console.log("Rx data:", receivedData);
     if (receivedData.type === "cmd-reload") {
+        cmd_reload=1;
         window.location.reload(true);
     }
     else if (receivedData.type === "tren-data") {
@@ -295,6 +292,12 @@ ws.addEventListener('message', (event) => {
     
     updateCardUI(downFlash, cardSet.getNextCard())
     downFlash.style.zIndex = -2;
+});
+
+ws.addEventListener('close', () => {
+    console.log("close ws");
+    if (!cmd_reload)
+        tg.close()
 });
 
 
