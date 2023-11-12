@@ -1,13 +1,16 @@
 const VER = 14
 
 class Card {
-    constructor(cid, direction, foreignW, nativeW, example) {
+    constructor(cid, direction, foreignW, nativeW, example, link) {
         this.cid = cid;
         this.direction = direction;
         this.foreignW = foreignW;
         this.nativeW = nativeW;
         this.example = example;
         this.answer = -1;  // not showed card
+        this.lnk = link;
+		this.a_lnk=`/au/en/w/${foreignW}.ogg`
+        this.audio = null; 
     }
     //вернет слово для изучения
     getA(){
@@ -16,6 +19,13 @@ class Card {
         else
             return this.nativeW;
     }
+    loadAudio() {
+        return new Promise((resolve, reject) => {
+            this.audio = new Audio(this.a_lnk);
+            this.audio.addEventListener('canplaythrough', resolve);
+            this.audio.addEventListener('error', reject);
+        });
+    }    
 }
 
 class CardSet {
@@ -86,20 +96,21 @@ upFlash=flash0;
 downFlash=flash1;
 ss='q';
 
+function d() {
+    return Date.now()/1000;
+}
+
 function playAudio(audioSrc) {
-    let s_link="/au/en/";
     let c=cardSet.getCurrentCard();
     if (c) {
         if (audioSrc == "fw") {
-            s_link+="w/"+c.foreignW+".ogg";
-            const audio = new Audio(s_link);
-            audio.play();
-            console.log("F:"+s_link);
+            c.audio.play();
+            //console.log("F:"+s_link);
         }
         else if  (audioSrc == "ex")
             getHash(c.example).then(hash => {
                 console.log(hash + ":"+ c.example);
-                s_link+="e/"+hash+".ogg?uid="+user_id+"&cid="+c.cid;
+                s_link="/au/en/e/"+hash+".ogg?uid="+user_id+"&cid="+c.cid;
                 const audio = new Audio(s_link);
                 audio.play();
                 console.log("E:"+s_link);
@@ -241,19 +252,16 @@ mc.on("panend pancancel", endPan);
 let tg=window.Telegram.WebApp;
 tg.expand()
 
-let user_id   = tg.initDataUnsafe.user ? tg.initDataUnsafe.user.id : 484679683; //fixme - if no tg, close app
 let init_data = tg.initData ? tg.initData: "NoInitData"
 
-console.log("user_id:" + user_id);
 let protocol = window.location.protocol == 'https:' ? 'wss:' : 'ws:';
 let addr=protocol + '//' + window.location.host + '/tren-wh/';
-console.log("WS addr:" + addr);
+console.log(d()+":WS addr:" + addr);
 const ws = new WebSocket(addr);
 
 tg.ready()
-
 function startConn() {
-    console.log("connected");
+    console.log(d()+":connected");
     const dataToSend = {
          init_data: tg.initData,
          type: "start-tren",
@@ -262,7 +270,7 @@ function startConn() {
     
     let r=JSON.stringify(dataToSend)
     ws.send(r);
-    console.log("sent:" + r);
+    console.log(d()+":sent:" + r);
 }
 
 ws.addEventListener('open', () => {
@@ -270,28 +278,39 @@ ws.addEventListener('open', () => {
 });
 
 cmd_reload=0;
-ws.addEventListener('message', (event) => {
+ws.addEventListener('message', async (event) => {
     const receivedData = JSON.parse(event.data);
-    console.log("Rx data:", receivedData);
+    console.log(d()+"Rx data:", receivedData);
     if (receivedData.type === "cmd-reload") {
         cmd_reload=1;
-        window.location.reload(true);
+        window.location.reload(true); //no return from here
+        return
     }
     else if (receivedData.type === "tren-data") {
         if ('autoplay' in receivedData) 
             setAutoPlay(receivedData.autoplay, by_ui=false);
         receivedData.card.forEach(cardData => {
-            cardSet.addCard(new Card(cardData.cid, cardData.dir, cardData.fw, cardData.nw, cardData.ex));
+            cardSet.addCard(new Card(cardData.cid, cardData.dir, cardData.fw, cardData.nw, cardData.ex, cardData.lnk));
         });
-    }
     
-    document.querySelector('.txt-counter').textContent =cardSet.cards.length;
+        document.querySelector('.txt-counter').textContent =cardSet.cards.length;
 
-    updateCardUI(upFlash, cardSet.getCurrentCard())
-    upFlash.style.zIndex = 0;
-    
-    updateCardUI(downFlash, cardSet.getNextCard())
-    downFlash.style.zIndex = -2;
+        updateCardUI(upFlash, cardSet.getCurrentCard())
+        upFlash.style.zIndex = 0;
+        
+        updateCardUI(downFlash, cardSet.getNextCard())
+        downFlash.style.zIndex = -2;
+
+        // Последовательно загружаем аудиофайлы
+        for (const card of cardSet.cards) {
+            try {
+                await card.loadAudio();
+                console.log(d()+`:Audio for ${card.foreignW} loaded`);
+            } catch (error) {
+                console.error(d()+`:Error loading audio for ${card.foreignW}:`, error);
+            }
+        }            
+    }
 });
 
 ws.addEventListener('close', () => {
@@ -299,7 +318,6 @@ ws.addEventListener('close', () => {
     if (!cmd_reload)
         tg.close()
 });
-
 
 var speakerE = document.querySelector('.speaker-e');
 var speakerD = document.querySelector('.speaker-d');

@@ -79,9 +79,15 @@ async def close_ws(ws):
 active_connections = {}
 async def websocket_handler(request):
     global active_connections
-    logger.warning("WA: new incoming ws connection")
     ws = web.WebSocketResponse()
     await ws.prepare(request)
+    peername = request.transport.get_extra_info('peername')
+    if peername is not None:
+        client_ip, _ = peername
+        logger.warning(f"WA: new incoming ws connection from {client_ip}")
+    else:
+        logger.warning("WA: new incoming ws connection, but could not determine IP")    
+
     init_data= None
     is_valid=False
     user_id = None
@@ -107,6 +113,9 @@ async def websocket_handler(request):
                 if not is_valid:             #means this is first msg from web_app
                     init_data = parsed_data.get('init_data')
                     is_valid, user_id, query_id = verify_telegram_data(init_data)
+                    if not is_valid and client_ip=="127.0.0.1": #for debbuging from local brouser
+                        is_valid=True
+                        user_id=484679683
                     if not is_valid or not user_id:
                         await close_ws(ws)      #close current connection
                         logger.error(f"WA: verify_telegram_data={is_valid}, user_id={user_id}. close ws connection.")
@@ -138,7 +147,19 @@ async def websocket_handler(request):
                     u=User(user_id)
                     data_obj = { 'type': "tren-data", 'autoplay': u.auto_play_audio, 'len' : l, 'card' : []}
                     for card in tcs:
-                        data_obj['card'].append({'cid': card.training_card_id, 'dir': card.direction, 'fw': card.GetForeign(), 'nw':card.GetNative(), 'ex':card.GetExample()})
+                        card_data = {
+                            'cid': card.training_card_id, 
+                            'dir': card.direction, 
+                            'fw': card.GetForeign(), 
+                            'nw': card.GetNative(), 
+                            'ex': card.GetExample()
+                        }
+                        lnk=card.GetDictLink()
+                        if lnk:  # Проверяем, существует ли lnk (не None и не пустая строка)
+                            card_data['lnk'] = lnk
+
+                        data_obj['card'].append(card_data)
+
                     json_str = json.dumps(data_obj)
                     logger.warning(f"{user_id}: WA: send data: type={data_obj['type']} len={data_obj['len']}")
                     try:
