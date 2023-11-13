@@ -76,14 +76,16 @@ async def close_ws(ws):
     except Exception as e:
         logger.warning(f"WA: ws.close: {e}")
 
-active_connections = {}
+
+import twokeydict
+active_connections = twokeydict.TwoKeyDict()
+
 async def websocket_handler(request):
     global active_connections
     ws = web.WebSocketResponse()
     await ws.prepare(request)
-    peername = request.transport.get_extra_info('peername')
-    if peername is not None:
-        client_ip, _ = peername
+    client_ip = request.headers.get('X-Real-IP', None)
+    if client_ip is not None:
         logger.warning(f"WA: new incoming ws connection from {client_ip}")
     else:
         logger.warning("WA: new incoming ws connection, but could not determine IP")    
@@ -108,20 +110,21 @@ async def websocket_handler(request):
         try:
             if msg.type == WSMsgType.TEXT:
                 parsed_data = json.loads(msg.data)
-                if is_valid:
-                    logger.warning(f"{user_id}: WA: parsed_data: {parsed_data}")
+                # if is_valid:
+                #     logger.warning(f"{user_id}: WA: parsed_data: {parsed_data}")
                 if not is_valid:             #means this is first msg from web_app
                     init_data = parsed_data.get('init_data')
                     is_valid, user_id, query_id = verify_telegram_data(init_data)
-                    if not is_valid and client_ip=="127.0.0.1": #for debbuging from local brouser
+                    if not is_valid and (client_ip=="192.168.0.16" or client_ip=="87.116.163.83"): #for debbuging from local brouser
                         is_valid=True
                         user_id=484679683
+                        query_id='1'
                     if not is_valid or not user_id:
                         await close_ws(ws)      #close current connection
                         logger.error(f"WA: verify_telegram_data={is_valid}, user_id={user_id}. close ws connection.")
                         break
-                    elif is_valid and user_id in active_connections:
-                        old_ws = active_connections.get(user_id, None)
+                    elif is_valid and user_id in active_connections.key1:
+                        old_ws, _ = active_connections.get_by_key1(user_id)
                         logger.warning(f"WA: second connections. close previous ws connection.")
                         await close_ws(old_ws) #close previous connection
                     wa_ver=parsed_data.get('ver') 
@@ -133,7 +136,7 @@ async def websocket_handler(request):
                         except Exception as e:
                             logger.warning(f"{user_id}: WA: Error sending reload cmd via ws: {e}")
                         break
-                    active_connections[user_id] = ws
+                    active_connections.set(user_id, query_id, (ws, client_ip))
                     #check commands
                 req_type = parsed_data.get('type')
                 if req_type=="start-tren":
@@ -195,7 +198,7 @@ async def websocket_handler(request):
         await close_ws(ws)
     
     if user_id is not None:
-        active_connections.pop(user_id, None)
+        active_connections.del_by_key1(user_id)
         logger.warning(f"{user_id}: ws connection closed. Close code: {ws.close_code}")
         await web_app_after_tren_cb(user_id, err_code) 
     else:
@@ -205,30 +208,30 @@ async def websocket_handler(request):
 async def close_wa_by_user(user_id): #not thread safe?
     global active_connections
     logger.warning(f"{user_id}: close_wa_by_user")
-    ws = active_connections.get(user_id, None)
+    ws = active_connections.get_by_key1(user_id)
+    active_connections.del_by_key1(user_id, None)
     if ws is not None:
         await close_ws(ws)
-        active_connections.pop(user_id, None)
-    else:
-        logger.warning(f"{user_id}: close_wa_by_user: ws=None")
-
-
 
 #request for creating audio for example that has cid defined as parameter
 #creates *.ogg  file in audio examples folder and returns it in the http connection
 async def generate_audio_ex(request):
     logger.warning("generate_audio_ex")
-    uid = request.rel_url.query.get('uid')
-    cid = request.rel_url.query.get('cid')
-    logger.warning(f"{uid}: request au_ex cid={cid}")
-    if uid is None or cid is None:
-        logger.error(f"{uid}:cid={cid}: generate_audio_ex")
-        return web.Response(status=400, text="UID or CID is missing")
-    
+    qid = request.rel_url.query.get('q')
+    cid = request.rel_url.query.get('c')
+    logger.warning(f"request au_ex cid={cid}, qid={qid}")
+    if qid is None or cid is None:
+        raise web.HTTPBadRequest(reason="q and c is required")
+
+    uid=active_connections.get_key1_by_key2(qid)
+    logger.warning(f"{uid}: request au_ex cid={cid}, qid={qid}")
+    if uid is None:
+        raise web.HTTPBadRequest(reason="c is unknown")
+
     wd=await Word.ReadFromDb_by_cid(uid, cid)
     if wd is None:
         logger.error(f"{uid}:cid={cid}: generate_audio_ex: can't get word")
-        return web.Response(status=400, text="UID or CID is wrong")
+        raise web.HTTPBadRequest(reason="c is wrong")
 
     await wd.SetAudioExample()
     audio_path=wd.audio_example

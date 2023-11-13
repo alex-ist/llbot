@@ -1,4 +1,6 @@
-const VER = 14
+const VER = 15
+
+let query_id;
 
 class Card {
     constructor(cid, direction, foreignW, nativeW, example, link) {
@@ -9,7 +11,7 @@ class Card {
         this.example = example;
         this.answer = -1;  // not showed card
         this.lnk = link;
-		this.a_lnk=`/au/en/w/${foreignW}.ogg`
+		this.a_lnk=`/au/en/w/${foreignW}.ogg?q=${query_id}` //add some id thor
         this.audio = null; 
     }
     //вернет слово для изучения
@@ -110,7 +112,7 @@ function playAudio(audioSrc) {
         else if  (audioSrc == "ex")
             getHash(c.example).then(hash => {
                 console.log(hash + ":"+ c.example);
-                s_link="/au/en/e/"+hash+".ogg?uid="+user_id+"&cid="+c.cid;
+                s_link="/au/en/e/"+hash+".ogg?q="+query_id+"&c="+c.cid;
                 const audio = new Audio(s_link);
                 audio.play();
                 console.log("E:"+s_link);
@@ -259,6 +261,7 @@ let addr=protocol + '//' + window.location.host + '/tren-wh/';
 console.log(d()+":WS addr:" + addr);
 const ws = new WebSocket(addr);
 
+
 tg.ready()
 function startConn() {
     console.log(d()+":connected");
@@ -270,7 +273,13 @@ function startConn() {
     
     let r=JSON.stringify(dataToSend)
     ws.send(r);
-    console.log(d()+":sent:" + r);
+    //extract query_id
+    let params = new URLSearchParams(tg.initData);
+    query_id = params.get('query_id');
+    if (query_id == null)
+        query_id=1;
+
+    console.log(d()+":sent:" + r + " : query_id="+query_id);
 }
 
 ws.addEventListener('open', () => {
@@ -283,7 +292,7 @@ ws.addEventListener('message', async (event) => {
     console.log(d()+"Rx data:", receivedData);
     if (receivedData.type === "cmd-reload") {
         cmd_reload=1;
-        window.location.reload(true); //no return from here
+        window.location.reload(true); // <--no return from here
         return
     }
     else if (receivedData.type === "tren-data") {
