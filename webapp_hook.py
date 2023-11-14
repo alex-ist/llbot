@@ -216,15 +216,13 @@ async def close_wa_by_user(user_id): #not thread safe?
 #request for creating audio for example that has cid defined as parameter
 #creates *.ogg  file in audio examples folder and returns it in the http connection
 async def generate_audio_ex(request):
-    logger.warning("generate_audio_ex")
     qid = request.rel_url.query.get('q')
     cid = request.rel_url.query.get('c')
-    logger.warning(f"request au_ex cid={cid}, qid={qid}")
     if qid is None or cid is None:
         raise web.HTTPBadRequest(reason="q and c is required")
 
     uid=active_connections.get_key1_by_key2(qid)
-    logger.warning(f"{uid}: request au_ex cid={cid}, qid={qid}")
+    logger.warning(f"{uid}: generate_audio_ex cid={cid}, qid={qid}")
     if uid is None:
         raise web.HTTPBadRequest(reason="c is unknown")
 
@@ -257,6 +255,3 @@ async def webapp_hook_run(production_bot, bot_token):
     site2 = web.TCPSite(runner2, '127.0.0.1', port=8002) 
     await site2.start()
  
-
-
-
