@@ -1,20 +1,14 @@
 import sqlite3
 from sqlite3 import Error
 import os
-import hashlib
 from botlog import logger
-from g_ttos import google_speach
+from ttos import tts_example, tts_word
 from datetime import *
 from user_config import *
 from bot_db import *
 from trans import get_dict_rawlink
 from singleton import Singleton
 
-# def get_hash(input_string):
-#     return hashlib.md5(input_string.encode()).hexdigest()[:10]
-
-def get_hash_sha256(input_string):
-    return hashlib.sha256(input_string.encode()).hexdigest()[:12]
 
 class Word:
     def __init__(self, user_id, foreign_lang, foreign_w, native_lang, native_w, example=None, word_id=-1, lnk=None):
@@ -119,36 +113,11 @@ class Word:
             self.lnk=await get_dict_rawlink(self.user_id, self.foreign_w, self.foreign_lang)
 
     #Устанавливает Аудио файл для записи в наборе. Проеверяет есть ли на локальном хранилище этот файл, если нет, то пытается его получить из сети.
-    #audio: data/{foreign_lang}/w
     async def SetAudio(self):
-        p=f"data/{self.foreign_lang}/w/{self.foreign_w}.ogg"
-        if os.path.isfile(p):
-            self.audio=p
-        else:
-            #now only google:
-            #fixme check errors
-            await google_speach(self.foreign_w, self.foreign_lang, p)
-            self.audio=p
+        self.audio=await tts_word(self.foreign_w, self.foreign_lang)
 
-    #audio: data/{foreign_lang}/e/{hash}.m4a
     async def SetAudioExample(self):
-        if self.example is not None:
-            hash=get_hash_sha256(self.example)
-            p=f"data/{self.foreign_lang}/e/{hash}.ogg"
-            if os.path.isfile(p):
-                self.audio_example=p
-            else:
-                #save mapping
-                map_file=f"data/{self.foreign_lang}/e/_map.txt"
-                dir_name = os.path.dirname(map_file)  # получить имя директории из полного пути файла
-                if not os.path.exists(dir_name):  # проверить, существует ли уже директория
-                    os.makedirs(dir_name)  # создать директорию, если ее еще нет
-                with open(map_file, 'a', encoding='utf-8') as f:
-                    f.write(f"{hash};{self.example}\n")
-                #now only google:
-                #fixme check errors
-                await google_speach(self.example, self.foreign_lang, p)
-                self.audio_example=p
+        self.audio_example = await tts_example(self.example, self.foreign_lang)
 
     async def GetAudio(self):
         if self.audio is None:
@@ -506,8 +475,3 @@ class TrainingCardSet(Singleton):
     def UpdateStat(self):
         self.u.UpdateStat() #обновить пользовательскую статистику
         self.u.UpdateLastAccess(datetime.now())
-
-
-
-
-

@@ -1,4 +1,4 @@
-const VER = 15
+const VER = 16
 
 let query_id;
 
@@ -11,7 +11,7 @@ class Card {
         this.example = example;
         this.answer = -1;  // not showed card
         this.lnk = link;
-		this.a_lnk=`/au/en/w/${foreignW}.ogg?q=${query_id}` //add some id thor
+		this.a_lnk=`/au/en/w/${foreignW}.ogg?q=${query_id}`
         this.audio = null; 
     }
     //вернет слово для изучения
