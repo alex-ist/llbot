@@ -150,9 +150,6 @@ async def oai_speach(text, lang, file_name):
         logger.error(f"oai: unsupported speeach encoding,  file={file_name}")
         return
 
-    sp=1.0
-    if (len(text)>32):
-        sp=0.83
     if (len(text)>2000):
         text = text[:2000]
 
@@ -161,7 +158,6 @@ async def oai_speach(text, lang, file_name):
             voice=v,
             response_format=ac,
             input=text,
-            speed=sp
         )
 
     dir_name = os.path.dirname(file_name)  # получить имя директории из полного пути файла
@@ -169,5 +165,5 @@ async def oai_speach(text, lang, file_name):
          os.makedirs(dir_name)  # создать директорию, если ее еще нет
     response.stream_to_file(file_name)
 
-# init_oai()    
-# asyncio.run(oai_speach("Я чувствую баланс и удовольствие по утрам.", "ru", "sp2.aac"))
+init_oai()    
+asyncio.run(oai_speach("I was asked to engage the audience during my presentation by asking thought-provoking questions.", "en", "sp.ogg"))
