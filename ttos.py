@@ -31,7 +31,8 @@ async def tts_example(example, lang):
             f.write(f"{hash};{example}\n")
         #now only google:
         #fixme check errors
-        await tts_speach(example, lang, p)
+        #await tts_speach(example, lang, p)
+        await oai_speach(example, lang, p)        
         return p
 
 async def tts_word(word, lang):
@@ -40,7 +41,7 @@ async def tts_word(word, lang):
         return p
     else:
         #fixme check errors
-        await tts_speach(word, lang, p)
+        await google_speach(word+".", lang, p)
         return p
 
 #asyncio.run(tts_speach("Нешто као аутобиографија је аутобиографска књига познатог јапанског режисера Акире Куросаве. Књига је написана 1981. године.", "ru", "sp2.aac"))

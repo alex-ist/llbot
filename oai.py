@@ -102,10 +102,7 @@ async def oai_spell(fw):
     r=response.choices[0].message.content.strip()
     return r, response
 
-
-
 # init_oai()
-
 #w="overhasty"
 #w="get away with"
 # async def main() -> None:
@@ -157,7 +154,7 @@ async def oai_speach(text, lang, file_name):
             model="tts-1-hd",
             voice=v,
             response_format=ac,
-            input=text,
+            input=text
         )
 
     dir_name = os.path.dirname(file_name)  # получить имя директории из полного пути файла
@@ -165,5 +162,5 @@ async def oai_speach(text, lang, file_name):
          os.makedirs(dir_name)  # создать директорию, если ее еще нет
     response.stream_to_file(file_name)
 
-init_oai()    
-asyncio.run(oai_speach("I was asked to engage the audience during my presentation by asking thought-provoking questions.", "en", "sp.ogg"))
+# init_oai()    
+# asyncio.run(oai_speach("behaviour", "en", "sp.ogg"))
