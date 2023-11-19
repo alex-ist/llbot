@@ -41,7 +41,7 @@ async def tts_word(word, lang):
         return p
     else:
         #fixme check errors
-        await google_speach(word+".", lang, p)
+        await google_speach(word, lang, p)
         return p
 
 #asyncio.run(tts_speach("Нешто као аутобиографија је аутобиографска књига познатог јапанског режисера Акире Куросаве. Књига је написана 1981. године.", "ru", "sp2.aac"))

@@ -9,7 +9,7 @@ from telegram.ext import Application, CallbackQueryHandler, CommandHandler, Cont
 import telegram 
 import secrets
 
-from trans import translate_text
+from trans import translate_text, detect_lang, get_dict_rawlink
 from card import Word, TrainingCard, TrainingCardSet
 from msg_txt import *
 
@@ -821,25 +821,107 @@ class UI:
         self.timer_run(timedelta(hours=23), "tmr:edit_word") #запускаем таймер на неактивность пользователя
         return False
 
+
+    def is_word_in_db(self, fw):
+        word_id=word_read_by_fw(self.user_id, fw)
+        if word_id: #слово есть в базе
+            #проверим есть ли в текщем наборе, если есть возьмем его. если в наборе нет, то надо вычитать из базы.
+            self.edited_word=self.tcs.GetWord(word_id)
+            if self.edited_word is None:
+                self.edited_word=Word.ReadFromDb(self.user_id, word_id)
+            self.call_state(UI.States.EDIT_WORD, "edit_old")
+            return True
+        return False
+
+    @staticmethod
+    def limit_input_word_len(w):
+        num_chars = len(w)
+        if num_chars<=64:
+            return w
+        
+        words = w.split()  # Разбиваем строку на слова
+        limited_text = ""
+        for word in words:
+            if len(limited_text) + len(word) + 1 > 64:  # +1 для учета пробела
+                break
+            limited_text += word + " "  # Добавляем слово и пробел в строку
+
+        return limited_text.strip()  # Удаляем лишние пробелы в конце
+        
+
     async def add_word(self, ev:str):
         await self.clear_screan()
         await self.m2.text(msg07_pre_add_word())
 
         w = ev.split('msg:', 1)[1]
         w=w.lower().strip()
-        #переводим и проверяем на наличие fw слова в базе,
-        # если нет - генерируем пример и создаем ссылку на слово в словаре
-        # проверяем на опечатки
-        word_id, fw, nw, ex, lnk = await translate_text(self.user_id, self.u.foreign_lang, self.u.native_lang, w)
-        if word_id:             #есть уже в базе такое слово в базе
-            #проверим есть ли в текщем наборе, если есть возьмем его. если нет вычитаем из базы
-            self.edited_word=self.tcs.GetWord(word_id)
-            if self.edited_word is None:
-                self.edited_word=await Word.ReadFromDb(self.user_id, word_id)
-            self.call_state(UI.States.EDIT_WORD, "edit_old")
-            return True
 
-        self.edited_word=await Word.CreateWord(self.user_id, self.u.foreign_lang, fw, self.u.native_lang, nw, ex, lnk=lnk)
+        #limit the length of string 64 symb
+        w=self.limit_input_word_len(w)
+        if w=="":
+            w="too long"
+
+        #1) выяснить язык слова (для пары русско английский - легко и однозначно: по кодировке)
+        #2) если fw: проверяем слово на наличие в базе -> если есть, то редактирование
+        #3)     пытаемся создать ссылку на слово в cambridge
+        #4)     если нет ссылки: исправляем опечатки
+        #5)         если исправили опечатки: проверяяем слово еще раз на наличие в базе еще раз -> если есть то редактирование
+        #6)                                  еще раз пытаемся создать ссылку на слово в cambridge
+        #7) переводим
+        #8) если nw: проверяем на наличие fw слова в базе ->если есть, то редактирование
+        #9) генерируем пример
+        #3) если nw или (fw и нет ссылки и было исправление):
+        #        создаем ссылку на слово cambreadge
+
+        lnk=None
+
+        #1) выяснить язык слова (для пары русско английский - легко и однозначно: по кодировке)
+        src_lang, targ_lang=await detect_lang(self.user_id, self.u.foreign_lang, self.u.native_lang, w)
+
+        #2) если fw: проверяем слово на наличие в базе -> если есть, то редактирование
+        if src_lang==self.u.foreign_lang:
+            fw=w
+            if self.is_word_in_db(fw):
+                return True #будем редактировать вместо добавления
+            #3) пытаемся создать ссылку на слово cambreadge
+            lnk=await get_dict_rawlink(self.user_id, fw)
+            #4)     если нет ссылки: возможно опечатки? исправляем 
+            if lnk=="":
+                w = await oai_spell(fw)
+                #5) если исправили опечатки: проверяяем слово еще раз на наличие в базе еще раз -> если есть то редактирование
+                if w!=fw:
+                    logger.warning(f"{self.user_id}: spell correction: {fw} -> {w}")
+                    lnk=None
+                    fw=w
+                    if self.is_word_in_db(fw):
+                        return True #будем редактировать, вместо добавления
+        #7) переводим
+        tr_w = await translate_text(src_lang, targ_lang, w)
+        if tr_w==w:
+            logger.warning(f"{self.user_id}: can't do translation: {w}")
+            pass #return?
+
+        if src_lang==self.u.foreign_lang:
+            nw=tr_w
+        else:
+            #8) если nw: проверяем на наличие fw слова в базе ->если есть, то редактирование
+            nw=w
+            fw=tr_w
+            if self.is_word_in_db(fw):
+                return True #будем редактировать вместо добавления
+
+        #9) генерируем пример
+        #6) пытаемся создать ссылку на слово в cambridge, если еще не
+        if lnk is None:
+            lnk, ex = await asyncio.gather(
+                get_dict_rawlink(self.user_id, fw),
+                oai_aget_example(self.user_id, fw)
+            )
+        else:
+            ex = await oai_aget_example(self.user_id, fw)
+
+        logger.info(f"{self.user_id}: add word: {w} -> {tr_w}")
+        self.edited_word=Word.CreateWord(self.user_id, self.u.foreign_lang, fw, self.u.native_lang, nw, ex, lnk=lnk)
         self.call_state(UI.States.EDIT_WORD, "edit_new")
         return True
 
@@ -1013,7 +1095,7 @@ class UI:
                 return False
             elif self.ev.startswith('kbd:'):
                 w_id = self.ev.split('kbd:', 1)[1] #this is word_id
-                self.edited_word=await Word.ReadFromDb(self.user_id, int(w_id))
+                self.edited_word=Word.ReadFromDb(self.user_id, int(w_id))
                 await self.clear_screan()
                 self.call_state(UI.States.EDIT_WORD, "edit_old") #goto edit_cards
                 return True
@@ -1116,10 +1198,18 @@ class UI:
 
     @staticmethod
     async def rx_msg_(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-        if update.effective_user is None: #это если вдруг добавят в чатик и там его тагнут
+        user_id=update.effective_user.id
+        if user_id is None: #это если вдруг добавят в чатик и там его тагнут
             return
-        await context.bot.delete_message(update.effective_chat.id, update.effective_message.id)
-        ui=get_ui(update.effective_user.id, update.effective_chat.id, context)
+        if user_id not in ui_set:
+            await start_cmd(update, context)
+        
+        try:
+            await context.bot.delete_message(update.effective_chat.id, update.effective_message.id)
+        except Exception as e:
+            pass
+
+        ui=get_ui(user_id, update.effective_chat.id, context)
         text = update.message.text
         if text is None:
             ui.log_warn("rx_msg text is None!")
@@ -1190,6 +1280,9 @@ class UI:
             #что-то пошло не так, кнопка от старого сообщения?
             logger.info(f"{user_id}: try to repair ui (start_cmd)")
             await start_cmd(update, context)
+            ui=ui_set[user_id]
+            if await ui.process_ev(query.data):
+                ui.exit_ui()
 
 def get_ui(user_id, chat_id=None, context=None):
     global ui_set

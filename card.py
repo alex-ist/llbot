@@ -82,18 +82,15 @@ class Word:
             self.word_id=word_add(self.user_id, self.foreign_w, self.native_w, self.foreign_lang, self.native_lang, self.example)
 
     @staticmethod
-    async def CreateWord(user_id, foreign_lang, foreign_w, native_lang, native_w, example=None, word_id=-1, lnk=None):
-        word=Word(user_id, foreign_lang, foreign_w, native_lang, native_w, example, word_id, lnk)
-        await word.SetDictLink()
+    def CreateWord(user_id, foreign_lang, foreign_w, native_lang, native_w, example=None, lnk=None):
+        word=Word(user_id, foreign_lang, foreign_w, native_lang, native_w, example, word_id=-1, lnk=lnk)
         return word
 
     @staticmethod
-    async def ReadFromDb(user_id:int, word_id:int) -> 'Word':
+    def ReadFromDb(user_id:int, word_id:int) -> 'Word':
         foreign_w, native_w, foreign_lang, native_lang, example=word_read(user_id, word_id)
         word=Word(user_id, foreign_lang, foreign_w, native_lang, native_w, example, word_id)
-        await word.SetDictLink()
-        #await word.SetAudio()
-        #await word.SetAudioExample()
+        word.lnk = db_get_dict_link(word.foreign_w)  #пробуем установить ссылку на словарь считав из локального кэша.
         return word
 
     @staticmethod
@@ -106,7 +103,6 @@ class Word:
         else:
             logger.warning(f"{uid}: cid={cid}: can't get word")
             return None
-
 
     async def SetDictLink(self):
         if self.lnk is None:
@@ -414,7 +410,7 @@ class TrainingCardSet(Singleton):
                 if tc.word_id in cards_dict:
                     tc.word = cards_dict[tc.word_id]
                 else:
-                    tc.word = await Word.ReadFromDb(self.user_id, tc.word_id)
+                    tc.word = Word.ReadFromDb(self.user_id, tc.word_id)
                     cards_dict[tc.word_id] = tc.word
 
         if create_au:

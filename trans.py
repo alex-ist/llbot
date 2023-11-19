@@ -10,18 +10,6 @@ import httpx
 from bot_db import *
 import asyncio
 
-async def detect_lang(flang, nlang, word):
-    dl_req=translate.DetectLanguageRequest(
-            content=word,
-            parent="projects/bamboo-antler-386512/locations/global",
-        )        
-    tr = await gtrans_async_client.detect_language(dl_req)
-    detected_lang=tr.languages[0].language_code
-    if detected_lang==flang or detected_lang==nlang:
-        src_lang=detected_lang
-    else:
-        src_lang=flang
-    return src_lang
 
 def remove_en_article(fw: str):
     fw2 = fw = fw.strip().lower()
@@ -64,10 +52,12 @@ async def web_get_en_dictionary_link(user_id, fw: str) -> str:
             if 300 <= response.status_code < 400:
                 redirect_link = response.headers.get('Location')
                 if redirect_link and redirect_link != src_link:
+                    logger.info(f"{user_id}: cambrige dict get link for fw={fw}: resp.code={response.status_code}")
                     return redirect_link
             elif response.status_code == 200:
+                logger.info(f"{user_id}: cambrige dict get link for fw={fw}: resp.code={response.status_code}")
                 return link
-            logger.warning(f"{user_id}: httpx: check cambrige dict fw={fw}: resp.code={response.status_code}")
+            logger.warning(f"{user_id}: check cambrige dict, unknown fw={fw}: resp.code={response.status_code}")
             return None
     except Exception as e:
         logger.error(f"{user_id}: httpx: check cambrige dict fw={fw}: Exception: {e}")
@@ -90,69 +80,32 @@ async def g_translate(word:str, src_lang="en", target_lang="ru"):
     return tr_word
 
 
-#переводим и проверяем на наличие fw слова в базе,
-# если нет - генерируем пример и создаем ссылку на слово в словаре
-# проверяем на опечатки
-async def translate_text(user_id:int, flang:str, nlang:str, word:str):
+async def detect_lang(user_id:int, flang:str, nlang:str, word:str):
     if flang=="en" and nlang=="ru":
          if word.isascii():
-            src_lang=flang
-            word_id=word_read_by_fw(user_id, word)
-            if word_id:
-                return word_id, None, None, None, None
+            return flang, nlang
          else:
+            return nlang, flang
+    else:
+        logger.warning(f"{user_id}: detect_lang for flang={flang} and nlang={nlang}. Not tested!!")
+        dl_req=translate.DetectLanguageRequest(
+                content=word,
+                parent="projects/bamboo-antler-386512/locations/global",
+            )        
+        tr = await gtrans_async_client.detect_language(dl_req)
+        detected_lang=tr.languages[0].language_code
+        if detected_lang==nlang:
             src_lang=nlang
-    else:
-        src_lang=await detect_lang(flang, nlang, word) #for future, not tested
+            tr_lang=flang
+        else:
+            src_lang=flang
+            tr_lang=nlang
+        return src_lang, tr_lang
 
-    if src_lang==flang:
-        target_lang = nlang
-    else:
-        target_lang = flang
 
-    tr_word = await g_translate(word, src_lang, target_lang)
-    if src_lang==flang:
-        fw=word
-        nw=tr_word
-    else:
-        nw=word
-        fw=tr_word
-        word_id=word_read_by_fw(user_id, fw)
-        if word_id:
-            return word_id, None, None, None, None
-
-    lnk=ex=None
-    if fw==nw:  #для ru-en. гугл не смог первести, когда адская абракадабра была вместо слова ("hiipl-ll-ip"). Это слово уже не спасти
-        return None, fw, nw, ex, lnk
-    
-    lnk, ex = await asyncio.gather(
-        get_dict_rawlink(user_id, fw),
-        oai_aget_example(user_id, fw)
-    )        
-    if not lnk and src_lang=="en":
-        #fixme: проверить на опечатки fw
-        fw2, response = await oai_spell(fw)
-        if fw2!=fw:
-            logger.warning(f"{user_id}: spell correction {fw} -> {fw2}")
-            if ex and remove_en_article(fw2) in ex: #there was corrected example. no need new one
-                tr2, lnk2 = await asyncio.gather(
-                    g_translate(fw2, src_lang, target_lang),
-                    get_dict_rawlink(user_id, fw2)
-                )
-                ex2=ex
-            else:
-                tr2, lnk2, ex2 = await asyncio.gather(
-                    g_translate(fw2, src_lang, target_lang),
-                    get_dict_rawlink(user_id, fw2),
-                    oai_aget_example(user_id, fw2)
-                )
-            if tr2==tr_word:
-                logger.warning(f"{user_id}: spell correction OK, like in google translate")
-                fw=fw2
-                lnk=lnk2
-                ex=ex2
-
-    return word_id, fw, nw, ex, lnk
+#переводим
+async def translate_text(src_lang:str, target_lang:str, word:str):
+    return await g_translate(word, src_lang, target_lang)
 
 # word_id, fw, nw, ex, lnk=asyncio.run(translate_text(484679683, "en", "ru", "hiipl-ll-ip"))
 # print (word_id, fw, nw, ex, lnk)

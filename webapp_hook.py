@@ -208,8 +208,8 @@ async def websocket_handler(request):
 async def close_wa_by_user(user_id): #not thread safe?
     global active_connections
     logger.warning(f"{user_id}: close_wa_by_user")
-    ws = active_connections.get_by_key1(user_id)
-    active_connections.del_by_key1(user_id, None)
+    ws, _ = active_connections.get_by_key1(user_id)
+    active_connections.del_by_key1(user_id)
     if ws is not None:
         await close_ws(ws)
 
