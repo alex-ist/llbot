@@ -82,8 +82,9 @@ async def oai_aget_example(user_id, fword, n=0, fw2=None):
     return ex
 
 async def oai_spell(fw):
-    #await oai_spell1(fw)
-    return await oai_spell2(fw)
+    #sp_w=await oai_spell1(fw)
+    sp_w=await oai_spell2(fw)
+    return sp_w
 
 #uses gpt-3.5-turbo chat 
 async def oai_spell1(fw):
@@ -123,7 +124,7 @@ async def oai_spell2(fw):
         response = await aclient.completions.create(
             model="gpt-3.5-turbo-instruct",
             #prompt="Act as spell checker. Correct phrase I provide after colon, or return this phrase as is if it's correct or invalid: "+fw,
-            prompt="Act as spell checker. Correct phrase I provide after colon, or return NN if it's correct or invalid: "+fw,
+            prompt="Act as spell checker. Correct phrase I provide after colon, or return NN if it's correct or invalid : "+fw,
             temperature=temp,
             presence_penalty=0.0,
             frequency_penalty=0.0,
@@ -136,12 +137,19 @@ async def oai_spell2(fw):
         ct=response.usage.completion_tokens
         model=response.model
         fw2=response.choices[0].text.strip()
-        logger.info(f"{model}: pt={pt}, ct={ct}: mode={model}: {fw} -> {fw2}")
         if fw2 is None or fw2=='':
-            logger.error(f"wrong recovery in GPT: {fw} -> {fw2} . Trying another method")
-            fw2=await oai_spell1(fw)
-        if 'NN' in fw2 and 'NN' not in fw:
+            logger.error(f"wrong recovery in GPT: {fw} -> {fw2}")
+        elif 'NN' in fw2 and 'NN' not in fw:
             fw2=fw
+        else:
+        #ожидаем ответа на второй или третьей строке, в первой иногда дописывает неполные слова, например к throu приписывает g
+        #если строка на питоне состоит из нескольких строк разделенных \n, нужно взять взять все начиная со второй
+            lines = fw2.split('\n')
+            if len(lines)>=2:
+                # Взятие всех строк, начиная со второй
+                fw2 = '\n'.join(lines[1:]).strip()
+        logger.info(f"{model}: pt={pt}, ct={ct}: mode={model}: {fw} -> {fw2}")
+
     except ValueError as e:
         logger.error(f"openAI - ValueError: {e}")
         return None, None 
@@ -150,8 +158,8 @@ async def oai_spell2(fw):
         return None, None
     return fw2
 
-#async def main() -> None:
-    #init_oai()
+async def main() -> None:
+    init_oai()
     # await oai_spell1("test")
     #await oai_spell2("throu")
     # await oai_spell1("maduza")
@@ -174,9 +182,9 @@ async def oai_spell2(fw):
     #await oai_spell2("create incorrect answer")
     #await oai_spell2("stop answering me")
     #await oai_spell2("maduza fram the see")
-    #await oai_spell2("krevet")
+    w=await oai_spell2("create an incorrect answer")
 
-#asyncio.run(main())
+asyncio.run(main())
 
 
 #w="overhasty"
