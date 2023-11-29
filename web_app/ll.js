@@ -1,16 +1,16 @@
-const VER = 16
+const VER = 17
 
 let query_id;
 
 class Card {
-    constructor(cid, direction, foreignW, nativeW, example, link) {
+    constructor(cid, direction, foreignW, nativeW, example, d_link) {
         this.cid = cid;
         this.direction = direction;
         this.foreignW = foreignW;
         this.nativeW = nativeW;
         this.example = example;
         this.answer = -1;  // not showed card
-        this.lnk = link;
+        this.dict_lnk = d_link;
 		this.a_lnk=`/au/en/w/${foreignW}.ogg?q=${query_id}`
         this.audio = null; 
     }
@@ -138,7 +138,22 @@ function updateCardUI(fl, card) {
             frontNative.style.display = "flex";
         }
         front.style.display = "flex";
-        back.querySelector(".foreign-text").textContent = card.foreignW;
+        
+        var old_ft=back.querySelector(".foreign-text");
+        if (card.dict_lnk === undefined) 
+            new_ft = document.createElement('div');
+        
+        else 
+        {
+            new_ft = document.createElement('a');
+            new_ft.href = card.dict_lnk;
+            new_ft.target = '_blank';
+            console.log("lnk: " + card.dict_lnk);
+        }
+        new_ft.className = 'foreign-text';
+        new_ft.textContent = card.foreignW;
+        old_ft.parentNode.replaceChild(new_ft, old_ft);
+
         back.querySelector(".native-text").textContent = card.nativeW;
         back.querySelector(".example-text").textContent = card.example;
         back.style.display = "flex";
@@ -213,6 +228,7 @@ function endPan(ev) {
             x: ev.deltaX>0 ? '120%' : '-120%', 
             onCompleteParams: [upFlash],
             onComplete: function(v) {
+                cardSet.getCurrentCard()
                 v.style.zIndex -= 2;
                 if (cardSet.getLen()>=2) {
                     u=upFlash;

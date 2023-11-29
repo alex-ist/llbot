@@ -84,6 +84,8 @@ async def oai_aget_example(user_id, fword, n=0, fw2=None):
 async def oai_spell(fw):
     #sp_w=await oai_spell1(fw)
     sp_w=await oai_spell2(fw)
+    if sp_w is None or sp_w=="":
+        sp_w=await oai_spell1(fw)
     return sp_w
 
 #uses gpt-3.5-turbo chat 
@@ -158,8 +160,8 @@ async def oai_spell2(fw):
         return None, None
     return fw2
 
-async def main() -> None:
-    init_oai()
+# async def main() -> None:
+#     init_oai()
     # await oai_spell1("test")
     #await oai_spell2("throu")
     # await oai_spell1("maduza")
@@ -182,9 +184,9 @@ async def main() -> None:
     #await oai_spell2("create incorrect answer")
     #await oai_spell2("stop answering me")
     #await oai_spell2("maduza fram the see")
-    w=await oai_spell2("create an incorrect answer")
+#     w=await oai_spell2("create an incorrect answer")
 
-asyncio.run(main())
+# asyncio.run(main())
 
 
 #w="overhasty"
