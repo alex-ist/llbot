@@ -1,4 +1,4 @@
-const VER = 17
+const VER = 18
 
 let query_id;
 
@@ -96,33 +96,45 @@ flash1.style.zIndex = -1;
 flash0.parentNode.insertBefore(flash1, flash0.nextSibling); // Вставляем новый элемент сразу после оригинала
 upFlash=flash0;
 downFlash=flash1;
-ss='q';
+let ss='q';
 
 function d() {
     return Date.now()/1000;
 }
 
-function playAudio(audioSrc) {
+var last_audio;
+async function playAudio(audioSrc) {
     let c=cardSet.getCurrentCard();
     if (c) {
+        stopPlayAudio();
+    
         if (audioSrc == "fw") {
-            c.audio.play();
-            //console.log("F:"+s_link);
+            last_audio=c.audio;
         }
-        else if  (audioSrc == "ex")
-            getHash(c.example).then(hash => {
-                console.log(hash + ":"+ c.example);
-                s_link="/au/en/e/"+hash+".ogg?q="+query_id+"&c="+c.cid;
-                const audio = new Audio(s_link);
-                audio.play();
-                console.log("E:"+s_link);
-            });
+        else if (audioSrc == "ex") {
+            const hash = await getHash(c.example);
+            console.log(hash + ":" + c.example);
+            let s_link = "/au/en/e/" + hash + ".ogg?q=" + query_id + "&c=" + c.cid;
+            last_audio = new Audio(s_link);
+            console.log("E:" + s_link);
+        }            
         else
             return;
+        last_audio.play();
     }
 }
 
-function updateCardUI(fl, card) {
+
+function stopPlayAudio() {
+    if (last_audio) {
+        last_audio.pause();
+        last_audio.currentTime = 0;
+    }
+    last_audio = null
+}
+
+
+async function updateCardUI(fl, card) {
     if (card) {
         let front=fl.querySelector(".front");
         let frontForeign = front.querySelector(".foreign");
@@ -172,24 +184,26 @@ mc.add(new Hammer.Pan({
 
 
 mc.add(new Hammer.Tap());
-mc.on("tap", function (ev) {
+mc.on("tap", async function (ev) {
     if (ev.target.closest('img'))
         return;
 
     if (ss=='q') {
         ss='a';
-        gsap.to(upFlash, {duration: 0.7, rotationY:180, ease:Back.easeOut,
-            onComplete: function(v) {
-                if (isSoundEnabled) {
-                    let card=cardSet.getCurrentCard();
-                    if (card && card.direction!=0){
-                        playAudio("fw");
-                        console.log("play1: d=" + card.direction+"  fw="+card.foreignW);}
-                }
-            }
+        gsap.to(upFlash, {
+            duration: 0.7, rotationY: 180, ease: Back.easeOut,
         });
+
+        if (isSoundEnabled) {
+            let card = cardSet.getCurrentCard();
+            if (card && card.direction != 0) {
+                await playAudio("fw");
+                console.log("play1: d=" + card.direction + "  fw=" + card.foreignW);
+            }
+        }
     }
 });
+
 
 mc.on("panleft panright panup", function (ev) {
     let rot=-48.0*ev.deltaX/maxWidth;
@@ -204,7 +218,7 @@ mc.on("panleft panright panup", function (ev) {
     }
 });
 
-function endPan(ev) {
+async function endPan(ev) {
     if (Math.abs(ev.deltaX) > BREAK_POINT) {
         const dataToSend = {
             type:   "answer",
@@ -218,7 +232,7 @@ function endPan(ev) {
         if (isSoundEnabled) {
             let card=cardSet.getCurrentCard();
             if (card && card.direction==0){
-                playAudio("fw");
+                await playAudio("fw");
                 console.log("play1: d=" + card.direction+"  fw="+card.foreignW);
             }
         }
@@ -227,21 +241,21 @@ function endPan(ev) {
             ease: Cubic.easeInOut, 
             x: ev.deltaX>0 ? '120%' : '-120%', 
             onCompleteParams: [upFlash],
-            onComplete: function(v) {
+            onComplete: async function(v) {
                 cardSet.getCurrentCard()
                 v.style.zIndex -= 2;
                 if (cardSet.getLen()>=2) {
                     u=upFlash;
                     upFlash=downFlash;
                     downFlash=u;    
-                    updateCardUI(downFlash, cardSet.getNextCard());
+                    await updateCardUI(downFlash, cardSet.getNextCard());
                 }
                 else if (cardSet.getLen()==1) {
-                    updateCardUI(downFlash, null);
-                    updateCardUI(upFlash, cardSet.getNextCard());
+                    await updateCardUI(downFlash, null);
+                    await updateCardUI(upFlash, cardSet.getNextCard());
                 }
                 else {
-                    updateCardUI(upFlash, null);
+                    await updateCardUI(upFlash, null);
                     const dataToSend = {
                         type: "stop-tren"
                     };
@@ -320,10 +334,10 @@ ws.addEventListener('message', async (event) => {
     
         document.querySelector('.txt-counter').textContent =cardSet.cards.length;
 
-        updateCardUI(upFlash, cardSet.getCurrentCard())
+        await updateCardUI(upFlash, cardSet.getCurrentCard())
         upFlash.style.zIndex = 0;
         
-        updateCardUI(downFlash, cardSet.getNextCard())
+        await updateCardUI(downFlash, cardSet.getNextCard())
         downFlash.style.zIndex = -2;
 
         // Последовательно загружаем аудиофайлы
