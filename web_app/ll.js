@@ -1,4 +1,4 @@
-const VER = 18
+const VER = 19
 
 let query_id;
 

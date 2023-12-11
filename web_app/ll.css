@@ -22,62 +22,10 @@ html {
 body {
     margin: 0;
     min-height: 100vh;
-    background-image: linear-gradient(0deg, #7E69B0 0%, #A27189 28.87%, #E8813E 100%);
+    background-image: url('img/bg-41.png'), linear-gradient(0deg, #FFB06D 0%, #F3A893 59.72%, #9870A2 100%);
     background-position: center;
     background-size:  cover; 
-    background-attachment: fixed; 
     background-repeat: no-repeat; 
-}
-.bg-image1 {
-    position: absolute;
-    top: 7%;
-    left: 5%;
-    width: auto;
-    height: auto;
-    z-index: 0;
-}
-.bg-image2 {
-    position: absolute;
-    top: 14%;
-    right: 40%;
-    width: auto;
-    height: auto;
-    z-index: 0;
-}
-.bg-image3 {
-    position: absolute;
-    top: 10%;
-    right: 16px;
-    width: auto;
-    height: auto;
-    z-index: 0;
-}
-.bg-image4 {
-    position: absolute;
-    top: 28%;
-    right: 11%;
-    width: auto;
-    height: auto;
-    z-index: 0;
-}
-.bg-image5 {
-    position: absolute;
-    top: 30%;
-    left: 7%;
-    transform: rotate(145deg);
-    width: auto;
-    height: auto;
-    z-index: 0;
-}
-
-.bg-image6 {
-    position: absolute;
-    top: 40%;
-    left: 25%;
-    transform: rotate(145deg);
-    width: auto;
-    height: auto;
-    z-index: 0;
 }
 
 .container {
@@ -86,12 +34,10 @@ body {
     font-family: Open Sans, sans-serif;
     font-size: 20px;
     line-height: 24px;
-    color: #fff;
+    color: #6D4880;
     padding-top: 15px;
     opacity: 1;
-
 }
-
 
 img {
     border: 0;
@@ -105,9 +51,12 @@ img {
 }
 
 .txt-counter {
-    color: #8E4F2D;
-    font-size: 28px;
-    line-height: 28px;
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 48px;
+    font-style: normal;
+    font-weight: 600;
+    line-height: normal;
+    letter-spacing: -3.6px;    
 }
 
 .hdr {
@@ -132,21 +81,19 @@ img {
     perspective: 1000px;
     position: fixed; /*absolute?*/
     min-height: 400px;
-    bottom: 15px;
+    bottom: 105px;
     left: 15px;
     right: 15px;
 }
 
 .flash {
+    border-radius: 18px;
+    border: 0.5px solid rgba(0, 0, 0, 0.7);
+    background: linear-gradient(133deg, #FDCCA1 2.64%, #FFC2C1 98.53%);
     height: 100%;
     width: 100%;
-    border-radius: 18px;
-    border-radius: 18px;
-    border: 2px solid #834B2B;    
-    background: linear-gradient(0deg, #CE5A3C 0%, #FFBF60 100%);
     position: absolute;
     transform-style: preserve-3d;
-    box-shadow: 0px 4px 4px 0px rgba(0, 0, 0, 0.25);
 }
 
 .corner-box {
@@ -189,7 +136,7 @@ img {
     transform: rotateY(-0deg);
 }
 .q-text {
-    color: #A95B4A;
+    color: #964E80;
     font-size: 54px;
     font-style: normal;
     font-weight: 500;
@@ -228,6 +175,7 @@ img {
 .foreign-text {
     font-size: 36px;
     line-height: 36px;
+    font-weight: 500;
     display: block;
 }
 
@@ -269,4 +217,16 @@ img {
     flex: 1;
     padding-bottom: 0;
     padding-right: 0;
+}
+
+.buttons-cont {
+    position: fixed;
+    bottom: 15px;
+    left: 15px;
+    right: 15px;
+}
+.micbut {
+    justify-content: center;
+    align-items: center;
+    display: flex;
 }
