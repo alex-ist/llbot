@@ -282,9 +282,12 @@ mc.on("panend pancancel", endPan);
 
 
 let tg=window.Telegram.WebApp;
-tg.expand()
+tg.expand();
 
-let init_data = tg.initData ? tg.initData: "NoInitData"
+let init_data = tg.initData ? tg.initData: "NoInitData";
+let uid=484679683;
+if (init_data!="NoInitData")
+    uid=tg.initDataUnsafe.user.id;
 
 let protocol = window.location.protocol == 'https:' ? 'wss:' : 'ws:';
 let addr=protocol + '//' + window.location.host + '/tren-wh/';
@@ -387,10 +390,87 @@ function setAutoPlay(new_val, by_ui=true) {
 }
 
 function invertAutoPlay() {
-    console.log("invertAutoPlay1 -a");
     setAutoPlay(!isSoundEnabled, by_ui=true);
-    console.log("invertAutoPlay1 -b");
 }
 
 speakerE.addEventListener('click', invertAutoPlay);
 speakerD.addEventListener('click', invertAutoPlay);
+
+
+
+let mic_control_type = "0"
+
+function startRecording_m()  {
+    if (mic_control_type=="0")
+        mic_control_type ="m";
+    
+    if (mic_control_type!="m")
+        return;
+    console.log("startRecording_m");
+    startRecording();
+}
+
+function stopRecording_m()  {
+    if (mic_control_type!="m")
+        return;
+    console.log("stopRecording_m");
+    stopRecording();
+}
+
+function startRecording_t()  {
+    if (mic_control_type=="0")
+        mic_control_type ="t";
+    if (mic_control_type!="t")
+        return;
+    console.log("startRecording_t");
+    startRecording();
+}
+
+function stopRecording_t()  {
+    if (mic_control_type!="t")
+        return;
+    console.log("stopRecording_t");
+    stopRecording();
+}
+
+let mediaRecorder;
+let audioChunks = [];
+
+// Получение доступа к микрофону
+navigator.mediaDevices.getUserMedia({ audio: true })
+  .then(stream => {
+    let options = { mimeType: 'audio/webm', audioBitsPerSecond: 24000 };
+    mediaRecorder = new MediaRecorder(stream, options);
+    mediaRecorder.ondataavailable = event => {
+      audioChunks.push(event.data);
+    };
+  });
+
+  
+function startRecording() {
+  audioChunks = [];
+  mediaRecorder.start();
+  console.log("mediaRecorder");
+}
+
+function stopRecording() {
+  mediaRecorder.stop();
+  mediaRecorder.onstop = () => {
+    const audioBlob = new Blob(audioChunks);
+    sendAudioToServer(audioBlob);
+  };
+}
+
+function sendAudioToServer(audioBlob) {
+    const dataToSend = {
+        type:   "rec-voice",
+        val:   audioBlob
+    };
+    let r=JSON.stringify(dataToSend)
+    ws.send(r);
+    console.log("sendAudioToServer");
+    if (uid==484679683){
+        ws.send(audioBlob);
+        console.log("sendAudioToServer bin");
+    }
+}

@@ -186,6 +186,16 @@ async def websocket_handler(request):
                     tcs.UpdateStat() #обновить пользовательскую статистику
                     err_code="ok"
                     break
+                elif req_type=="rec-voice":
+                    logger.info(f"{user_id}: WA: rec-voice")
+
+            if msg.type == WSMsgType.BINARY:
+                sz = len(msg.data)
+                logger.info(f"{user_id}: WA: bin data, len={sz}")
+                with open("received_audio_file.webm", "wb") as file:
+                    file.write(msg.data)
+        
+
             elif msg.type == WSMsgType.ERROR:
                 logger.warning(f'WA: ws err = {ws.exception()}')
                 break

@@ -1436,7 +1436,7 @@ async def web_test(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if update.effective_user.id == 484679683:
         logger.info(f"{update.effective_user.id}: web_test")
         #b=InlineKeyboardButton("test", web_app=telegram.WebAppInfo("https://ll.du:5500/web_app/ll.html"))
-        b=InlineKeyboardButton("test", web_app=telegram.WebAppInfo("https://lingolink.soon.it/ll.html"))
+        b=InlineKeyboardButton("test", web_app=telegram.WebAppInfo("https://lingolink.soon.it/ll.html?ver=24"))
         kbd = InlineKeyboardMarkup([[b]])
         await context.bot.send_message(chat_id=update.effective_chat.id, text="run web test", reply_markup=kbd)
 
