@@ -484,8 +484,8 @@ async function startRecording() {
   audioChunks = [];
   mic_st=await checkMicStatus();
   await init_mic();
-  if (mic_inited && mediaRecorder && mic_st) { //если доступа к микрофону еще не было, то придется нажимать кнопку в запросе, и поэтому не сможем нормально отловить отжатие кнопки микрофона
-    
+  if (mic_inited && mediaRecorder)// && mic_st) //если доступа к микрофону еще не было, то придется нажимать кнопку в запросе, и поэтому не сможем нормально отловить отжатие кнопки микрофона
+  {
     mediaRecorder.start();
     console.log("mediaRecorder.start");
   }
@@ -500,9 +500,13 @@ function stopRecording() {
 }
 
 function sendAudioToServer(audioBlob) {
+    word_dir="";
+    if (ss=='q')
+        word_dir=cardSet.getCurrentCard().direction?"fw":"nw";
+
     const dataToSend = {
         type:  "rec-voice",
-        val:   audioBlob
+        lang:   word_dir
     };
     let r=JSON.stringify(dataToSend)
     ws.send(r);
@@ -511,5 +515,3 @@ function sendAudioToServer(audioBlob) {
         console.log("sendAudioToServer");
     }
 }
-
-

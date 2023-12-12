@@ -188,7 +188,8 @@ async def websocket_handler(request):
                     err_code="ok"
                     break
                 elif req_type=="rec-voice":
-                    logger.info(f"{user_id}: WA: rec-voice")
+                    lang_dir = parsed_data.get('lang')
+                    logger.info(f"{user_id}: WA: rec-voice, lang={lang_dir}")
 
             if msg.type == WSMsgType.BINARY:
                 sz = len(msg.data)
@@ -198,7 +199,13 @@ async def websocket_handler(request):
                     file.write(msg.data)
                 
                 logger.info(f"{user_id}: WA: written to file ok, len={sz}")
-                s=await oai_transcript(file_name)
+                if lang_dir=="fw": #fixme get current lang:
+                    lang="en"
+                elif lang_dir=="nw":
+                    lang="ru"
+                else:
+                    lang=None
+                s=await oai_transcript(file_name, lang)
                 data_obj = { 'type': "info-msg", 'text' : s}
                 json_str = json.dumps(data_obj)
                 logger.warning(f"{user_id}: WA: send data: type={data_obj['type']}")

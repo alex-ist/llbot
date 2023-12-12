@@ -16,16 +16,16 @@ def init_oai():
         aclient = AsyncOpenAI(api_key=k)
 
 
-async def oai_transcript(file_name):
+async def oai_transcript(file_name, lang=None):
     with open(file_name, "rb") as file:
         transcript = await aclient.audio.transcriptions.create(
             model="whisper-1", 
-            #language="ru",
+            language=lang,
             #prompt="",
             file=file,
             response_format="text"
         )
-        logger.error(f"openAI - whisper responce: {transcript}")
+        logger.error(f"openAI - whisper responce, lang={lang}: {transcript}")
         return transcript
 
 async def oai_aget_example1(fw, fw2=None):

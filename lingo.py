@@ -173,10 +173,10 @@ class UI:
 
     def create_wa(self):
         if debug_bot==1:
-            wa=telegram.WebAppInfo("https://192.168.0.16:5500/ll.html")
+            wa=telegram.WebAppInfo("https://192.168.0.16:5500/ll.html?ver=25")
             logger.info("WAPP="+"https://192.168.0.16:5500/ll.html")
         else:
-            wa=telegram.WebAppInfo("https://lingolink.soon.it/ll.html")
+            wa=telegram.WebAppInfo("https://lingolink.soon.it/ll.html?ver=25")
             logger.info("WAPP="+"https://lingolink.soon.it/ll.html")
         return wa
         
@@ -1436,7 +1436,7 @@ async def web_test(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if update.effective_user.id == 484679683:
         logger.info(f"{update.effective_user.id}: web_test")
         #b=InlineKeyboardButton("test", web_app=telegram.WebAppInfo("https://ll.du:5500/web_app/ll.html"))
-        b=InlineKeyboardButton("test", web_app=telegram.WebAppInfo("https://lingolink.soon.it/ll.html?ver=25"))
+        b=InlineKeyboardButton("test", web_app=telegram.WebAppInfo("https://lingolink.soon.it/ll.html"))
         kbd = InlineKeyboardMarkup([[b]])
         await context.bot.send_message(chat_id=update.effective_chat.id, text="run web test", reply_markup=kbd)
 
