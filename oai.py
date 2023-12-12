@@ -16,6 +16,18 @@ def init_oai():
         aclient = AsyncOpenAI(api_key=k)
 
 
+async def oai_transcript(file_name):
+    with open(file_name, "rb") as file:
+        transcript = await aclient.audio.transcriptions.create(
+            model="whisper-1", 
+            #language="ru",
+            #prompt="",
+            file=file,
+            response_format="text"
+        )
+        logger.error(f"openAI - whisper responce: {transcript}")
+        return transcript
+
 async def oai_aget_example1(fw, fw2=None):
     #p=f"Create a sentence for a conversation between best friends in America that uses the word '{fw}'.     It should steer clear of an academic tone"
     p=f"Create a sentence for a conversation between best friends in America that must use the word '{fw}'. It should steer clear of an academic tone."

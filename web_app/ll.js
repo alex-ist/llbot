@@ -220,6 +220,8 @@ mc.on("panleft panright panup", function (ev) {
 
 async function endPan(ev) {
     if (Math.abs(ev.deltaX) > BREAK_POINT) {
+        document.querySelector('.info-msg').textContent="";        
+
         const dataToSend = {
             type:   "answer",
             cid:    cardSet.getCurrentCard().cid,
@@ -349,14 +351,18 @@ ws.addEventListener('message', async (event) => {
                 await card.loadAudio();
                 console.log(d()+`:Audio for ${card.foreignW} loaded`);
             } catch (error) {
-                console.error(d()+`:Error loading audio for ${card.foreignW}:`, error);
+                console.log(d()+`:Error loading audio for ${card.foreignW}:`, error);
             }
         }            
+    }
+    else if (receivedData.type === "info-msg") {
+        console.log("Rx info msg:"+receivedData.text);
+        document.querySelector('.info-msg').textContent=receivedData.text;        
     }
 });
 
 ws.addEventListener('close', () => {
-    console.log("close ws");
+    console.log("closed ws");
     if (!cmd_reload)
         tg.close()
 });
@@ -400,14 +406,14 @@ speakerD.addEventListener('click', invertAutoPlay);
 
 let mic_control_type = "0"
 
-function startRecording_m()  {
+async function startRecording_m()  {
     if (mic_control_type=="0")
         mic_control_type ="m";
     
     if (mic_control_type!="m")
         return;
     console.log("startRecording_m");
-    startRecording();
+    await startRecording();
 }
 
 function stopRecording_m()  {
@@ -417,13 +423,13 @@ function stopRecording_m()  {
     stopRecording();
 }
 
-function startRecording_t()  {
+async function startRecording_t()  {
     if (mic_control_type=="0")
         mic_control_type ="t";
     if (mic_control_type!="t")
         return;
     console.log("startRecording_t");
-    startRecording();
+    await startRecording();
 }
 
 function stopRecording_t()  {
@@ -435,22 +441,54 @@ function stopRecording_t()  {
 
 let mediaRecorder;
 let audioChunks = [];
-
+let mic_inited =false;
 // Получение доступа к микрофону
-navigator.mediaDevices.getUserMedia({ audio: true })
-  .then(stream => {
-    let options = { mimeType: 'audio/webm', audioBitsPerSecond: 24000 };
-    mediaRecorder = new MediaRecorder(stream, options);
-    mediaRecorder.ondataavailable = event => {
-      audioChunks.push(event.data);
-    };
-  });
+async function init_mic() {
+    if (mic_inited)
+        return;
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        const options = { mimeType: 'audio/webm', audioBitsPerSecond: 24000 };
+        mediaRecorder = new MediaRecorder(stream, options);
+        mediaRecorder.ondataavailable = event => {
+            audioChunks.push(event.data);
+        };
+        mic_inited = true;
+    } catch (error) {
+        console.error("mic init error:", error);
+    }        
+}
 
-  
-function startRecording() {
+async function checkMicStatus() {
+    try {
+        const permissionStatus = await navigator.permissions.query({ name: 'microphone' });
+        
+        if (permissionStatus.state === 'granted') {
+            console.log('Доступ к микрофону уже предоставлен.');
+            return true;
+        } else if (permissionStatus.state === 'prompt') {
+            console.log('Разрешение на доступ к микрофону ещё не запрашивалось.');
+            return false;
+        } else {
+            console.log('Доступ к микрофону запрещён.');
+            return false;
+        }
+    } catch (error) {
+        console.error('Ошибка при проверке разрешения микрофона:', error);
+        return false;
+    }
+}
+
+
+async function startRecording() {
   audioChunks = [];
-  mediaRecorder.start();
-  console.log("mediaRecorder");
+  mic_st=await checkMicStatus();
+  await init_mic();
+  if (mic_inited && mediaRecorder && mic_st) { //если доступа к микрофону еще не было, то придется нажимать кнопку в запросе, и поэтому не сможем нормально отловить отжатие кнопки микрофона
+    
+    mediaRecorder.start();
+    console.log("mediaRecorder.start");
+  }
 }
 
 function stopRecording() {
@@ -463,14 +501,15 @@ function stopRecording() {
 
 function sendAudioToServer(audioBlob) {
     const dataToSend = {
-        type:   "rec-voice",
+        type:  "rec-voice",
         val:   audioBlob
     };
     let r=JSON.stringify(dataToSend)
     ws.send(r);
-    console.log("sendAudioToServer");
-    if (uid==484679683){
+    if (uid==484679683 || uid==5800537837){
         ws.send(audioBlob);
-        console.log("sendAudioToServer bin");
+        console.log("sendAudioToServer");
     }
 }
+
+

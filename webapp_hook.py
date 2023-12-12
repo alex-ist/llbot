@@ -9,6 +9,7 @@ from urllib.parse import parse_qs
 
 from card import Word, TrainingCard, TrainingCardSet
 from user_config import User
+from oai import oai_transcript
 
 WA_VER=11
 
@@ -191,10 +192,21 @@ async def websocket_handler(request):
 
             if msg.type == WSMsgType.BINARY:
                 sz = len(msg.data)
-                logger.info(f"{user_id}: WA: bin data, len={sz}")
-                with open("received_audio_file.webm", "wb") as file:
+                logger.info(f"{user_id}: WA: rx audio, len={sz}")
+                file_name=f"data/{user_id}_.webm"
+                with open(file_name, "wb") as file:
                     file.write(msg.data)
-        
+                
+                logger.info(f"{user_id}: WA: written to file ok, len={sz}")
+                s=await oai_transcript(file_name)
+                data_obj = { 'type': "info-msg", 'text' : s}
+                json_str = json.dumps(data_obj)
+                logger.warning(f"{user_id}: WA: send data: type={data_obj['type']}")
+                try:
+                    await ws.send_str(json_str)
+                except Exception as e:
+                    logger.warning(f"{user_id}: WA: Error sending data via ws: {e}")
+                    break
 
             elif msg.type == WSMsgType.ERROR:
                 logger.warning(f'WA: ws err = {ws.exception()}')

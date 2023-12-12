@@ -58,6 +58,12 @@ img {
     line-height: normal;
     letter-spacing: -3.6px;    
 }
+.info-msg {
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 20px;
+    font-style: normal;
+    padding: 15px;    
+}
 
 .hdr {
     justify-content: space-between;
