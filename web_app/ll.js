@@ -1,4 +1,4 @@
-const VER = 19
+const VER = 34
 
 let query_id;
 
@@ -87,8 +87,10 @@ async function getHash(inputString) {
 // Создание тестового CardSet
 cardSet = new CardSet();
 isSoundEnabled = true
-var container = document.getElementById('container');
-var maxWidth=container.offsetWidth;
+var flashContainer = document.getElementById('flashContainer');
+
+var flash = document.getElementById('flash');
+var maxWidth=document.getElementById('container').offsetWidth;
 let flash0 = document.getElementById('flash0');
 let flash1 = flash0.cloneNode(true);
 flash1.id = 'flash1';
@@ -117,7 +119,7 @@ async function playAudio(audioSrc) {
             let s_link = "/au/en/e/" + hash + ".ogg?q=" + query_id + "&c=" + c.cid;
             last_audio = new Audio(s_link);
             console.log("E:" + s_link);
-        }            
+        }
         else
             return;
         last_audio.play();
@@ -174,17 +176,8 @@ async function updateCardUI(fl, card) {
         fl.style.display = "none";
 }
 
-var BREAK_POINT = maxWidth / 6;
-var mc = new Hammer.Manager(container);
-mc.add(new Hammer.Pan({
-    direction: Hammer.DIRECTION_ALL,
-    threshold: 5,
-    pointers: 0
-}));
-
-
-mc.add(new Hammer.Tap());
-mc.on("tap", async function (ev) {
+async function tapHandler (ev) {
+    await mic_off();
     if (ev.target.closest('img'))
         return;
 
@@ -202,10 +195,10 @@ mc.on("tap", async function (ev) {
             }
         }
     }
-});
+}
 
-
-mc.on("panleft panright panup", function (ev) {
+async function satrtPan(ev) {
+    await mic_off();
     let rot=-48.0*ev.deltaX/maxWidth;
     let op=Math.min(Math.abs(4.0*ev.deltaX)/maxWidth, 1.0);
     gsap.set(upFlash, {x: ev.deltaX, y: ev.deltaY, rotation: rot});
@@ -216,11 +209,12 @@ mc.on("panleft panright panup", function (ev) {
         gsap.set(".corner-box-right", {opacity: op});
         gsap.set(".corner-box-left", {opacity: 0});
     }
-});
+}
 
 async function endPan(ev) {
+    let BREAK_POINT = maxWidth / 6;
     if (Math.abs(ev.deltaX) > BREAK_POINT) {
-        document.querySelector('.info-msg').textContent="";        
+        document.querySelector('.info-msg').textContent="";
 
         const dataToSend = {
             type:   "answer",
@@ -280,8 +274,19 @@ async function endPan(ev) {
         gsap.to(".corner-box",  .2, {opacity: 0});
 
 }
-mc.on("panend pancancel", endPan);
 
+
+var mc = new Hammer.Manager(flashContainer);
+mc.add(new Hammer.Pan({
+    direction: Hammer.DIRECTION_ALL,
+    threshold: 5,
+    pointers: 0
+}));
+
+mc.add(new Hammer.Tap());
+mc.on("tap", tapHandler);
+mc.on("panleft panright panup", satrtPan);
+mc.on("panend pancancel", endPan);
 
 let tg=window.Telegram.WebApp;
 tg.expand();
@@ -404,45 +409,37 @@ speakerD.addEventListener('click', invertAutoPlay);
 
 
 
-let mic_control_type = "0"
+//mic handling
+let play_s1 = new Audio("/3.ogg");
+let play_s2 = new Audio("/2.ogg");
+play_s2.volume = 0.6;
+play_s1.volume = 0.35;
 
-async function startRecording_m()  {
-    if (mic_control_type=="0")
-        mic_control_type ="m";
-    
-    if (mic_control_type!="m")
-        return;
-    console.log("startRecording_m");
-    await startRecording();
+async function playS1() {
+    play_s2.pause();
+    play_s1.currentTime = 0; 
+
+    try {
+        await play_s1.play();
+        return new Promise((resolve) => {
+            play_s1.onended = resolve; // устанавливаем обработчик для окончания воспроизведения
+        });
+    } catch (error) {
+        console.error("Ошибка при воспроизведении звука 1:", error);
+    }
 }
 
-function stopRecording_m()  {
-    if (mic_control_type!="m")
-        return;
-    console.log("stopRecording_m");
-    stopRecording();
-}
-
-async function startRecording_t()  {
-    if (mic_control_type=="0")
-        mic_control_type ="t";
-    if (mic_control_type!="t")
-        return;
-    console.log("startRecording_t");
-    await startRecording();
-}
-
-function stopRecording_t()  {
-    if (mic_control_type!="t")
-        return;
-    console.log("stopRecording_t");
-    stopRecording();
+function playS2() {
+    play_s1.pause();
+    play_s2.currentTime = 0;
+    play_s2.play();
 }
 
 let mediaRecorder;
 let audioChunks = [];
 let mic_inited =false;
-// Получение доступа к микрофону
+let mic_record_on  =false;
+
 async function init_mic() {
     if (mic_inited)
         return;
@@ -457,6 +454,47 @@ async function init_mic() {
     } catch (error) {
         console.error("mic init error:", error);
     }        
+}
+
+let micIcon = document.querySelector('.micbut img');
+let micTimeout;
+
+async function micbut_click() {
+    console.log("MC");
+    if (!mic_inited) {
+        await init_mic();
+        if (mic_inited)
+            micIcon.src = "img/micbut1.png";
+        return
+    }
+    if (mic_record_on) {
+        clearTimeout(micTimeout);
+        await mic_off();
+    }
+    else {
+        await mic_on();
+        micTimeout = setTimeout(mic_off, 10000);
+    }
+}
+
+async function mic_off() {
+    if (mic_record_on) {
+        console.log("mic Rec OFF");
+        mic_record_on = false;
+        micIcon.src = "img/micbut1.png";
+        await stopRecording();
+        playS2();
+    }
+}
+
+async function mic_on() {
+    if (!mic_record_on) {
+        micIcon.src = "img/micbut2.png";
+        console.log("mic Rec ON");
+        mic_record_on = true;
+        await playS1();
+        await startRecording();
+    }
 }
 
 async function checkMicStatus() {
@@ -479,12 +517,10 @@ async function checkMicStatus() {
     }
 }
 
-
 async function startRecording() {
   audioChunks = [];
-  mic_st=await checkMicStatus();
   await init_mic();
-  if (mic_inited && mediaRecorder)// && mic_st) //если доступа к микрофону еще не было, то придется нажимать кнопку в запросе, и поэтому не сможем нормально отловить отжатие кнопки микрофона
+  if (mic_inited && mediaRecorder)
   {
     mediaRecorder.start();
     console.log("mediaRecorder.start");

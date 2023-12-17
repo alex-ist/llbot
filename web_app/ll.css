@@ -21,7 +21,6 @@ html {
 
 body {
     margin: 0;
-    min-height: 100vh;
     background-image: url('img/bg-41.png'), linear-gradient(0deg, #FFB06D 0%, #F3A893 59.72%, #9870A2 100%);
     background-position: center;
     background-size:  cover; 
@@ -30,13 +29,41 @@ body {
 
 .container {
     /*background-color: #fbdc9d;*/
-    background-color: rgba(0, 0, 0, 0);
     font-family: Open Sans, sans-serif;
     font-size: 20px;
     line-height: 24px;
     color: #6D4880;
-    padding-top: 15px;
     opacity: 1;
+
+    height: 100vh;
+    display: flex;
+    flex-direction: column;    
+}
+
+.blk1 {
+    margin-top: 10px;
+    justify-content: space-between;
+    align-items: center;
+    display: flex;
+}
+
+.blk2 {
+    flex-grow: 1;
+    overflow: hidden;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.blk3 {
+    margin: 0 15px 0 15px;
+    perspective: 1000px;
+    min-height: 400px;
+}
+
+.blk4 {
+    min-height: 70px;
+    margin: 15px;
 }
 
 img {
@@ -55,7 +82,7 @@ img {
     font-size: 48px;
     font-style: normal;
     font-weight: 600;
-    line-height: normal;
+    line-height: 40px;
     letter-spacing: -3.6px;    
 }
 .info-msg {
@@ -63,12 +90,6 @@ img {
     font-size: 20px;
     font-style: normal;
     padding: 15px;    
-}
-
-.hdr {
-    justify-content: space-between;
-    align-items: center;
-    display: flex;
 }
 
 .speaker {
@@ -81,15 +102,6 @@ img {
 
 .speaker-d {
     display: None;
-}
-
-.perspective-container {
-    perspective: 1000px;
-    position: fixed; /*absolute?*/
-    min-height: 400px;
-    bottom: 105px;
-    left: 15px;
-    right: 15px;
 }
 
 .flash {
@@ -225,12 +237,6 @@ img {
     padding-right: 0;
 }
 
-.buttons-cont {
-    position: fixed;
-    bottom: 15px;
-    left: 15px;
-    right: 15px;
-}
 .micbut {
     justify-content: center;
     align-items: center;
