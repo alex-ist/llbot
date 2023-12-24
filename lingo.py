@@ -1451,7 +1451,10 @@ async def bot_stop() -> None:
     global application
     if application is not None:
         if application.updater.running:
-            await application.updater.stop()  # type: ignore[union-attr]
+            try:
+                await application.updater.stop()  # type: ignore[union-attr]
+            except asyncio.CancelledError:
+                logger.warning(f"application.updater.stop: CancelledError")
         if application.running:
             await application.stop()
         await post_stop(application)
