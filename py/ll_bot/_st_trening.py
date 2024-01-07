@@ -86,7 +86,7 @@ async def st_trening(self:'LLBot') -> None:
             last_answer = True if self.ev=='kbd:+' else False
             self.tcs.SetAnswer(last_answer)
             self.sub_state="q"
-        elif self.ev=="cmd:edit":
+        elif self.ev==self.CMD_EDIT:
             self.edited_word=self.tcs.GetCurrentTCard().word
             await self.clear_screan()        
             self.call_state(self.ST_EDIT_OLD) #goto edit_cards

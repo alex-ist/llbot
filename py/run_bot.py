@@ -140,7 +140,7 @@ async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     await run_cmd(update, context, "cmd:help")
 
 async def cmd_edit(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    await run_cmd(update, context, "cmd:edit")
+    await run_cmd(update, context, LLBot.CMD_EDIT)
 
 async def rx_msg(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user_id=update.effective_user.id

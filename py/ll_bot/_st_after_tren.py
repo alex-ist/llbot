@@ -53,18 +53,25 @@ async def st_after_tren(self:'LLBot') -> None:
     await self.m1.sticker(sticker04_tren3())
     await self.m2.text(msg04_tren3(n, self.u.current_forget_rate), kbd=_kbd_after_tren(sub_state, wa))
 
-    self.timer_run(dt.timedelta(minutes=5), "tmr:t3")
-    await self.wait_event()
-    self.timer_stop()
-    if self.ev=='kbd:enough' or self.ev=='tmr:t3':
-        self.state=self.ST_BEFORE_TREN #goto BEFORE_TREN,
-    elif self.ev=='kbd:again':
-        self.state=self.ST_TRENING #goto tren,
-    elif self.ev=="wa:tren_start":
-        self.state=self.ST_WA_TRENING
-    elif self.ev==self.CMD_SYS_STOP:
-        await self.clear_screan()
-        self.state=self.ST_SYS_STOP
-        return
-    else:
-        self.log_err(f"{self.state}: unknown ev={self.ev}")
+    while True:
+        self.timer_run(dt.timedelta(minutes=5), "tmr:t3")
+        await self.wait_event()
+        self.timer_stop()
+        if self.ev==self.CMD_EDIT:
+                self.call_state(self.ST_SHOW_WORDS)
+                return
+        elif self.ev=='kbd:enough' or self.ev=='tmr:t3':
+            self.state=self.ST_BEFORE_TREN #goto BEFORE_TREN,
+            return
+        elif self.ev=='kbd:again':
+            self.state=self.ST_TRENING #goto tren,
+            return
+        elif self.ev=="wa:tren_start":
+            self.state=self.ST_WA_TRENING
+            return
+        elif self.ev==self.CMD_SYS_STOP:
+            await self.clear_screan()
+            self.state=self.ST_SYS_STOP
+            return
+        else:
+            self.log_err(f"{self.state}: unknown ev={self.ev}")

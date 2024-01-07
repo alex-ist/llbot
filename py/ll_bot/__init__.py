@@ -21,20 +21,21 @@ class LLBot:
     ST_AFTER_TREN ="st_after_tren"
     ST_1ST_SET = "st_1st_set"
     ST_TUTOR_SCR1 = "st_tutor_scr1"
-
     ST_ADD = "st_cmd_add"
+    ST_SHOW_WORDS="st_show_words"
+
 
     ST_SYS_STOP = "st_sys_stop"
 
     ADD_WORDS_FROM_LIB="add_from_lib_st"
     SHOW_STAT ="show_stat_st"
-    ST_SHOW_WORDS="show_words_st"
     ST_HELP_CMD="help_cmd_st"
     
     CMD_SYS_STOP="sys:stop"
     CMD_START = "cmd:start"
     CMD_SYS_RESTORE = "sys:restore"
     CMD_ADD = "cmd:add"
+    CMD_EDIT = "cmd:edit"
 
 
     def __init__(self, update: Update, context: ContextTypes, user_id=None, chat_id=None):
@@ -80,6 +81,7 @@ class LLBot:
         self.tcs=None
         self.states_q=[]
         self.edited_word=None
+        self.list_pos=0
 
         self.ev_q = asyncio.Queue()
         self.task=asyncio.create_task(self.main_loop())
@@ -249,6 +251,7 @@ class LLBot:
     from ._st_t_scr1 import st_tutor_scr1
     from ._add_word import add_word
     from ._st_add import st_add
+    from ._st_show_words import st_show_words
 
     st_functions = {
         ST_INIT:        st_init,
@@ -262,7 +265,8 @@ class LLBot:
         ST_EDIT_OLD:    st_edit_word, #один обработчик и для ST_EDIT_NEW и для ST_EDIT_OLD
         ST_1ST_SET:     st_1st_set,
         ST_TUTOR_SCR1:  st_before_tren,
-        ST_ADD:         st_add
+        ST_ADD:         st_add,
+        ST_SHOW_WORDS:  st_show_words
     }
 
     def call_state(self, new_state):

@@ -15,21 +15,6 @@ def select_button(kbd, selected: str, sel_symb:str=None, after=False) -> InlineK
                         new_txt = s + button.text
                     kbd[i][j] = InlineKeyboardButton(new_txt, callback_data=button.callback_data)
                     return
-                
-
-
-def format_button_text(txt:str, max_l:int):
-    l=len(txt)
-    if l > max_l:
-        return txt[:max_l-1]+'…'
-    elif l == max_l:
-        return txt
-    
-    txt=txt.ljust(max_l+max_l-l-1) #удваиваеем пробелы, так как они имеют маленькую ширину. fixme: а для руссккого утроить?
-    txt+="\u3164"
-    
-    return txt
-
 
 import traceback
 import html

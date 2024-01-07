@@ -218,7 +218,8 @@ def sticker11_t_o(): #'Hedgehog_Ned язык с телефоном'
     return 'CAACAgIAAxkBAAIXPmR7xS_plWDjwkD-bwPqRq6srRrsAAI3AAN4qOYPfx9FB5_gW6QvBA'
 
 def msg12_select_word(n):
-    return f"<code>Список для изучения, {msg_word(n)}. \nВыберите слово для просмотра и редактирования:</code>\n"
+    return (f"<code>Список для изучения, {msg_word(n)}. \nВыберите слово для просмотра и редактирования:\n"
+            "(для быстрого поиска введите первые буквы иностранного слова)</code>\n")
 
 def msg11_total_stat(n: int, forg_r):
     return f"<b>Статистика:</b><code>\nСейчас в списке для изучения {msg_word(n/2)}/{msg_card(n)}\nТекущий % забывания: {round(forg_r*100)}%\n\u28ffСлово            повтор через\n===============================\n</code>"

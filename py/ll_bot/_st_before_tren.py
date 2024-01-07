@@ -124,6 +124,9 @@ async def st_before_tren(self:'LLBot') -> None:
         elif self.ev==self.CMD_ADD:
             self.call_state(self.ST_ADD)
             return
+        elif self.ev==self.CMD_EDIT:
+            self.call_state(self.ST_SHOW_WORDS)
+            return
         elif self.ev==self.CMD_SYS_STOP:
             await self.clear_screan()
             self.state=self.ST_SYS_STOP
