@@ -231,6 +231,16 @@ def user_update(user_id:int, chat_id, username, first_name, lang_code, is_premiu
              (chat_id, username, first_name, lang_code, is_premium, name, t))
     close_db(db, commit=True)
 
+def user_get_data(user_id:int):
+    db, c=open_db()
+    c.execute(f"SELECT username, first_name, lang_code, is_premium, name FROM users WHERE user_id = {user_id}")
+    row = c.fetchone()
+    close_db(db)
+    if row:
+        return row
+    else:
+        return None, None, None, None, None,
+
 #1)нет слова в таблице ->None
 #2)нет ссылки со словом (например fw=абракадабра) ->fw
 #3)есть норм ссылка ->str

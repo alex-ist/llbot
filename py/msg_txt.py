@@ -199,6 +199,9 @@ def msg07_edit_word():
 def msg07_add_word():
     return '<code>➕ Добавление слова:</code>\n'
 
+def msg07_added_word():
+    return '<code>➕ Добавлено слово:</code>\n'
+
 def msg08_del_word():
     return "<code>🗑 УДАЛЕНИЕ слова:</code>\n"
 
@@ -206,7 +209,7 @@ def msg09_reset_prog():
     return "<code> Сбросить прогресс запоминания слова:</code>\n"
 
 def msg10_add_new_word():
-    return "<code>✏️ Введите слово для изучения:</code>"
+    return "<code>✏️ Введите слово для изучения\n(на родном или иностранном языке):</code>"
 
 def msg11_t_o():
     return "Я на тех. обслуживании, извини!"

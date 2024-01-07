@@ -49,7 +49,12 @@ class User(Singleton):
         user_update_auto_play(self.user_id, auto_play)
 
     @staticmethod
-    def Update(user_id, chat_id, username, first_name, lang_code, is_premium, name):
+    def UserGetData(user_id):
+        username, first_name, lang_code, is_premium, name=user_get_data(user_id)
+        return username, first_name, lang_code, is_premium, name
+
+    @staticmethod
+    def UserUpdate(user_id, chat_id, username, first_name, lang_code, is_premium, name):
         if user_exist(user_id):
             user_update(user_id, chat_id, username, first_name, lang_code, is_premium, name)
             return False

@@ -8,6 +8,7 @@ from telegram.ext import Application, CallbackQueryHandler, CommandHandler, Mess
 from telegram import Update, error
 import secrets
 from oai import init_oai
+from bot_db import load_maintenance_data
 
 from typing import Dict
 llb_set: Dict[int, LLBot] = {}
@@ -51,8 +52,10 @@ async def destroy_llb(user_id:int):
 application = None
 production_bot = None
 async def bot_run(prod_bot, token) -> None:
+    global production_bot, application
+    production_bot=prod_bot
+
     init_oai()
-    global application
     bot_def=telegram.ext.Defaults(parse_mode="HTML", disable_notification=True)
     application = Application.builder().token(token).post_init(post_init).post_stop(post_stop).defaults(bot_def).build()
     application.add_handler(CommandHandler("start", cmd_start))
@@ -70,8 +73,6 @@ async def bot_run(prod_bot, token) -> None:
 
     await application.initialize()
     await post_init(application)
-    global production_bot
-    production_bot=prod_bot
     if production_bot:
         await application.updater.start_webhook(
             listen='127.0.0.1',
@@ -88,15 +89,16 @@ async def bot_run(prod_bot, token) -> None:
     logger.warning("!!! Bot satrted")
 
 async def post_init(context):
-    #store web app link 
+    #store web app link
+    global production_bot
     if production_bot:
         wa=telegram.WebAppInfo("https://lingolink.soon.it/ll.html?ver=25")
     else:
         wa=telegram.WebAppInfo("https://192.168.0.16:5500/ll.html?ver=25")
+    logger.warning(f"wa={wa}")
     context.bot_data['web_app'] = wa
-    #r=load_maintenance_data()
-    #if r:
-    if False:
+    r=load_maintenance_data()
+    if r:
         for u in r:
             user_id=u[0]
             chat_id=u[1]
@@ -104,52 +106,10 @@ async def post_init(context):
             msg_id2=u[3]
             state=u[4]
             sub_state=u[5]
-            reminder=t_from_DB(u[6])
+            reminder=u[6]
             reminder_count=u[7]
-            
-            #удалить сообщение о тех обслуживании. Индикатор сообщений техобслуживания - знак минус.
-            if msg_id1 is not None and msg_id1<0:
-                await BotMsg.clear_msg(context.bot, chat_id, -msg_id1)
-            if msg_id2 is not None and msg_id2<0:
-                await BotMsg.clear_msg(context.bot, chat_id, -msg_id2)
-
-            n=words_count(user_id)  #сколько у юзера всего слов на изучении.
-            if n<=0:                #для тех кто не осилил еще, инстанс не создаем. Юзер может запустится командой /start
-                logger.info(f"{user_id}: has 0 words in learning list. will not run instance for him")
-                continue
-
-            ui=get_ui(user_id, chat_id, context)
-
-            if state!=UI.States.BEFORE_TREN:
-                ui.log_info(f"was in state={state}, ss={sub_state}. Run cmd:start for him")
-                if await ui.process_ev("cmd:start"):
-                    ui.log_err("post_init: error in ui.process_ev. What must to do?")
-                    ui.exit_ui()
-                continue
-
-            #UI.States.BEFORE_TREN:
-            ui.state_prev = ui.state = state
-            ui.sub_state = int(sub_state) if sub_state else 0 # колличество слов, готовых к изучению перед остановкой
-            if msg_id1 is None or msg_id1<0 or msg_id2 is None or msg_id2<0:
-                ui.log_err(f"post_init: was in state={state}, ss={sub_state}. but msg_id1={msg_id1}, msg_id2={msg_id2}")
-                ui.log_err("post_init: Run cmd:start for him")
-                if await ui.process_ev("cmd:start"):
-                    ui.log_err("post_init: error in ui.process_ev. What must to do?")
-                    ui.exit_ui()
-                continue
-
-            #восстановим сообщения которые были в состоянии BEFORE_TREN перед остановкой
-            ui.m1.set_sticker(msg_id1, "--") #стикер перерисуется при след апдейте состояния
-            ui.m2.set_txt(msg_id2, msg06_tren0(ui.sub_state), ui.create_buttons())
-            ui.reminder=reminder
-            ui.reminder_count=reminder_count
-            if ui.reminder is None:
-                ui.reminder=ui.reminder_time()
-                ui.reminder_count=0
-            
-            #запустим таймер и по нему поапдейтим все данные в before_tren_st()
-            ui.log_info(f"post_init: restoring state=BEFORE_TREN n={ui.sub_state} reminder={ui.reminder}")
-            ui.timer_run(timedelta(minutes=1),"tmr:t0")
+            llb=await LLBot.repair_after_maint(context, user_id, chat_id, msg_id1, msg_id2, state, sub_state, reminder, reminder_count)
+            llb_set[user_id]=llb
 
 async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     global llb_set
@@ -159,7 +119,7 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     #перезапуск state-машины бота для юзера.
     await destroy_llb(user_id)
     llb=get_llb(update, context)
-    await llb.process_ev("cmd:start")
+    await llb.process_ev(LLBot.CMD_START)
     llb.log_info("Started LLB")
 
 async def run_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE, cmd) -> None:
@@ -171,7 +131,7 @@ async def run_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE, cmd) -> No
         await destroy_llb(update.effective_user)
 
 async def cmd_add(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    await run_cmd(update, context, "cmd:add")
+    await run_cmd(update, context, LLBot.CMD_ADD)
 
 async def cmd_lib(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     await run_cmd(update, context, "cmd:lib")
@@ -226,7 +186,7 @@ async def process_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
             #перезапуск state-машины бота для юзера.
             await destroy_llb(user_id)
             llb=get_llb(update, context)
-            await llb.process_ev("cmd:start")
+            await llb.process_ev(LLBot.CMD_START)
 
 
 
@@ -244,9 +204,8 @@ async def bot_stop() -> None:
         await application.shutdown()
 
 async def post_stop(a):
-    pass
-    # for ui in ui_set.values():
-    #     await ui.stop_chat_for_maint()
+    for llb in llb_set.values():
+        await llb.stop_chat_for_maint()
 
 async def web_app_before_tren_cb(user_id):
     llb=get_llb2(user_id)

@@ -87,20 +87,18 @@ class BotMsg:
             self.prev_vo=None
         return ret
 
-    
-    def set_sticker(self, msg_id, stick:str):
+    def set_msg_id(self, msg_id):
         self.id=msg_id
-        self.kbd=None
-        if msg_id is not None:
-            self.txt=stick
-            self.type='sticker'
 
-    def set_txt(self, msg_id, txt:str, kbd:InlineKeyboardMarkup=None):
-        self.id=msg_id
-        if msg_id is not None:
-            self.kbd=kbd
-            self.txt=txt
-            self.type='txt'
+    def set_sticker(self, stick:str):
+        self.kbd=None
+        self.txt=stick
+        self.type='sticker'
+
+    def set_txt(self, txt:str, kbd:InlineKeyboardMarkup=None):
+        self.kbd=kbd
+        self.txt=txt
+        self.type='txt'
 
     @staticmethod
     def kbd_eq(k1:InlineKeyboardMarkup, k2:InlineKeyboardMarkup) -> bool:
