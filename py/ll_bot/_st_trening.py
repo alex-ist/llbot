@@ -100,6 +100,9 @@ async def st_trening(self:'LLBot') -> None:
             return
         elif self.ev==self.CMD_ADD:
             self.call_state(self.ST_ADD)
+            return
+        elif self.ev==self.CMD_HELP:
+            self.call_state(self.ST_HELP)
             return        
         elif self.ev==self.CMD_SYS_STOP:
             await self.clear_screan()

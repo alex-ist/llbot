@@ -107,26 +107,33 @@ def word_add(user_id:int, foreign_w, native_w, foreign_lang, native_lang, exampl
     db, c=open_db()
     #fixme: должно ли быть foreign_w уникальным для каждого юзера? если да:
     #if not cursor.execute("SELECT * FROM words WHERE user_id = ? AND foreign_w = ?", (user_id, foreign_w,)).fetchone():
-    c.execute("INSERT INTO words (user_id, foreign_w, native_w, foreign_lang, native_lang, example) VALUES (?, ?, ?, ?, ?, ?)",
-             (user_id, foreign_w, native_w, foreign_lang, native_lang, example))
+    current_timestamp = t_to_DB(datetime.datetime.now())
+    c.execute("INSERT INTO words (user_id, foreign_w, native_w, foreign_lang, native_lang, example, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+             (user_id, foreign_w, native_w, foreign_lang, native_lang, example, current_timestamp))
     word_id=c.lastrowid
     close_db(db, commit=True)
     return word_id
 
 def add_words_by_topic(user_id:int, topic:str, flang= "en", nlang="ru"):
     db, c=open_db()
+    current_timestamp = t_to_DB(datetime.datetime.now())
+
     #fixme подумать с переводом на другие языки
     sql = f"""
-INSERT INTO words (user_id, foreign_w, native_w, foreign_lang, native_lang, example)
-SELECT ?, f_word, tr1, '{flang}', '{nlang}', f_example
+INSERT INTO words (user_id, foreign_w, native_w, foreign_lang, native_lang, example, created_at)
+SELECT ?, f_word, tr1, '{flang}', '{nlang}', f_example, ?
 FROM word_set 
 WHERE topic = ? and f_lang= '{flang}' AND NOT EXISTS 
 (SELECT 1 FROM words WHERE foreign_w = word_set.f_word AND user_id = ?)
 """
-    c.execute(sql, (user_id, topic, user_id))
-    n=c.rowcount
-    close_db(db, commit=True)
-    return n
+    c.execute(sql, (user_id, current_timestamp, topic, user_id))
+    db.commit()
+
+    select_sql = "SELECT foreign_w, native_w FROM words WHERE user_id = ? AND created_at = ?"
+    c.execute(select_sql, (user_id, current_timestamp))
+    inserted_words = c.fetchall()
+    close_db(db)
+    return inserted_words
 
 def tcards_count(user_id:int):
     db, c = open_db()

@@ -50,7 +50,7 @@ async def st_edit_word(self:'LLBot') -> None:
     self.log_info(f"{self.state}: prev_st=" + self.state_prev)
    
     if self.state_prev!=self.ST_TRENING and self.state_prev!=self.ST_BEFORE_TREN and self.state_prev!=self.ST_ADD \
-            and self.state_prev!=self.ST_SHOW_WORDS and self.state_prev!=self.ST_HELP_CMD and self.state_prev!=self.ST_1ST_SET:
+            and self.state_prev!=self.ST_SHOW_WORDS and self.state_prev!=self.ST_HELP and self.state_prev!=self.ST_1ST_SET:
         self.log_err(f"{self.state}: unknown state_prev: " + self.state_prev)
         self.reset_state()
         return True
@@ -125,11 +125,13 @@ async def st_edit_word(self:'LLBot') -> None:
             if self.state==self.ST_EDIT_NEW:
                 #посим просто в чат инфу о новом слове
                 txt=msg07_added_word()+txt2
-                await self.bot.send_message(chat_id=self.chat_id, text=txt)
+                await self.send_msg(txt)
 
             self.return_state() #goto back
             return
-        
+        elif self.ev==self.CMD_HELP:
+            self.call_state(self.ST_HELP)
+            return        
         elif self.ev.startswith('msg:'):
             w = self.ev.split('msg:', 1)[1]
             if selected_button=="fw":

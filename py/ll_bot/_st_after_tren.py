@@ -69,6 +69,9 @@ async def st_after_tren(self:'LLBot') -> None:
         elif self.ev=="wa:tren_start":
             self.state=self.ST_WA_TRENING
             return
+        elif self.ev==self.CMD_HELP:
+            self.call_state(self.ST_HELP)
+            return        
         elif self.ev==self.CMD_SYS_STOP:
             await self.clear_screan()
             self.state=self.ST_SYS_STOP

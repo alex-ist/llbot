@@ -23,19 +23,20 @@ class LLBot:
     ST_TUTOR_SCR1 = "st_tutor_scr1"
     ST_ADD = "st_cmd_add"
     ST_SHOW_WORDS="st_show_words"
+    ST_HELP="st_help"
 
 
     ST_SYS_STOP = "st_sys_stop"
 
     ADD_WORDS_FROM_LIB="add_from_lib_st"
     SHOW_STAT ="show_stat_st"
-    ST_HELP_CMD="help_cmd_st"
     
     CMD_SYS_STOP="sys:stop"
     CMD_START = "cmd:start"
     CMD_SYS_RESTORE = "sys:restore"
     CMD_ADD = "cmd:add"
     CMD_EDIT = "cmd:edit"
+    CMD_HELP = "cmd:help"
 
 
     def __init__(self, update: Update, context: ContextTypes, user_id=None, chat_id=None):
@@ -252,6 +253,7 @@ class LLBot:
     from ._add_word import add_word
     from ._st_add import st_add
     from ._st_show_words import st_show_words
+    from ._st_help import st_help
 
     st_functions = {
         ST_INIT:        st_init,
@@ -266,7 +268,8 @@ class LLBot:
         ST_1ST_SET:     st_1st_set,
         ST_TUTOR_SCR1:  st_before_tren,
         ST_ADD:         st_add,
-        ST_SHOW_WORDS:  st_show_words
+        ST_SHOW_WORDS:  st_show_words,
+        ST_HELP:        st_help
     }
 
     def call_state(self, new_state):
@@ -280,3 +283,6 @@ class LLBot:
         self.states_q.clear()
         self.state = self.ST_BEFORE_TREN
         self.state_prev = self.ST_INIT
+
+    async def send_msg(self, txt):
+        await self.bot.send_message(chat_id=self.chat_id, text=txt)

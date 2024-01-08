@@ -229,3 +229,12 @@ def msg12_add_from_lib():
 
 def msg13_inactivity():
     return "Вообщем я на связи, когда потребуюсь можно продолжить /start"
+
+def msg14_words_added(l):
+    n=len(l)
+    txt=f"В список для изучения добавлено {msg_word(n)}:\n"
+    txt+="<pre>"
+    for fw,nw in l:
+        txt+=f"{fw} = {nw}\n"
+    txt+="</pre>"
+    return txt

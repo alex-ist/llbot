@@ -29,7 +29,7 @@ def _kbd_1st_set(selected=None, selected2=None):
         select_button(kbd, selected2, after=True)
     
     return InlineKeyboardMarkup(kbd)
-    
+
 
 async def st_1st_set(self:'LLBot') -> None:
     self.log_info(f"{self.state}: prev_st=" + self.state_prev)
@@ -50,8 +50,9 @@ async def st_1st_set(self:'LLBot') -> None:
         if self.ev=='kbd:ok':
             if selected_button is not None:
                 topic=selected_button[4:]
-                n=add_words_by_topic(self.user_id, topic, flang=self.u.foreign_lang, nlang=self.u.native_lang)
-                self.log_info(f"FIRST_SET: add_words n={n} topic={topic}")                
+                l=add_words_by_topic(self.user_id, topic, flang=self.u.foreign_lang, nlang=self.u.native_lang)
+                self.log_info(f"FIRST_SET: add_words n={len(l)} topic={topic}")
+                await self.send_msg(msg14_words_added(l))
                 self.state=self.ST_TUTOR_SCR1
                 return
             elif words_count(self.user_id)>0:
