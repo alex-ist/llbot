@@ -50,7 +50,7 @@ async def st_edit_word(self:'LLBot') -> None:
     self.log_info(f"{self.state}: prev_st=" + self.state_prev)
    
     if self.state_prev!=self.ST_TRENING and self.state_prev!=self.ST_BEFORE_TREN and self.state_prev!=self.ST_ADD \
-            and self.state_prev!=self.ST_SHOW_WORDS and self.state_prev!=self.ST_HELP and self.state_prev!=self.ST_1ST_SET:
+            and self.state_prev!=self.ST_SHOW_WORDS and self.state_prev!=self.ST_HELP and self.state_prev!=self.ST_1ST_SET and self.state_prev!=self.ST_ADD_FROM_LIB:
         self.log_err(f"{self.state}: unknown state_prev: " + self.state_prev)
         self.reset_state()
         return True

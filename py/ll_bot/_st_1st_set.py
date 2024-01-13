@@ -19,7 +19,7 @@ def _kbd_1st_set(selected=None, selected2=None):
                 ],[
                 InlineKeyboardButton("Ремонт квартиры", callback_data="kbd:renovation"),
                 ],[
-                InlineKeyboardButton("Начать", callback_data="kbd:ok"),
+                InlineKeyboardButton("Добавить", callback_data="kbd:ok"),
             ]]
     
     if selected is not None:
@@ -51,13 +51,17 @@ async def st_1st_set(self:'LLBot') -> None:
             if selected_button is not None:
                 topic=selected_button[4:]
                 l=add_words_by_topic(self.user_id, topic, flang=self.u.foreign_lang, nlang=self.u.native_lang)
-                self.log_info(f"FIRST_SET: add_words n={len(l)} topic={topic}")
-                await self.send_msg(msg14_words_added(l))
-                self.state=self.ST_TUTOR_SCR1
-                return
-            elif words_count(self.user_id)>0:
-                self.state=self.ST_TUTOR_SCR1
-                return
+                self.log_info(f"{self.state}: add_words n={len(l)} topic={topic}")
+                t=msg14_words_added(l)
+                if t: 
+                    await self.send_msg(t)
+            if words_count(self.user_id)>0:
+                if self.state==self.ST_1ST_SET:
+                    self.state=self.ST_TUTOR_SCR1
+                    return
+                else:
+                    self.return_state()
+                    return
         elif selected_button==self.ev: #second press the same button
             selected_button=None
             self.log_info("FIRST_SET: selected_button=None")

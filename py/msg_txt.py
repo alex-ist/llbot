@@ -232,9 +232,12 @@ def msg13_inactivity():
 
 def msg14_words_added(l):
     n=len(l)
-    txt=f"В список для изучения добавлено {msg_word(n)}:\n"
-    txt+="<pre>"
-    for fw,nw in l:
-        txt+=f"{fw} = {nw}\n"
-    txt+="</pre>"
-    return txt
+    if n>0:
+        txt=f"В список для изучения добавлено {msg_word(n)}:\n"
+        txt+="<pre>"
+        for fw,nw in l:
+            txt+=f"{fw} = {nw}\n"
+        txt+="</pre>"
+        return txt
+    else:
+        return None

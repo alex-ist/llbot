@@ -130,6 +130,9 @@ async def st_before_tren(self:'LLBot') -> None:
         elif self.ev==self.CMD_HELP:
             self.call_state(self.ST_HELP)
             return
+        elif self.ev==self.CMD_LIB:
+            self.call_state(self.ST_ADD_FROM_LIB)
+            return
         elif self.ev==self.CMD_SYS_STOP:
             await self.clear_screan()
             self.state=self.ST_SYS_STOP

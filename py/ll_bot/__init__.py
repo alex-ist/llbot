@@ -24,19 +24,18 @@ class LLBot:
     ST_ADD = "st_cmd_add"
     ST_SHOW_WORDS="st_show_words"
     ST_HELP="st_help"
-
+    ST_ADD_FROM_LIB="st_add_from_lib"
 
     ST_SYS_STOP = "st_sys_stop"
-
-    ADD_WORDS_FROM_LIB="add_from_lib_st"
     SHOW_STAT ="show_stat_st"
-    
+   
     CMD_SYS_STOP="sys:stop"
     CMD_START = "cmd:start"
     CMD_SYS_RESTORE = "sys:restore"
     CMD_ADD = "cmd:add"
     CMD_EDIT = "cmd:edit"
     CMD_HELP = "cmd:help"
+    CMD_LIB = "cmd:lib"
 
 
     def __init__(self, update: Update, context: ContextTypes, user_id=None, chat_id=None):
@@ -266,6 +265,7 @@ class LLBot:
         ST_EDIT_NEW:    st_edit_word, #один обработчик и для ST_EDIT_NEW и для ST_EDIT_OLD
         ST_EDIT_OLD:    st_edit_word, #один обработчик и для ST_EDIT_NEW и для ST_EDIT_OLD
         ST_1ST_SET:     st_1st_set,
+        ST_ADD_FROM_LIB:st_1st_set,
         ST_TUTOR_SCR1:  st_before_tren,
         ST_ADD:         st_add,
         ST_SHOW_WORDS:  st_show_words,

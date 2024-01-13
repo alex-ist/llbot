@@ -134,7 +134,7 @@ async def cmd_add(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     await run_cmd(update, context, LLBot.CMD_ADD)
 
 async def cmd_lib(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    await run_cmd(update, context, "cmd:lib")
+    await run_cmd(update, context, LLBot.CMD_LIB)
 
 async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     await run_cmd(update, context, LLBot.CMD_HELP)
