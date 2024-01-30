@@ -96,7 +96,7 @@ async def st_before_tren(self:'LLBot') -> None:
                     await self.m1.sticker(sticker06_sq_rest())
             else:
                 await self.m1.sticker(sticker06_tren0())
-            await self.m2.text(msg06_before_tren_reminder(n, self.reminder_count), self.create_buttons())
+            await self.m2.text(msg06_before_tren_reminder(n, self.reminder_count), _kbd_before_tren(self))
 
         if n<self.u.cur_cards_for_training: #fixme: таймер на время когда след слово подойдет?
             delta=dt.timedelta(minutes=10)

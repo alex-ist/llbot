@@ -48,8 +48,10 @@ Thumbs.db
 *.mov
 *.wmv
 *.ogg
+*.aac
 *m4a
 _map.txt
 
 
 keys/openai.txt
+

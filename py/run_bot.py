@@ -162,7 +162,6 @@ async def rx_msg(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             await destroy_llb(update.effective_user)
 
 async def process_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-        global ui_set
         user_id=update.effective_user.id
         query = update.callback_query
         #sometimes error was here:

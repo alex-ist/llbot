@@ -7,8 +7,6 @@ from bot_msg import BotMsg
 from msg_txt import *
 from bot_db import save_maintenance_data, t_from_DB, words_count
 
-#fixme если объект был создан, но не было команды /start то он находится в состоянии udef. нужно дергать команду start?
-#llb.log_info(f"rx_msg: {text}")
 class LLBot:
     ST_INIT = "st_init"
     ST_NEW_USER = "st_new_user"
@@ -200,8 +198,8 @@ class LLBot:
                 if handler:
                     await handler(self) #fixme check return?
                 else: # обработка, если self.state не найден в словаре state_functions
-                    if self.state==self.ST_SYS_STOP:
-                        return
+                    if self.state==self.ST_SYS_STOP: 
+                        return #fixme - надо удалить из llb_set
                     self.log_err(f"main_loop: no handler for {self.state}")
                     return
         except asyncio.CancelledError:
