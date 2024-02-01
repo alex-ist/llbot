@@ -333,7 +333,7 @@ def training_card_update_by_id(training_card_id, user_id, next_training_t, last_
 
 def get_tcards(user_id, n):
         db, cursor=open_db()
-        #выбирает сначала старые карты для поаторения, если их нехватает то дополняет новыми
+        #выбирает сначала старые карты для повторения, если их нехватает то дополняет новыми
         #новые карты у которых next_training_t = -1 выбирает в случайном порядке.
         #сразу отсортирует по направлению
         t_now=t_to_DB(datetime.datetime.now())
@@ -355,7 +355,7 @@ def get_tcards(user_id, n):
             """)
             result1 = result1 + cursor.fetchall()
         
-        result1 = sorted(result1, key=lambda x: x[2])
+        result1 = sorted(result1, key=lambda x: x[2], reverse=True)
 
         close_db(db)
         return result1
