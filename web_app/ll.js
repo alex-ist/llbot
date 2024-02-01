@@ -33,7 +33,6 @@ class Card {
 class CardSet {
     constructor() {
         this.cards = [];
-        this.currentCardIndex = 0;
     }
     
     addCard(card) {
@@ -47,29 +46,30 @@ class CardSet {
     // Возвращает текущую карточку
     getCurrentCard() {
         if (this.cards.length>0)
-            return this.cards[this.currentCardIndex];
+            return this.cards[0];
         else
             return null;
     }
 
     // Возвращает следующую карточку
     getNextCard() {
-        return this.cards[(this.currentCardIndex + 1) % this.cards.length];
+        return this.cards[1];
     }
 
     // Устанавливает ответ для текущей карточки
     setAnswer(val) {
         this.getCurrentCard().answer = val;
         if (val == 1) {
-            this.cards.splice(this.currentCardIndex, 1);
-            if (this.currentCardIndex >= this.cards.length) {
-                this.currentCardIndex = 0;
-            }
+            this.cards.splice(0, 1);
             document.querySelector('.txt-counter').textContent =this.cards.length;
     
-        } else if (val == 0) {
-            let card = this.cards.splice(this.currentCardIndex, 1)[0];
-            this.cards.push(card);
+        } else //if (val == 0)
+        {
+            let card = this.cards.splice(0, 1)[0];
+            if (this.cards.length > 10)
+                this.cards.splice(9, 0, card); 
+            else
+                this.cards.push(card); // Добавление карты в конец массива, если в нем меньше 10 карт
         }
     }
 }
