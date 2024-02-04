@@ -63,3 +63,59 @@ async def google_speach(text, lang, file_name):
 # #    print (f"{tr}" )
 
 # asyncio.run(f())
+
+
+
+from google.cloud.speech_v2 import SpeechAsyncClient
+from google.cloud.speech_v2.types import cloud_speech
+
+project_id = "bamboo-antler-386512"
+gstt_async_client =None
+async def google_transcript(file_name, lang="en-US", await_word=None):
+    if lang=="en":
+        lang="en-US" #fixme
+
+    global gstt_async_client
+    with open(file_name, "rb") as audio_file:
+        content = audio_file.read()
+
+    features = cloud_speech.RecognitionFeatures(max_alternatives=3)
+    config = cloud_speech.RecognitionConfig(
+        auto_decoding_config=cloud_speech.AutoDetectDecodingConfig(),
+        language_codes=[lang],
+        features=features,
+        model="short")
+
+    # Initialize request argument(s)
+    request = cloud_speech.RecognizeRequest(
+        config=config,
+        content=content,
+        recognizer=f"projects/{project_id}/locations/global/recognizers/_",
+    )
+
+    # Make the request
+    if gstt_async_client is None:
+        gstt_async_client = SpeechAsyncClient()
+
+    response = await gstt_async_client.recognize(request=request)
+    # print(response)
+
+    if await_word:
+        await_word=await_word.lower()
+
+    best_match = None
+    highest_confidence = 0.0
+    for result in response.results:
+        for a in result.alternatives:
+            w=a.transcript.lower()
+            if w == await_word:
+                return w
+            # Если точного совпадения нет, ищем лучшее по уверенности
+            if a.confidence > highest_confidence:
+                highest_confidence = a.confidence
+                best_match = a.transcript
+    return best_match
+
+
+# import asyncio
+# asyncio.run(google_transcript("data/484679683_.webm"))

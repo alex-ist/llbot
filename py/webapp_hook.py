@@ -10,9 +10,18 @@ from urllib.parse import parse_qs
 from card import Word, TrainingCard, TrainingCardSet
 from user_cfg import User
 from oai import oai_transcript
+from gog import google_transcript
 
-WA_VER=11
+WA_VER=12
 
+import time
+#обертка для async функции, измеряет время выполнения
+async def measure_time(func, *args):
+    start_time = time.time()
+    result = await func(*args)
+    end_time = time.time()
+    elapsed_time_ms = (end_time - start_time) * 1000  # Время в миллисекундах
+    return elapsed_time_ms, result
 
 webapp_skey=None
 def verify_telegram_data(init_data):
@@ -189,7 +198,20 @@ async def websocket_handler(request):
                     break
                 elif req_type=="rec-voice":
                     lang_dir = parsed_data.get('lang')
-                    logger.info(f"{user_id}: WA: rec-voice, lang={lang_dir}")
+                    cid = parsed_data.get('cid')
+                    c=tcs.GetCard(cid)
+                    
+                    if lang_dir=="fw": #fixme get current lang:
+                        lang="en"
+                        word = c.GetForeign() if c else None
+                    elif lang_dir=="nw":
+                        lang="ru"
+                        word=c.GetNative() if c else None
+                    else:
+                        lang=None
+                        word=None
+
+                    logger.info(f"{user_id}: WA: rec-voice, lang={lang_dir}, expect = {word}")
 
             if msg.type == WSMsgType.BINARY:
                 sz = len(msg.data)
@@ -199,16 +221,16 @@ async def websocket_handler(request):
                     file.write(msg.data)
                 
                 logger.info(f"{user_id}: WA: written to file ok, len={sz}")
-                if lang_dir=="fw": #fixme get current lang:
-                    lang="en"
-                elif lang_dir=="nw":
-                    lang="ru"
-                else:
-                    lang=None
-                s=await oai_transcript(file_name, lang)
-                data_obj = { 'type': "info-msg", 'text' : s}
+                
+                (t1, s1), (t2, s2) = await asyncio.gather(
+                    measure_time(oai_transcript, file_name, lang, word),
+                    measure_time(google_transcript, file_name, lang, word)
+                )
+                res_str=f"o:{int(t1)}:{s1}\ng:{int(t2)}:{s2}"
+                logger.warning(f"{user_id}: WA: send data: info-msg: {res_str}")
+
+                data_obj = { 'type': "info-msg", 'text' : res_str}
                 json_str = json.dumps(data_obj)
-                logger.warning(f"{user_id}: WA: send data: type={data_obj['type']}")
                 try:
                     await ws.send_str(json_str)
                 except Exception as e:

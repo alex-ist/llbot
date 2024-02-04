@@ -1,5 +1,5 @@
 import asyncio
-from g_ttos import google_speach
+from gog import google_speach
 from oai import oai_speach
 
 SPEACH_EXT=".ogg"

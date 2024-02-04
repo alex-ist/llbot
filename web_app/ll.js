@@ -115,10 +115,10 @@ async function playAudio(audioSrc) {
         }
         else if (audioSrc == "ex") {
             const hash = await getHash(c.example);
-            console.log(hash + ":" + c.example);
+            //console.log(hash + ":" + c.example);
             let s_link = "/au/en/e/" + hash + ".ogg?q=" + query_id + "&c=" + c.cid;
             last_audio = new Audio(s_link);
-            console.log("E:" + s_link);
+            //console.log("E:" + s_link);
         }
         else
             return;
@@ -536,18 +536,17 @@ function stopRecording() {
 }
 
 function sendAudioToServer(audioBlob) {
-    word_dir="";
-    if (ss=='q')
-        word_dir=cardSet.getCurrentCard().direction?"fw":"nw";
+    cur_card=cardSet.getCurrentCard();
 
     const dataToSend = {
         type:  "rec-voice",
-        lang:   word_dir
+        lang:   cur_card.direction?"fw":"nw",
+        cid:    cur_card.cid,
     };
     let r=JSON.stringify(dataToSend)
     ws.send(r);
-    if (uid==484679683 || uid==5800537837){
+    //if (uid==484679683 || uid==5800537837){
         ws.send(audioBlob);
-        console.log("sendAudioToServer");
-    }
+        //console.log("sendAudioToServer");
+    //}
 }
