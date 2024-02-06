@@ -2,6 +2,7 @@
 
 import os
 from google.cloud import texttospeech_v1
+from botlog import logger
 
 gtts_async_client = None  
 #extension defines file format OGG, MP3, WAV.
@@ -68,12 +69,15 @@ async def google_speach(text, lang, file_name):
 
 from google.cloud.speech_v2 import SpeechAsyncClient
 from google.cloud.speech_v2.types import cloud_speech
+from utils import clean_compare_str
 
 project_id = "bamboo-antler-386512"
 gstt_async_client =None
 async def google_transcript(file_name, lang="en-US", await_word=None):
     if lang=="en":
         lang="en-US" #fixme
+    elif lang=="ru":
+        lang="ru-RU" #fixme
 
     global gstt_async_client
     with open(file_name, "rb") as audio_file:
@@ -100,20 +104,18 @@ async def google_transcript(file_name, lang="en-US", await_word=None):
     response = await gstt_async_client.recognize(request=request)
     # print(response)
 
-    if await_word:
-        await_word=await_word.lower()
-
     best_match = None
     highest_confidence = 0.0
     for result in response.results:
         for a in result.alternatives:
-            w=a.transcript.lower()
-            if w == await_word:
-                return w
+            logger.info(f"google_transcript: {lang}: {a.confidence:.2f}: {a.transcript}")    
+            if clean_compare_str(a.transcript, await_word):
+                return a.transcript
             # Если точного совпадения нет, ищем лучшее по уверенности
             if a.confidence > highest_confidence:
                 highest_confidence = a.confidence
                 best_match = a.transcript
+
     return best_match
 
 

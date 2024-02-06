@@ -45,3 +45,15 @@ async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE):
     logger.error('u_str\n', exc_info=context.error)    
     await inform_devel(context.bot, u_str)
 
+
+import re
+def clean_compare_str(str1, str2): #fixme - optimize? second word need to update only once
+    # Функция для очистки строки от знаков препинания и приведения к нижнему регистру
+    def clean_string(s):
+        if s:
+            return re.sub(r'[^\w]', '', s).lower().strip()
+        else:
+            return s
+
+    # Очищаем и сравниваем строки
+    return clean_string(str1) == clean_string(str2)

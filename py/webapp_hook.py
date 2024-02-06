@@ -12,6 +12,8 @@ from user_cfg import User
 from oai import oai_transcript
 from gog import google_transcript
 
+from utils import clean_compare_str
+
 WA_VER=12
 
 import time
@@ -226,12 +228,22 @@ async def websocket_handler(request):
                     measure_time(oai_transcript, file_name, lang, word),
                     measure_time(google_transcript, file_name, lang, word)
                 )
-                res_str=f"o:{int(t1)}:{s1}\ng:{int(t2)}:{s2}"
-                logger.warning(f"{user_id}: WA: send data: info-msg: {res_str}")
+                #проверка корректности ответа
+                correct_answ=clean_compare_str(s1, word)
+                logger.warning(f"{user_id}: 1")
+                if not correct_answ:
+                    correct_answ=clean_compare_str(s2, word)
 
-                data_obj = { 'type': "info-msg", 'text' : res_str}
-                json_str = json.dumps(data_obj)
                 try:
+                    if correct_answ:
+                        data_obj = { 'type': "flip-flash"} #автопереворот карточки.
+                        json_str = json.dumps(data_obj)
+                        logger.warning(f"{user_id}: WA: send data: flip-flash")
+                        await ws.send_str(json_str)
+                    res_str=f"o:{int(t1)}:{s1} <br> g:{int(t2)}:{s2}"
+                    logger.warning(f"{user_id}: WA: send data: info-msg: {res_str}")
+                    data_obj = { 'type': "info-msg", 'text' : res_str}
+                    json_str = json.dumps(data_obj)
                     await ws.send_str(json_str)
                 except Exception as e:
                     logger.warning(f"{user_id}: WA: Error sending data via ws: {e}")

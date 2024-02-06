@@ -49,11 +49,15 @@ class CardSet {
             return this.cards[0];
         else
             return null;
-    }
-
+        }
+    
     // Возвращает следующую карточку
     getNextCard() {
-        return this.cards[1];
+        if (this.cards.length>1)
+            return this.cards[1];
+        else {
+            console.log("getNextCard->nul");
+            return null;}
     }
 
     // Устанавливает ответ для текущей карточки
@@ -181,6 +185,10 @@ async function tapHandler (ev) {
     if (ev.target.closest('img'))
         return;
 
+    await flipFlash()
+}
+
+async function flipFlash(){
     if (ss=='q') {
         ss='a';
         gsap.to(upFlash, {
@@ -195,6 +203,7 @@ async function tapHandler (ev) {
             }
         }
     }
+
 }
 
 async function satrtPan(ev) {
@@ -243,12 +252,12 @@ async function endPan(ev) {
                 if (cardSet.getLen()>=2) {
                     u=upFlash;
                     upFlash=downFlash;
-                    downFlash=u;    
-                    await updateCardUI(downFlash, cardSet.getNextCard());
+                    downFlash=u;
+                                        await updateCardUI(downFlash, cardSet.getNextCard());
                 }
                 else if (cardSet.getLen()==1) {
                     await updateCardUI(downFlash, null);
-                    await updateCardUI(upFlash, cardSet.getNextCard());
+                    await updateCardUI(upFlash, cardSet.getCurrentCard());
                 }
                 else {
                     await updateCardUI(upFlash, null);
@@ -362,7 +371,11 @@ ws.addEventListener('message', async (event) => {
     }
     else if (receivedData.type === "info-msg") {
         console.log("Rx info msg:"+receivedData.text);
-        document.querySelector('.info-msg').textContent=receivedData.text;        
+        document.querySelector('.info-msg').innerHTML=receivedData.text;
+    }
+    else if (receivedData.type === "flip-flash") {
+        console.log("flip-flash");
+        await flipFlash()
     }
 });
 
@@ -406,7 +419,6 @@ function invertAutoPlay() {
 
 speakerE.addEventListener('click', invertAutoPlay);
 speakerD.addEventListener('click', invertAutoPlay);
-
 
 
 //mic handling

@@ -92,9 +92,9 @@ async def post_init(context):
     #store web app link
     global production_bot
     if production_bot:
-        wa=telegram.WebAppInfo("https://lingolink.soon.it/ll.html?ver=25")
+        wa=telegram.WebAppInfo("https://lingolink.soon.it/ll.html?ver=26")
     else:
-        wa=telegram.WebAppInfo("https://192.168.0.16:5500/ll.html?ver=25")
+        wa=telegram.WebAppInfo("https://192.168.0.16:5500/ll.html?ver=26")
     logger.warning(f"wa={wa}")
     context.bot_data['web_app'] = wa
     r=load_maintenance_data()
