@@ -45,15 +45,38 @@ async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE):
     logger.error('u_str\n', exc_info=context.error)    
     await inform_devel(context.bot, u_str)
 
+def remove_en_article(fw: str):
+    fw2 = fw = fw.strip().lower()
+    if fw.startswith('a '): #remove leading 'a' #Cambridge dict sometimes did not not support search with an article
+        fw2 = fw[2:]
+    elif fw.startswith('an '): #remove leading 'an'
+        fw2 = fw[3:]
+    elif fw.startswith('the '): #remove leading 'the'
+        fw2 = fw[4:]
+    elif fw.startswith('to '): #remove leading 'to'
+        fw2 = fw[3:]
+    return fw2.strip()
 
 import re
-def clean_compare_str(str1, str2): #fixme - optimize? second word need to update only once
-    # Функция для очистки строки от знаков препинания и приведения к нижнему регистру
-    def clean_string(s):
+#сравнивает слова с образцом
+def clean_compare_str(sample, str1, str2, lang='en'):
+    # Функция для очистки строки от знаков препинания, артиклев
+    def clean_string(s, lang):
         if s:
-            return re.sub(r'[^\w]', '', s).lower().strip()
+            if lang=='en':
+                s=remove_en_article(s)
+            else:
+                s=s.lower().strip()
+            return re.sub(r'[^\w]', '', s)
         else:
             return s
 
-    # Очищаем и сравниваем строки
-    return clean_string(str1) == clean_string(str2)
+    sample=clean_string(sample, lang)
+    str1=clean_string(str1, lang)
+    str2=clean_string(str2, lang)
+    
+    if sample==str1 or sample==str2:
+        return True
+    
+    return False
+

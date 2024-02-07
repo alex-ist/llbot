@@ -229,11 +229,7 @@ async def websocket_handler(request):
                     measure_time(google_transcript, file_name, lang, word)
                 )
                 #проверка корректности ответа
-                correct_answ=clean_compare_str(s1, word)
-                logger.warning(f"{user_id}: 1")
-                if not correct_answ:
-                    correct_answ=clean_compare_str(s2, word)
-
+                correct_answ=clean_compare_str(word, s1, s2, lang=lang)
                 try:
                     if correct_answ:
                         data_obj = { 'type': "flip-flash"} #автопереворот карточки.

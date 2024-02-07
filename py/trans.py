@@ -8,19 +8,8 @@ from google.cloud import translate
 import httpx
 from bot_db import *
 from botlog import logger
+from utils import remove_en_article
 
-
-def remove_en_article(fw: str):
-    fw2 = fw = fw.strip().lower()
-    if fw.startswith('a '): #remove leading 'a' #Cambridge dict sometimes did not not support search with an article
-        fw2 = fw[2:]
-    elif fw.startswith('an '): #remove leading 'an'
-        fw2 = fw[3:]
-    elif fw.startswith('the '): #remove leading 'the'
-        fw2 = fw[4:]
-    elif fw.startswith('to '): #remove leading 'to'
-        fw2 = fw[3:]
-    return fw2.strip()
 
 import re
 def remove_brackets(fw: str):
