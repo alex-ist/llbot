@@ -86,5 +86,15 @@ def show_user_log(user_id):
     log=get_last_n_lines('log/ll.log', user_id, 100)
     return render_template('log.html', user_id=user_id, lines=log)
 
+@app.route('/words/<int:user_id>/delete', methods=['POST'])
+def delete_words(user_id):
+    word_ids = request.get_json().get('word_ids')
+    for word_id in word_ids:
+        word = Word.query.filter_by(word_id=word_id, user_id=user_id).first()
+        if word:
+            db.session.delete(word)
+    db.session.commit()
+    return jsonify({"message": f"{len(word_ids)} words have been deleted."})
+
 if __name__ == '__main__':
     app.run(debug=True)

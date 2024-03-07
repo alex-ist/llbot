@@ -59,7 +59,7 @@ def remove_en_article(fw: str):
 
 import re
 #сравнивает слова с образцом
-def clean_compare_str(sample, str1, str2, lang='en'):
+def clean_compare_str(sample, str1, str2=None, lang='en'):
     # Функция для очистки строки от знаков препинания, артиклев
     def clean_string(s, lang):
         if s:
@@ -73,7 +73,7 @@ def clean_compare_str(sample, str1, str2, lang='en'):
 
     sample=clean_string(sample, lang)
     str1=clean_string(str1, lang)
-    str2=clean_string(str2, lang)
+    str2=clean_string(str2, lang) if str2 else None
     
     if sample==str1 or sample==str2:
         return True

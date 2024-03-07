@@ -73,11 +73,11 @@ from utils import clean_compare_str
 
 project_id = "bamboo-antler-386512"
 gstt_async_client =None
-async def google_transcript(file_name, lang="en-US", await_word=None):
+async def google_transcript(file_name, lang="en", await_word=None):
     if lang=="en":
-        lang="en-US" #fixme
+        lang_long="en-US" #fixme
     elif lang=="ru":
-        lang="ru-RU" #fixme
+        lang_long="ru-RU" #fixme
 
     global gstt_async_client
     with open(file_name, "rb") as audio_file:
@@ -86,7 +86,7 @@ async def google_transcript(file_name, lang="en-US", await_word=None):
     features = cloud_speech.RecognitionFeatures(max_alternatives=3)
     config = cloud_speech.RecognitionConfig(
         auto_decoding_config=cloud_speech.AutoDetectDecodingConfig(),
-        language_codes=[lang],
+        language_codes=[lang_long],
         features=features,
         model="short")
 
@@ -108,8 +108,8 @@ async def google_transcript(file_name, lang="en-US", await_word=None):
     highest_confidence = 0.0
     for result in response.results:
         for a in result.alternatives:
-            logger.info(f"google_transcript: {lang}: {a.confidence:.2f}: {a.transcript}")    
-            if clean_compare_str(a.transcript, await_word):
+            logger.info(f"google_transcript: {lang_long}: {a.confidence:.2f}: {a.transcript}")    
+            if clean_compare_str(await_word, a.transcript, lang=lang):
                 return a.transcript
             # Если точного совпадения нет, ищем лучшее по уверенности
             if a.confidence > highest_confidence:
