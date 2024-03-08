@@ -50,6 +50,39 @@ class Word(db.Model):
     native_w = db.Column('native_w', db.String)
     example = db.Column('example', db.String)
 
+def get_words_with_levels(user_id):
+    words = Word.query.filter_by(user_id=user_id).all()
+
+    for word in words:
+        training_data = db.session.execute("""
+            SELECT next_training_t, last_training_t
+            FROM training_cards
+            WHERE user_id = :user_id AND word_id = :word_id
+        """, {'user_id': user_id, 'word_id': word.word_id}).fetchall()
+
+        tot_t = 0
+        for nt, lt in training_data:
+            if nt == -1 or lt == -1:
+                break
+
+            tot_t += nt - lt
+
+        word.level = get_progr(tot_t // 2)
+
+    return words
+
+def get_progr(t: int):
+    if t < 3600 * 6:
+        return 0
+    elif t < 3600 * 24:
+        return 1
+    elif t < 3600 * 24 * 4:
+        return 2
+    elif t < 3600 * 24 * 16:
+        return 3
+    else:
+        return 4
+        
 # @app.route('/')
 # def show_users():
 #     users = User.query.order_by(User.last_access.desc()).all()        
@@ -78,7 +111,7 @@ def show_dl():
 
 @app.route('/words/<int:user_id>')
 def show_user_words(user_id):
-    words = Word.query.filter_by(user_id=user_id).all()
+    words = get_words_with_levels(user_id)
     return render_template('words.html', user_id=user_id, words=words)
 
 @app.route('/log/<int:user_id>')

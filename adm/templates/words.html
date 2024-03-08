@@ -9,7 +9,7 @@
         <h1 class="mb-4">User: {{ user_id }}</h1>  <!-- mb-4 это класс для добавления отступа снизу -->
         <a href="{{ url_for('show_user_log', user_id=user_id) }}">Log</a>
         <a href="{{ url_for('show_users') }}">Home</a>
-
+        <button type="button" class="btn btn-danger" onclick="confirmDelete()">Delete Selected</button>
         <table class="table table-striped">
             <thead class="thead-dark">
                 <tr>
@@ -17,6 +17,7 @@
                     <th>word_id</th>
                     <th>foreign_w</th>
                     <th>native_w</th>
+                    <th>level</th>
                     <th>example</th>
                 </tr>
             </thead>
@@ -27,12 +28,12 @@
                     <td>{{ w.word_id }}</td>
                     <td>{{ w.foreign_w }}</td>
                     <td>{{ w.native_w }}</td>
+                    <td>{{ w.level }}</td> 
                     <td>{{ w.example }}</td>
                 </tr>
                 {% endfor %}
             </tbody>
         </table>
-        <button type="button" class="btn btn-danger" onclick="confirmDelete()">Delete Selected</button>
     </div>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js"></script>
@@ -57,7 +58,6 @@
                     contentType: "application/json; charset=utf-8",
                     dataType: "json",
                     success: function(response) {
-                        alert(response.message);
                         location.reload();
                     },
                     error: function(xhr, status, error) {
