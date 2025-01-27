@@ -104,7 +104,7 @@ async def oai_aget_example(user_id, fword, n=0, fw2=None):
     
     if ex is None:
         ex, rsp= await oai_aget_example1(fword)
-        mode="gtp-4o"
+        mode="gpt-4o"
 
     if ex is not None:
         pt=rsp.usage.prompt_tokens
