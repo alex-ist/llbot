@@ -6,31 +6,40 @@ from run_bot import bot_run, bot_stop
 from webapp_hook import webapp_hook_run
 import platform
 import signal
+import os
 
 def _raise_system_exit():
     raise SystemExit
 
+def is_inside_docker():
+    try:
+        with open('/proc/1/cgroup', 'rt') as f:
+            return 'docker' in f.read()
+    except FileNotFoundError:
+        return False
+
 async def main_async():
-    production_bot=1 #=update_dns() #dns updated, there is free dns key -> work on server
-    production_bot=0 #=update_dns() #dns updated, there is free dns key -> work on server
+    prod = not is_inside_docker()
+    
     loop = asyncio.get_event_loop()
 
-    if platform.system() != "Windows":
-        for sig in (signal.SIGINT, signal.SIGTERM, signal.SIGABRT):
-            loop.add_signal_handler(sig, _raise_system_exit)
 
-    try:        
+    for sig in (signal.SIGINT, signal.SIGTERM, signal.SIGABRT):
+        loop.add_signal_handler(sig, _raise_system_exit)
+
+    if prod:
+        with open("keys/lingolink.txt", 'r') as f:
+            token = f.readline().strip()
+            logger.info("Running LL production bot")
+    else:
         with open("keys/tg-token.txt", 'r') as f:
             token = f.readline().strip()
             logger.info("Running LL test bot")
-    except FileNotFoundError:
-        try:
-            with open("keys/lingolink.txt", 'r') as f:
-                token = f.readline().strip()
-                logger.info("Running LL production bot")
-        except FileNotFoundError:
-            logger.error("No telegram token found")
+    
+    if not token:
+        logger.error("No telegram token found")
   
+        
     try:
         await bot_run(production_bot, token)
         await webapp_hook_run(production_bot, token)

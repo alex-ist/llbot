@@ -12,7 +12,7 @@ from bot_db import load_maintenance_data
 
 from typing import Dict
 llb_set: Dict[int, LLBot] = {}
-
+WEB_HOOK_MODE = False  
 
 def is_llb_in_mem(update: Update):
     user_id=update.effective_user.id
@@ -73,7 +73,7 @@ async def bot_run(prod_bot, token) -> None:
 
     await application.initialize()
     await post_init(application)
-    if production_bot:
+    if WEB_HOOK_MODE:
         await application.updater.start_webhook(
             listen='127.0.0.1',
             port=8503,
@@ -91,11 +91,10 @@ async def bot_run(prod_bot, token) -> None:
 async def post_init(context):
     #store web app link
     global production_bot
-    if 1:
-    #if production_bot:
+    if production_bot:
         wa=telegram.WebAppInfo("https://ll.dias.rs/ll.html?ver=26")
     else:
-        wa=telegram.WebAppInfo("https://192.168.0.16:5500/ll.html?ver=26")
+        wa=telegram.WebAppInfo("https://192.168.1.117:5500/ll.html?ver=26")
     logger.warning(f"wa={wa}")
     context.bot_data['web_app'] = wa
     r=load_maintenance_data()

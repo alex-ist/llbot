@@ -127,7 +127,7 @@ async def websocket_handler(request):
                 if not is_valid:             #means this is first msg from web_app
                     init_data = parsed_data.get('init_data')
                     is_valid, user_id, query_id = verify_telegram_data(init_data)
-                    if not is_valid and (client_ip=="192.168.0.16" or client_ip=="87.116.163.83"): #for debbuging from local brouser
+                    if not is_valid and (client_ip=="192.168.1.117" or client_ip=="87.116.163.83"): #for debbuging from local brouser
                         is_valid=True
                         user_id=484679683
                         query_id='1'

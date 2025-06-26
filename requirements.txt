@@ -1,0 +1,10 @@
+apscheduler
+python-telegram-bot
+python-telegram-bot[job-queue]
+python-telegram-bot[webhooks]
+google-cloud-translate
+google-cloud-texttospeech
+google-cloud-speech
+openai
+requests
+aiohttp
