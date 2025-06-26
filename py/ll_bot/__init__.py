@@ -1,11 +1,11 @@
 import asyncio
 import logging
-from telegram import Update
+from telegram import Update, error
 from telegram.ext import ContextTypes
 from card import TrainingCardSet #, Word, TrainingCard,
 from bot_msg import BotMsg
 from msg_txt import *
-from bot_db import save_maintenance_data, t_from_DB, words_count
+from bot_db import save_maintenance_data, t_from_DB, words_count, user_set_status
 
 class LLBot:
     ST_INIT = "st_init"
@@ -202,6 +202,11 @@ class LLBot:
                         return #fixme - надо удалить из llb_set
                     self.log_err(f"main_loop: no handler for {self.state}")
                     return
+        except error.Forbidden as e:
+            self.log_warn(f"{e}: st={self.state}") 
+            self.timer_stop()
+            user_set_status(self.user_id, "B")
+            return
         except asyncio.CancelledError:
             self.log_warn("asyncio.CancelledError")
             raise

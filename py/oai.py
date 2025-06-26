@@ -19,7 +19,7 @@ def init_oai():
 async def oai_transcript(file_name, lang=None, await_word=None):
     with open(file_name, "rb") as file:
         transcript = await aclient.audio.transcriptions.create(
-            model="whisper-1", 
+            model="whisper-1",
             language=lang,
             #prompt="",
             file=file,
@@ -29,20 +29,43 @@ async def oai_transcript(file_name, lang=None, await_word=None):
         return transcript
 
 async def oai_aget_example1(fw, fw2=None):
-    #p=f"Create a sentence for a conversation between best friends in America that uses the word '{fw}'.     It should steer clear of an academic tone"
-    p=f"Create a sentence for a conversation between best friends in America that must use the word '{fw}'. It should steer clear of an academic tone."
+    temp =1.0
+
     try:
-        response = await aclient.completions.create(model="text-davinci-002",
-            temperature=0.8,
-            max_tokens=60,
-            prompt=p,
-            top_p=1,
-            frequency_penalty=0,
-            presence_penalty=0)
+        m=[
+            {
+              "role": "system",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "Craft an example sentence using the given English word or idiom, in a style typical of normal interpersonal communication, favoring American English. The sentence should not exceed 15 words and must return only one sentence!"
+                }
+              ]
+            },
+            {
+              "role": "user",
+              "content": [
+                {
+                  "type": "text",
+                  "text": fw 
+                }
+              ]
+            }
+          ]
+
+        #logger.info(m)
+        response = await aclient.chat.completions.create(model='gpt-4o',
+            messages=m,
+            temperature=temp,
+            max_tokens=60)
     except ValueError as e:
         logger.error(f"openAI - ValueError: {e}")
         return None, None 
-    r=response.choices[0].text.strip()
+    except Exception as e:
+        logger.error("openAI: "+str(e))
+        return None, None
+    r=response.choices[0].message.content.strip()
+    #print(response.choices[0].message.content)
     return r, response
 
 
@@ -74,14 +97,14 @@ async def oai_aget_example2(fw, n=0, fw2=None):
 #n задает какой раз подряд пытаемся сгенерить это предложение
 async def oai_aget_example(user_id, fword, n=0, fw2=None):
     ex=None
-    if n<5:
+    if n<2:
         #if random.randint(1, 2) == 2: #каждый втрой пример через text-davinci-002
-        mode="chat"
+        mode="gpt-3.5-turbo"
         ex, rsp=await oai_aget_example2(fword, n)
     
     if ex is None:
         ex, rsp= await oai_aget_example1(fword)
-        mode="davinci-002"
+        mode="gtp-4o"
 
     if ex is not None:
         pt=rsp.usage.prompt_tokens

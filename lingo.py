@@ -172,12 +172,13 @@ class UI:
             ui.exit_ui()
 
     def create_wa(self):
-        if debug_bot==1:
+        if 0:
+        #if debug_bot==1:
             wa=telegram.WebAppInfo("https://192.168.0.16:5500/ll.html?ver=25")
             logger.info("WAPP="+"https://192.168.0.16:5500/ll.html")
         else:
-            wa=telegram.WebAppInfo("https://lingolink.soon.it/ll.html?ver=25")
-            logger.info("WAPP="+"https://lingolink.soon.it/ll.html")
+            wa=telegram.WebAppInfo("https://ll.dias.rs/ll.html?ver=25")
+            logger.info("WAPP="+"https://ll.dias.rs/ll.html")
         return wa
         
 
@@ -1436,7 +1437,7 @@ async def web_test(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if update.effective_user.id == 484679683:
         logger.info(f"{update.effective_user.id}: web_test")
         #b=InlineKeyboardButton("test", web_app=telegram.WebAppInfo("https://ll.du:5500/web_app/ll.html"))
-        b=InlineKeyboardButton("test", web_app=telegram.WebAppInfo("https://lingolink.soon.it/ll.html"))
+        b=InlineKeyboardButton("test", web_app=telegram.WebAppInfo("https://ll.dias.rs/ll.html"))
         kbd = InlineKeyboardMarkup([[b]])
         await context.bot.send_message(chat_id=update.effective_chat.id, text="run web test", reply_markup=kbd)
 
@@ -1488,12 +1489,12 @@ async def bot_run(use_web_hook, token) -> None:
         debug_bot=0
         await application.updater.start_webhook(
             listen='127.0.0.1',
-            port=8003,
+            port=8503,
             #url_path='ll',
             secret_token=secrets.token_urlsafe(16),
             #key='keys/private.key',
-            cert='keys/cert.pem',
-            webhook_url='https://lingolink.soon.it:8443'
+            cert='keys/ssl/cert.pem',
+            webhook_url='https://ll.dias.rs:8443'
         )
     else:
         debug_bot=1

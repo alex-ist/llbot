@@ -11,7 +11,8 @@ def _raise_system_exit():
     raise SystemExit
 
 async def main_async():
-    production_bot=update_dns() #dns updated, there is free dns key -> work on server
+    production_bot=1 #=update_dns() #dns updated, there is free dns key -> work on server
+    production_bot=0 #=update_dns() #dns updated, there is free dns key -> work on server
     loop = asyncio.get_event_loop()
 
     if platform.system() != "Windows":

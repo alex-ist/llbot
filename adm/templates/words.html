@@ -3,13 +3,33 @@
 <head>
     <title>Cards</title>
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
+    <style>
+        .battery-empty {
+          color: #b4160b; /* Красный цвет для пустой батареи */
+        }
+        .battery-low {
+          color: #c15f19; /* Оранжевый цвет для низкого заряда батареи */
+        }
+        .battery-medium {
+          color: #aebd4a; /* Оранжевый цвет для низкого заряда батареи */
+        }
+        .battery-high {
+          color: #7c9c54; /* Зеленый цвет для иконок батареи */
+        }
+        .battery-full {
+          color: #337d5c; /* Зеленый цвет для иконок батареи */
+        }
+        
+      </style>    
 </head>
 <body>
     <div class="container mt-5">
         <h1 class="mb-4">User: {{ user_id }}</h1>  <!-- mb-4 это класс для добавления отступа снизу -->
-        <a href="{{ url_for('show_user_log', user_id=user_id) }}">Log</a>
-        <a href="{{ url_for('show_users') }}">Home</a>
-        <button type="button" class="btn btn-danger" onclick="confirmDelete()">Delete Selected</button>
+        <div>
+            <a href="{{ url_for('show_user_log', user_id=user_id) }}">Log</a>
+            <a href="{{ url_for('show_users') }}">Home</a>
+            <button type="button" class="btn btn-danger" onclick="confirmDelete()">Delete Selected</button>
+        </div>
         <table class="table table-striped">
             <thead class="thead-dark">
                 <tr>
@@ -28,7 +48,19 @@
                     <td>{{ w.word_id }}</td>
                     <td>{{ w.foreign_w }}</td>
                     <td>{{ w.native_w }}</td>
-                    <td>{{ w.level }}</td> 
+                    <td>
+                        {% if w.level == 0 %}
+                          <span class="battery-icon battery-empty">&#9647;&#9647;&#9647;&#9647;</span>
+                        {% elif w.level == 1 %}
+                          <span class="battery-icon battery-low">&#9646;&#9647;&#9647;&#9647;</span>
+                        {% elif w.level == 2 %}
+                          <span class="battery-icon battery-medium">&#9646;&#9646;&#9647;&#9647;</span>
+                        {% elif w.level == 3 %}
+                          <span class="battery-icon battery-high">&#9646;&#9646;&#9646;&#9647;</span>
+                        {% else %}
+                          <span class="battery-icon battery-full">&#9646;&#9646;&#9646;&#9646;</span>
+                        {% endif %}
+                    </td>
                     <td>{{ w.example }}</td>
                 </tr>
                 {% endfor %}

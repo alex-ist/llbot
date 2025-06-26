@@ -76,12 +76,12 @@ async def bot_run(prod_bot, token) -> None:
     if production_bot:
         await application.updater.start_webhook(
             listen='127.0.0.1',
-            port=8003,
+            port=8503,
             #url_path='ll',
             secret_token=secrets.token_urlsafe(16),
             #key='keys/private.key',
-            cert='keys/cert.pem',
-            webhook_url='https://lingolink.soon.it:8443'
+            cert='keys/ssl/cert.pem',
+            webhook_url='https://ll.dias.rs:8443'
         )
     else:
         await application.updater.start_polling()
@@ -91,8 +91,9 @@ async def bot_run(prod_bot, token) -> None:
 async def post_init(context):
     #store web app link
     global production_bot
-    if production_bot:
-        wa=telegram.WebAppInfo("https://lingolink.soon.it/ll.html?ver=26")
+    if 1:
+    #if production_bot:
+        wa=telegram.WebAppInfo("https://ll.dias.rs/ll.html?ver=26")
     else:
         wa=telegram.WebAppInfo("https://192.168.0.16:5500/ll.html?ver=26")
     logger.warning(f"wa={wa}")

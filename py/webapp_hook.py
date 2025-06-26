@@ -304,13 +304,13 @@ async def webapp_hook_run(production_bot, bot_token):
     app1.router.add_get('/tren-wh/', websocket_handler)
     runner1 = web.AppRunner(app1)
     await runner1.setup()
-    site1 = web.TCPSite(runner1, '127.0.0.1', port=8001) 
+    site1 = web.TCPSite(runner1, '127.0.0.1', port=8501) 
     await site1.start()
     
     app2 = web.Application()
     app2.router.add_route('GET', '/generate-au-ex', generate_audio_ex)
     runner2 = web.AppRunner(app2)
     await runner2.setup()
-    site2 = web.TCPSite(runner2, '127.0.0.1', port=8002) 
+    site2 = web.TCPSite(runner2, '127.0.0.1', port=8502) 
     await site2.start()
  

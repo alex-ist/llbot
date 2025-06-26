@@ -4,6 +4,7 @@ from flask import Flask, jsonify, request, render_template
 from flask_sqlalchemy import SQLAlchemy
 import os
 from adm.adm_utils import get_last_n_lines
+from sqlalchemy import text
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(os.getcwd(), "data", "ll.db")
@@ -54,11 +55,11 @@ def get_words_with_levels(user_id):
     words = Word.query.filter_by(user_id=user_id).all()
 
     for word in words:
-        training_data = db.session.execute("""
+        training_data = db.session.execute(text("""
             SELECT next_training_t, last_training_t
             FROM training_cards
             WHERE user_id = :user_id AND word_id = :word_id
-        """, {'user_id': user_id, 'word_id': word.word_id}).fetchall()
+        """), {'user_id': user_id, 'word_id': word.word_id}).fetchall()
 
         tot_t = 0
         for nt, lt in training_data:

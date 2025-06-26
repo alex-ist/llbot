@@ -4,6 +4,8 @@ from botlog import logger
 
 
 def update_dns():
+    logger.info("must be updated by cron")
+    return
     file_path = "keys/freedns.txt"
     if os.path.isfile(file_path):
         with open(file_path, 'r') as f:

@@ -279,7 +279,7 @@ def user_set_status(user_id:int, block_status:str):
 def user_registration(user_id:int, chat_id, username, first_name, lang_code, is_premium, name,
                       foreign_lang, min_t_interval, min_cards_for_t, max_cards_for_t, cur_cards_for_t, o_param):
     db, c=open_db()
-    t=t_to_DB(datetime.now())
+    t=t_to_DB(datetime.datetime.now())
     c.execute(f"""INSERT INTO users (user_id, chat_id, username, first_name, lang_code, is_premium, name, 
               foreign_lang, min_trening_interval, min_cards_for_trening, max_cards_for_trening, cur_cards_for_trening, o_param, first_access, last_access)
                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
