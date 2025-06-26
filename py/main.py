@@ -8,6 +8,8 @@ import platform
 import signal
 import os
 
+os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "/llbot/keys/bamboo-antler-386512-4ce534dff745.json"
+
 def _raise_system_exit():
     raise SystemExit
 
@@ -41,8 +43,8 @@ async def main_async():
   
         
     try:
-        await bot_run(production_bot, token)
-        await webapp_hook_run(production_bot, token)
+        await bot_run(prod, token)
+        await webapp_hook_run(prod, token)
         while True:
             await asyncio.sleep(1)
 
