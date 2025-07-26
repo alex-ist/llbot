@@ -210,18 +210,66 @@ async function satrtPan(ev) {
     await mic_off();
     let rot=-48.0*ev.deltaX/maxWidth;
     let op=Math.min(Math.abs(4.0*ev.deltaX)/maxWidth, 1.0);
-    gsap.set(upFlash, {x: ev.deltaX, y: ev.deltaY, rotation: rot});
-    if (ev.deltaX<0) {
-        gsap.set(".corner-box-left", {opacity: op});
-        gsap.set(".corner-box-right", {opacity: 0});
-    } else {
-        gsap.set(".corner-box-right", {opacity: op});
+    
+    // Determine if this is primarily an upward swipe for removal
+    let isUpwardDominant = ev.deltaY < 0 && Math.abs(ev.deltaY) > Math.abs(ev.deltaX) * 1.5;
+    let UP_THRESHOLD = maxWidth / 8; // Minimum upward distance to trigger deletion mode
+    
+    // Preserve the current rotationY (flip state) during swipes
+    let currentRotationY = ss === 'a' ? 180 : 0;
+    
+    if (isUpwardDominant && Math.abs(ev.deltaY) > UP_THRESHOLD) {
+        // Handle upward swipe for removal - only when upward is dominant gesture
+        let upOp = Math.min(Math.abs(2.0*ev.deltaY)/maxWidth, 1.0);
+        gsap.set(upFlash, {
+            x: ev.deltaX, 
+            y: ev.deltaY, 
+            rotationZ: 0, 
+            rotationY: currentRotationY,
+            scale: 1 - upOp * 0.3,
+            filter: `brightness(${1 - upOp * 0.2}) sepia(${upOp * 0.3})`
+        });
         gsap.set(".corner-box-left", {opacity: 0});
+        gsap.set(".corner-box-right", {opacity: 0});
+        showRemovalIndicator(upOp);
+    } else {
+        // Handle normal horizontal swipes or insufficient upward movement
+        gsap.set(upFlash, {
+            x: ev.deltaX, 
+            y: ev.deltaY, 
+            rotationZ: rot,  // Use rotationZ instead of rotation to avoid conflicts
+            // ↓ задаём собственный шаблон, где Y идёт первым
+            transformTemplate: ({rotationY, rotationZ}) =>
+                `rotateY(${rotationY}deg) rotateZ(${rotationZ}deg)`,
+              scale: 1, 
+            filter: 'brightness(1) sepia(0)'
+        });
+        hideRemovalIndicator();
+        if (ev.deltaX<0) {
+            gsap.set(".corner-box-left", {opacity: op});
+            gsap.set(".corner-box-right", {opacity: 0});
+        } else {
+            gsap.set(".corner-box-right", {opacity: op});
+            gsap.set(".corner-box-left", {opacity: 0});
+        }
     }
 }
 
 async function endPan(ev) {
     let BREAK_POINT = maxWidth / 6;
+    let UP_BREAK_POINT = maxWidth / 4;
+    let UP_THRESHOLD = maxWidth / 8;
+    
+    // Determine if this was primarily an upward swipe for removal
+    let isUpwardDominant = ev.deltaY < 0 && Math.abs(ev.deltaY) > Math.abs(ev.deltaX) * 1.5;
+    
+    // Handle upward swipe for removal - only if upward is dominant and exceeds threshold
+    if (isUpwardDominant && Math.abs(ev.deltaY) > UP_BREAK_POINT && Math.abs(ev.deltaY) > UP_THRESHOLD) {
+        hideRemovalIndicator();
+        await showRemovalConfirmation();
+        return;
+    }
+    
     if (Math.abs(ev.deltaX) > BREAK_POINT) {
         document.querySelector('.info-msg').textContent="";
 
@@ -270,17 +318,23 @@ async function endPan(ev) {
                     //конец, нет больше карточек
                 }
                 ss='q';
-                gsap.set(v, {x: '0%', y: '0%', rotation: 0, rotationY:0});
+                gsap.set(v, {x: '0%', y: '0%', rotationZ: 0, rotationY:0});
             }
         });
-    } else
+    } else {
+        hideRemovalIndicator();
+        let currentRotationY = ss === 'a' ? 180 : 0;
         gsap.to(upFlash, .2, {
             ease: Cubic.easeInOut,
             x: '0%',
             y: '0%',            
-            rotation: 0            
+            rotationZ: 0,
+            rotationY: currentRotationY,
+            scale: 1,
+            filter: 'brightness(1) sepia(0)'
         });
         gsap.to(".corner-box",  .2, {opacity: 0});
+    }
 
 }
 
@@ -561,4 +615,172 @@ function sendAudioToServer(audioBlob) {
         ws.send(audioBlob);
         //console.log("sendAudioToServer");
     //}
+}
+
+// Removal indicator functions - now just visual feedback without text
+function showRemovalIndicator(opacity) {
+    // Visual feedback through card scaling is handled in satrtPan function
+    // No overlay text needed
+}
+
+function hideRemovalIndicator() {
+    // Visual feedback cleanup is handled in resetCardPosition function
+    // No overlay text to hide
+}
+
+// Confirmation dialog functions
+async function showRemovalConfirmation() {
+    return new Promise((resolve) => {
+        let currentCard = cardSet.getCurrentCard();
+        if (!currentCard) {
+            resolve(false);
+            return;
+        }
+        
+        let modal = document.createElement('div');
+        modal.className = 'removal-modal';
+        modal.innerHTML = `
+            <div class="modal-content">
+                <div class="modal-text">Remove "${currentCard.foreignW}" from your learning list?</div>
+                <div class="modal-buttons">
+                    <button class="modal-btn modal-cancel">Cancel</button>
+                    <button class="modal-btn modal-confirm">Remove</button>
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(modal);
+        
+        // Show modal with animation
+        gsap.fromTo(modal, 
+            {opacity: 0, scale: 0.8}, 
+            {opacity: 1, scale: 1, duration: 0.3, ease: "back.out(1.7)"}
+        );
+        
+        // Handle button clicks
+        modal.querySelector('.modal-cancel').onclick = () => {
+            hideModal(modal);
+            resetCardPosition();
+            resolve(false);
+        };
+        
+        modal.querySelector('.modal-confirm').onclick = () => {
+            hideModal(modal);
+            removeWord(currentCard);
+            resolve(true);
+        };
+        
+        // Hide modal on background click
+        modal.onclick = (e) => {
+            if (e.target === modal) {
+                hideModal(modal);
+                resetCardPosition();
+                resolve(false);
+            }
+        };
+    });
+}
+
+function hideModal(modal) {
+    gsap.to(modal, {
+        opacity: 0, 
+        scale: 0.8, 
+        duration: 0.2, 
+        onComplete: () => modal.remove()
+    });
+}
+
+// Reset card position after cancelled removal
+function resetCardPosition() {
+    hideRemovalIndicator();
+    let currentRotationY = ss === 'a' ? 180 : 0;
+    gsap.to(upFlash, 0.2, {
+        ease: Cubic.easeInOut,
+        x: '0%',
+        y: '0%',            
+        rotationZ: 0,
+        rotationY: currentRotationY,
+        scale: 1,
+        filter: 'brightness(1) sepia(0)'
+    });
+    gsap.to(".corner-box", 0.2, {opacity: 0});
+}
+
+// Remove word function
+async function removeWord(card) {
+    const dataToSend = {
+        type: "remove-word",
+        cid: card.cid,
+    };
+    let r = JSON.stringify(dataToSend);
+    ws.send(r);
+    console.log("sent remove-word:" + r);
+    
+    // Remove from current set and update UI
+    cardSet.cards.splice(0, 1);
+    document.querySelector('.txt-counter').textContent = cardSet.cards.length;
+    
+    // Show success animation and message
+    showSuccessAnimation(card.foreignW);
+    
+    // Animate card removal with upward fade-out
+    gsap.to(upFlash, 0.4, { 
+        ease: Cubic.easeInOut, 
+        y: '-150%',
+        opacity: 0,
+        scale: 0.8,
+        onCompleteParams: [upFlash],
+        onComplete: async function(v) {
+            // Update card display with proper z-index management
+            v.style.zIndex -= 2;
+            v.style.opacity = 1; // Reset opacity for next card
+            
+            if (cardSet.getLen() >= 2) {
+                let u = upFlash;
+                upFlash = downFlash;
+                downFlash = u;
+                await updateCardUI(downFlash, cardSet.getNextCard());
+            } else if (cardSet.getLen() == 1) {
+                await updateCardUI(downFlash, null);
+                await updateCardUI(upFlash, cardSet.getCurrentCard());
+            } else {
+                await updateCardUI(upFlash, null);
+                const dataToSend = {
+                    type: "stop-tren"
+                };
+                let r = JSON.stringify(dataToSend)
+                ws.send(r);
+                console.log("sent:" + r);
+            }
+            
+            ss = 'q';
+            gsap.set(v, {x: '0%', y: '0%', rotationZ: 0, rotationY: 0, scale: 1, filter: 'brightness(1) sepia(0)'});
+        }
+    });
+}
+
+// Success animation for word removal
+function showSuccessAnimation(word) {
+    const infoMsg = document.querySelector('.info-msg');
+    
+    // Show success message with animation
+    infoMsg.innerHTML = `✓ "${word}" removed`;
+    infoMsg.style.color = 'rgba(123, 160, 135, 1)'; // Green color
+    
+    gsap.fromTo(infoMsg, 
+        {opacity: 0, y: -20}, 
+        {opacity: 1, y: 0, duration: 0.5, ease: "back.out(1.7)"}
+    );
+    
+    // Auto-hide after 2 seconds
+    setTimeout(() => {
+        gsap.to(infoMsg, {
+            opacity: 0, 
+            duration: 0.3,
+            onComplete: () => {
+                infoMsg.textContent = '';
+                infoMsg.style.color = 'rgba(255, 255, 255, 0.9)'; // Reset to original color
+            }
+        });
+    }, 2000);
 }

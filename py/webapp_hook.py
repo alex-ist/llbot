@@ -127,7 +127,7 @@ async def websocket_handler(request):
                 if not is_valid:             #means this is first msg from web_app
                     init_data = parsed_data.get('init_data')
                     is_valid, user_id, query_id = verify_telegram_data(init_data)
-                    if not is_valid and (client_ip=="192.168.1.117" or client_ip=="87.116.163.83"): #for debbuging from local brouser
+                    if not is_valid and (client_ip=="192.168.0.117" or client_ip=="87.116.163.83"): #for debbuging from local brouser
                         is_valid=True
                         user_id=484679683
                         query_id='1'
@@ -192,6 +192,14 @@ async def websocket_handler(request):
                     val = parsed_data.get('val')
                     logger.info(f"{user_id}: WA: autoplay={val}")
                     u.UpdateAutoPlayAudio(val)
+                elif req_type=="remove-word":
+                    cid = parsed_data.get('cid')
+                    c = tcs.GetCard(cid)
+                    if c and c.word:
+                        logger.info(f"{user_id}: WA: remove-word cid={cid} fw={c.GetForeign()}")
+                        tcs.DeleteWord(c.word.word_id)
+                    else:
+                        logger.warning(f"{user_id}: WA: remove-word failed - card not found cid={cid}")
                 elif req_type=="stop-tren":
                     logger.info(f"{user_id}: WA: stop-tren")
                     await close_ws(ws)
