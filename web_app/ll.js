@@ -1,5 +1,5 @@
-const VER = 34
-
+"use strict";
+const VER = 51
 let query_id;
 
 class Card {
@@ -89,26 +89,26 @@ async function getHash(inputString) {
 
 //playAudio("https://lingolink.bot.nu/au/en/audio_words/disposal.ogg");
 // Создание тестового CardSet
-cardSet = new CardSet();
-isSoundEnabled = true
-var flashContainer = document.getElementById('flashContainer');
+const cardSet = new CardSet();
+let isSoundEnabled = true
+const flashContainer = document.getElementById('flashContainer');
 
-var flash = document.getElementById('flash');
-var maxWidth=document.getElementById('container').offsetWidth;
-let flash0 = document.getElementById('flash0');
-let flash1 = flash0.cloneNode(true);
+// const flash = document.getElementById('flash');
+const maxWidth=document.getElementById('container').offsetWidth;
+const flash0 = document.getElementById('flash0');
+const flash1 = flash0.cloneNode(true);
 flash1.id = 'flash1';
 flash1.style.zIndex = -1;
 flash0.parentNode.insertBefore(flash1, flash0.nextSibling); // Вставляем новый элемент сразу после оригинала
-upFlash=flash0;
-downFlash=flash1;
+let upFlash=flash0;
+let downFlash=flash1;
 let ss='q';
 
 function d() {
     return Date.now()/1000;
 }
 
-var last_audio;
+let last_audio;
 async function playAudio(audioSrc) {
     let c=cardSet.getCurrentCard();
     if (c) {

@@ -22,7 +22,6 @@ def is_inside_docker():
 
 async def main_async():
     prod = not is_inside_docker()
-    
     loop = asyncio.get_event_loop()
 
 
