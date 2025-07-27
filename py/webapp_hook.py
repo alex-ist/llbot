@@ -25,8 +25,7 @@ async def measure_time(func, *args):
     elapsed_time_ms = (end_time - start_time) * 1000  # Время в миллисекундах
     return elapsed_time_ms, result
 
-webapp_skey=None
-def verify_telegram_data(init_data):
+def verify_telegram_data(init_data, webapp_skey):
     data_dict = parse_qs(init_data)
     received_hash = data_dict.pop('hash', [None])[0]
     if received_hash is None:
@@ -94,6 +93,8 @@ active_connections = twokeydict.TwoKeyDict()
 
 async def websocket_handler(request):
     global active_connections
+    webapp_skey = request.app['webapp_skey']
+    production_bot = request.app['production_bot']    
     ws = web.WebSocketResponse()
     await ws.prepare(request)
     client_ip = request.headers.get('X-Real-IP', None)
@@ -126,8 +127,8 @@ async def websocket_handler(request):
                 #     logger.warning(f"{user_id}: WA: parsed_data: {parsed_data}")
                 if not is_valid:             #means this is first msg from web_app
                     init_data = parsed_data.get('init_data')
-                    is_valid, user_id, query_id = verify_telegram_data(init_data)
-                    if not is_valid and (client_ip=="192.168.0.117" or client_ip=="87.116.163.83"): #for debbuging from local brouser
+                    is_valid, user_id, query_id = verify_telegram_data(init_data, webapp_skey)
+                    if not is_valid and not production_bot: #for debbuging from local brouser
                         is_valid=True
                         user_id=484679683
                         query_id='1'
@@ -303,11 +304,12 @@ async def generate_audio_ex(request):
     return web.FileResponse(audio_path)
 
 async def webapp_hook_run(production_bot, bot_token):
-    global webapp_skey
-    webapp_skey=hmac.new("WebAppData".encode(), bot_token.encode(), hashlib.sha256).digest()
     logger.warning(f"webapp_hook run")
 
     app1 = web.Application()
+    webapp_skey=hmac.new("WebAppData".encode(), bot_token.encode(), hashlib.sha256).digest()
+    app1['webapp_skey'] = webapp_skey
+    app1['production_bot'] = production_bot
     app1.router.add_route('OPTIONS', '/tren-wh/', handle_options)
     app1.router.add_get('/tren-wh/', websocket_handler)
     runner1 = web.AppRunner(app1)

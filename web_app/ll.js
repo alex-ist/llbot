@@ -1,9 +1,9 @@
 "use strict";
-const VER = 51
+const VER = 55
 let query_id;
 
 class Card {
-    constructor(cid, direction, foreignW, nativeW, example, d_link) {
+    constructor(cid, direction, foreignW, nativeW, example, d_link, q_id) {
         this.cid = cid;
         this.direction = direction;
         this.foreignW = foreignW;
@@ -11,7 +11,8 @@ class Card {
         this.example = example;
         this.answer = -1;  // not showed card
         this.dict_lnk = d_link;
-		this.a_lnk=`/au/en/w/${foreignW}.ogg?q=${query_id}`
+        this.q_id = q_id;
+		this.a_lnk=`/au/en/w/${foreignW}.ogg?q=${q_id}`
         this.audio = null; 
     }
     //вернет слово для изучения
@@ -64,9 +65,7 @@ class CardSet {
     setAnswer(val) {
         this.getCurrentCard().answer = val;
         if (val == 1) {
-            this.cards.splice(0, 1);
-            document.querySelector('.txt-counter').textContent =this.cards.length;
-    
+            this.removeCurrentCard();
         } else //if (val == 0)
         {
             let card = this.cards.splice(0, 1)[0];
@@ -74,6 +73,13 @@ class CardSet {
                 this.cards.splice(9, 0, card); 
             else
                 this.cards.push(card); // Добавление карты в конец массива, если в нем меньше 10 карт
+        }
+    }
+    // удаляет текущую карточку
+    removeCurrentCard() {
+        if (this.cards.length > 0) {
+            this.cards.splice(0, 1);
+            document.querySelector('.txt-counter').textContent = this.cards.length;
         }
     }
 }
@@ -94,11 +100,15 @@ let isSoundEnabled = true
 const flashContainer = document.getElementById('flashContainer');
 
 // const flash = document.getElementById('flash');
-const maxWidth=document.getElementById('container').offsetWidth;
+let maxWidth = document.getElementById('container').offsetWidth;
+maxWidth = maxWidth ? maxWidth : 100; 
+let maxHeight = document.getElementById('container').offsetHeight;
+maxHeight = maxHeight ? maxHeight : 200;
+
+console.log("maxWidth=" + maxWidth);
 const flash0 = document.getElementById('flash0');
 const flash1 = flash0.cloneNode(true);
 flash1.id = 'flash1';
-flash1.style.zIndex = -1;
 flash0.parentNode.insertBefore(flash1, flash0.nextSibling); // Вставляем новый элемент сразу после оригинала
 let upFlash=flash0;
 let downFlash=flash1;
@@ -126,7 +136,12 @@ async function playAudio(audioSrc) {
         }
         else
             return;
-        last_audio.play();
+
+        try {
+            await last_audio.play();
+        } catch (err) {
+            console.warn('Audio play failed:', err);
+        }            
     }
 }
 
@@ -139,13 +154,12 @@ function stopPlayAudio() {
     last_audio = null
 }
 
-
 async function updateCardUI(fl, card) {
     if (card) {
-        let front=fl.querySelector(".front");
-        let frontForeign = front.querySelector(".foreign");
-        let frontNative = front.querySelector(".native");
-        let back=fl.querySelector(".back");
+        const front=fl.querySelector(".front");
+        const frontForeign = front.querySelector(".foreign");
+        const frontNative = front.querySelector(".native");
+        const back=fl.querySelector(".back");
         if (card.direction==0)  { //show foreign
             frontForeign.querySelector(".foreign-text").textContent = card.foreignW;
             frontNative.style.display = "none";
@@ -157,7 +171,8 @@ async function updateCardUI(fl, card) {
         }
         front.style.display = "flex";
         
-        var old_ft=back.querySelector(".foreign-text");
+        let old_ft=back.querySelector(".foreign-text");
+        let new_ft;
         if (card.dict_lnk === undefined) 
             new_ft = document.createElement('div');
         
@@ -206,45 +221,16 @@ async function flipFlash(){
 
 }
 
-async function satrtPan(ev) {
+async function startPan(ev) {
     await mic_off();
-    let rot=-48.0*ev.deltaX/maxWidth;
-    let op=Math.min(Math.abs(4.0*ev.deltaX)/maxWidth, 1.0);
-    
-    // Determine if this is primarily an upward swipe for removal
-    let isUpwardDominant = ev.deltaY < 0 && Math.abs(ev.deltaY) > Math.abs(ev.deltaX) * 1.5;
-    let UP_THRESHOLD = maxWidth / 8; // Minimum upward distance to trigger deletion mode
-    
-    // Preserve the current rotationY (flip state) during swipes
-    let currentRotationY = ss === 'a' ? 180 : 0;
-    
-    if (isUpwardDominant && Math.abs(ev.deltaY) > UP_THRESHOLD) {
-        // Handle upward swipe for removal - only when upward is dominant gesture
-        let upOp = Math.min(Math.abs(2.0*ev.deltaY)/maxWidth, 1.0);
-        gsap.set(upFlash, {
-            x: ev.deltaX, 
-            y: ev.deltaY, 
-            rotationZ: 0, 
-            rotationY: currentRotationY,
-            scale: 1 - upOp * 0.3,
-            filter: `brightness(${1 - upOp * 0.2}) sepia(${upOp * 0.3})`
-        });
-        gsap.set(".corner-box-left", {opacity: 0});
-        gsap.set(".corner-box-right", {opacity: 0});
-        showRemovalIndicator(upOp);
-    } else {
-        // Handle normal horizontal swipes or insufficient upward movement
-        gsap.set(upFlash, {
-            x: ev.deltaX, 
-            y: ev.deltaY, 
-            rotationZ: rot,  // Use rotationZ instead of rotation to avoid conflicts
-            // ↓ задаём собственный шаблон, где Y идёт первым
-            transformTemplate: ({rotationY, rotationZ}) =>
-                `rotateY(${rotationY}deg) rotateZ(${rotationZ}deg)`,
-              scale: 1, 
-            filter: 'brightness(1) sepia(0)'
-        });
-        hideRemovalIndicator();
+    let rot = -48.0*ev.deltaX/maxWidth;
+    gsap.set(upFlash, {x: ev.deltaX, y: ev.deltaY, rotation: rot});
+    const absDX = Math.abs(ev.deltaX);
+    const absDY = Math.abs(ev.deltaY);
+
+    // 1) горизонтальный жест
+    if (absDX >= absDY) {
+        const op = Math.min(absDX * 4 / maxWidth, 1);
         if (ev.deltaX<0) {
             gsap.set(".corner-box-left", {opacity: op});
             gsap.set(".corner-box-right", {opacity: 0});
@@ -253,23 +239,47 @@ async function satrtPan(ev) {
             gsap.set(".corner-box-left", {opacity: 0});
         }
     }
+    // 2) вертикальный жест «вверх»
+    else if (ev.deltaY < 0) {
+    }
+}
+
+async function completeSwipe(){
+    upFlash.style.zIndex -= 2; // перетаскиваем html карточки назад
+    ss='q';
+    gsap.set(upFlash, {x: '0%', y: '0%', rotation: 0, rotationY:0, scale: 1, opacity: 1});
+
+    if (cardSet.getLen()>=1) {
+        const u=upFlash;
+        upFlash=downFlash;
+        downFlash=u;
+        await updateCardUI(downFlash, cardSet.getNextCard());
+    }
+    else {
+        await updateCardUI(upFlash, null);
+        const dataToSend = {
+            type: "stop-tren"
+        };
+        let r=JSON.stringify(dataToSend)
+        ws.send(r);
+        console.log("sent:" + r);
+        //конец, нет больше карточек
+    }
 }
 
 async function endPan(ev) {
-    let BREAK_POINT = maxWidth / 6;
-    let UP_BREAK_POINT = maxWidth / 4;
-    let UP_THRESHOLD = maxWidth / 8;
+    const BREAK_POINT = maxWidth / 6;
     
     // Determine if this was primarily an upward swipe for removal
-    let isUpwardDominant = ev.deltaY < 0 && Math.abs(ev.deltaY) > Math.abs(ev.deltaX) * 1.5;
+    const isUpwardDominant = ev.deltaY < 0 && Math.abs(ev.deltaY) > Math.abs(ev.deltaX);
     
     // Handle upward swipe for removal - only if upward is dominant and exceeds threshold
-    if (isUpwardDominant && Math.abs(ev.deltaY) > UP_BREAK_POINT && Math.abs(ev.deltaY) > UP_THRESHOLD) {
-        hideRemovalIndicator();
+    if (isUpwardDominant && Math.abs(ev.deltaY) > BREAK_POINT*2) {
         await showRemovalConfirmation();
         return;
     }
-    
+
+
     if (Math.abs(ev.deltaX) > BREAK_POINT) {
         document.querySelector('.info-msg').textContent="";
 
@@ -293,53 +303,21 @@ async function endPan(ev) {
         gsap.to(upFlash, 0.3, { 
             ease: Cubic.easeInOut, 
             x: ev.deltaX>0 ? '120%' : '-120%', 
-            onCompleteParams: [upFlash],
-            onComplete: async function(v) {
-                cardSet.getCurrentCard()
-                v.style.zIndex -= 2;
-                if (cardSet.getLen()>=2) {
-                    u=upFlash;
-                    upFlash=downFlash;
-                    downFlash=u;
-                                        await updateCardUI(downFlash, cardSet.getNextCard());
-                }
-                else if (cardSet.getLen()==1) {
-                    await updateCardUI(downFlash, null);
-                    await updateCardUI(upFlash, cardSet.getCurrentCard());
-                }
-                else {
-                    await updateCardUI(upFlash, null);
-                    const dataToSend = {
-                        type: "stop-tren"
-                    };
-                    let r=JSON.stringify(dataToSend)
-                    ws.send(r);
-                    console.log("sent:" + r);
-                    //конец, нет больше карточек
-                }
-                ss='q';
-                gsap.set(v, {x: '0%', y: '0%', rotationZ: 0, rotationY:0});
-            }
+            onComplete: completeSwipe
         });
-    } else {
-        hideRemovalIndicator();
-        let currentRotationY = ss === 'a' ? 180 : 0;
+    } else
         gsap.to(upFlash, .2, {
             ease: Cubic.easeInOut,
             x: '0%',
             y: '0%',            
-            rotationZ: 0,
-            rotationY: currentRotationY,
-            scale: 1,
-            filter: 'brightness(1) sepia(0)'
+            rotation: 0            
         });
         gsap.to(".corner-box",  .2, {opacity: 0});
-    }
 
 }
 
 
-var mc = new Hammer.Manager(flashContainer);
+let mc = new Hammer.Manager(flashContainer);
 mc.add(new Hammer.Pan({
     direction: Hammer.DIRECTION_ALL,
     threshold: 5,
@@ -348,7 +326,7 @@ mc.add(new Hammer.Pan({
 
 mc.add(new Hammer.Tap());
 mc.on("tap", tapHandler);
-mc.on("panleft panright panup", satrtPan);
+mc.on("panleft panright panup", startPan);
 mc.on("panend pancancel", endPan);
 
 let tg=window.Telegram.WebApp;
@@ -379,17 +357,17 @@ function startConn() {
     //extract query_id
     let params = new URLSearchParams(tg.initData);
     query_id = params.get('query_id');
+    console.log(d()+":sent:" + r + " : query_id="+query_id);
     if (query_id == null)
         query_id=1;
 
-    console.log(d()+":sent:" + r + " : query_id="+query_id);
 }
 
 ws.addEventListener('open', () => {
   startConn()
 });
 
-cmd_reload=0;
+let cmd_reload=0;
 ws.addEventListener('message', async (event) => {
     const receivedData = JSON.parse(event.data);
     console.log(d()+"Rx data:", receivedData);
@@ -400,9 +378,9 @@ ws.addEventListener('message', async (event) => {
     }
     else if (receivedData.type === "tren-data") {
         if ('autoplay' in receivedData) 
-            setAutoPlay(receivedData.autoplay, by_ui=false);
+            setAutoPlay(receivedData.autoplay, false);
         receivedData.card.forEach(cardData => {
-            cardSet.addCard(new Card(cardData.cid, cardData.dir, cardData.fw, cardData.nw, cardData.ex, cardData.lnk));
+            cardSet.addCard(new Card(cardData.cid, cardData.dir, cardData.fw, cardData.nw, cardData.ex, cardData.lnk, query_id));
         });
     
         document.querySelector('.txt-counter').textContent =cardSet.cards.length;
@@ -411,7 +389,7 @@ ws.addEventListener('message', async (event) => {
         upFlash.style.zIndex = 0;
         
         await updateCardUI(downFlash, cardSet.getNextCard())
-        downFlash.style.zIndex = -2;
+        downFlash.style.zIndex = -1;
 
         // Последовательно загружаем аудиофайлы
         for (const card of cardSet.cards) {
@@ -419,7 +397,7 @@ ws.addEventListener('message', async (event) => {
                 await card.loadAudio();
                 console.log(d()+`:Audio for ${card.foreignW} loaded`);
             } catch (error) {
-                console.log(d()+`:Error loading audio for ${card.foreignW}:`, error);
+                console.log(d()+`:Error loading audio for "${card.foreignW}":`, error);
             }
         }            
     }
@@ -435,12 +413,13 @@ ws.addEventListener('message', async (event) => {
 
 ws.addEventListener('close', () => {
     console.log("closed ws");
+    mc.destroy();        
     if (!cmd_reload)
         tg.close()
 });
 
-var speakerE = document.querySelector('.speaker-e');
-var speakerD = document.querySelector('.speaker-d');
+let speakerE = document.querySelector('.speaker-e');
+let speakerD = document.querySelector('.speaker-d');
 
 function save_auto_play() {
     const dataToSend = {
@@ -468,7 +447,7 @@ function setAutoPlay(new_val, by_ui=true) {
 }
 
 function invertAutoPlay() {
-    setAutoPlay(!isSoundEnabled, by_ui=true);
+    setAutoPlay(!isSoundEnabled, true);
 }
 
 speakerE.addEventListener('click', invertAutoPlay);
@@ -594,15 +573,15 @@ async function startRecording() {
 }
 
 function stopRecording() {
-  mediaRecorder.stop();
   mediaRecorder.onstop = () => {
     const audioBlob = new Blob(audioChunks);
     sendAudioToServer(audioBlob);
   };
+  mediaRecorder.stop();
 }
 
 function sendAudioToServer(audioBlob) {
-    cur_card=cardSet.getCurrentCard();
+    const cur_card=cardSet.getCurrentCard();
 
     const dataToSend = {
         type:  "rec-voice",
@@ -617,26 +596,17 @@ function sendAudioToServer(audioBlob) {
     //}
 }
 
-// Removal indicator functions - now just visual feedback without text
-function showRemovalIndicator(opacity) {
-    // Visual feedback through card scaling is handled in satrtPan function
-    // No overlay text needed
-}
-
-function hideRemovalIndicator() {
-    // Visual feedback cleanup is handled in resetCardPosition function
-    // No overlay text to hide
-}
 
 // Confirmation dialog functions
 async function showRemovalConfirmation() {
     return new Promise((resolve) => {
-        let currentCard = cardSet.getCurrentCard();
+        const currentCard = cardSet.getCurrentCard();
         if (!currentCard) {
             resolve(false);
             return;
         }
-        
+        gsap.to(".corner-box",  .2, {opacity: 0});
+
         let modal = document.createElement('div');
         modal.className = 'removal-modal';
         modal.innerHTML = `
@@ -663,13 +633,6 @@ async function showRemovalConfirmation() {
             resetCardPosition();
             resolve(false);
         };
-        
-        modal.querySelector('.modal-confirm').onclick = () => {
-            hideModal(modal);
-            removeWord(currentCard);
-            resolve(true);
-        };
-        
         // Hide modal on background click
         modal.onclick = (e) => {
             if (e.target === modal) {
@@ -677,6 +640,12 @@ async function showRemovalConfirmation() {
                 resetCardPosition();
                 resolve(false);
             }
+        };
+        
+        modal.querySelector('.modal-confirm').onclick = () => {
+            hideModal(modal);
+            removeWord(currentCard);
+            resolve(true);
         };
     });
 }
@@ -692,18 +661,12 @@ function hideModal(modal) {
 
 // Reset card position after cancelled removal
 function resetCardPosition() {
-    hideRemovalIndicator();
-    let currentRotationY = ss === 'a' ? 180 : 0;
-    gsap.to(upFlash, 0.2, {
+    gsap.to(upFlash, .2, {
         ease: Cubic.easeInOut,
         x: '0%',
         y: '0%',            
-        rotationZ: 0,
-        rotationY: currentRotationY,
-        scale: 1,
-        filter: 'brightness(1) sepia(0)'
+        rotation: 0            
     });
-    gsap.to(".corner-box", 0.2, {opacity: 0});
 }
 
 // Remove word function
@@ -717,45 +680,19 @@ async function removeWord(card) {
     console.log("sent remove-word:" + r);
     
     // Remove from current set and update UI
-    cardSet.cards.splice(0, 1);
-    document.querySelector('.txt-counter').textContent = cardSet.cards.length;
-    
-    // Show success animation and message
+    cardSet.removeCurrentCard();
+
+        
+    // // Show success animation and message
     showSuccessAnimation(card.foreignW);
-    
+
     // Animate card removal with upward fade-out
     gsap.to(upFlash, 0.4, { 
         ease: Cubic.easeInOut, 
         y: '-150%',
         opacity: 0,
         scale: 0.8,
-        onCompleteParams: [upFlash],
-        onComplete: async function(v) {
-            // Update card display with proper z-index management
-            v.style.zIndex -= 2;
-            v.style.opacity = 1; // Reset opacity for next card
-            
-            if (cardSet.getLen() >= 2) {
-                let u = upFlash;
-                upFlash = downFlash;
-                downFlash = u;
-                await updateCardUI(downFlash, cardSet.getNextCard());
-            } else if (cardSet.getLen() == 1) {
-                await updateCardUI(downFlash, null);
-                await updateCardUI(upFlash, cardSet.getCurrentCard());
-            } else {
-                await updateCardUI(upFlash, null);
-                const dataToSend = {
-                    type: "stop-tren"
-                };
-                let r = JSON.stringify(dataToSend)
-                ws.send(r);
-                console.log("sent:" + r);
-            }
-            
-            ss = 'q';
-            gsap.set(v, {x: '0%', y: '0%', rotationZ: 0, rotationY: 0, scale: 1, filter: 'brightness(1) sepia(0)'});
-        }
+        onComplete: completeSwipe
     });
 }
 
@@ -765,7 +702,6 @@ function showSuccessAnimation(word) {
     
     // Show success message with animation
     infoMsg.innerHTML = `✓ "${word}" removed`;
-    infoMsg.style.color = 'rgba(123, 160, 135, 1)'; // Green color
     
     gsap.fromTo(infoMsg, 
         {opacity: 0, y: -20}, 
@@ -779,7 +715,6 @@ function showSuccessAnimation(word) {
             duration: 0.3,
             onComplete: () => {
                 infoMsg.textContent = '';
-                infoMsg.style.color = 'rgba(255, 255, 255, 0.9)'; // Reset to original color
             }
         });
     }, 2000);
