@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 import asyncio
 from botlog import logger
-from update_dns import update_dns
 from run_bot import bot_run, bot_stop
 from webapp_hook import webapp_hook_run
 import platform
