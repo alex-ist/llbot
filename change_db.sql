@@ -1,6 +1,3 @@
-DELETE FROM users WHERE user_id NOT IN (5800537837, 484679683);
-DELETE FROM words WHERE user_id NOT IN (5800537837, 484679683);
-
 PRAGMA foreign_keys = 0;
 
 CREATE TABLE sqlitestudio_temp_table AS SELECT *
@@ -9,33 +6,35 @@ CREATE TABLE sqlitestudio_temp_table AS SELECT *
 DROP TABLE words;
 
 CREATE TABLE words (
-    word_id           INTEGER  PRIMARY KEY AUTOINCREMENT,
-    user_id           INTEGER,
-    foreign_w         TEXT,
-    fw_part_of_speech TEXT (6),
-    native_w          TEXT,
-    foreign_lang      TEXT (2) NOT NULL,
-    native_lang       TEXT (2) NOT NULL,
-    example           TEXT,
-    created_at        INTEGER
+    word_id    INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id    INTEGER,
+    pos        TEXT,
+    fw0        TEXT,
+    fw1        TEXT,
+    fw2        TEXT,
+    fw3        TEXT,
+    nw0        TEXT,
+    nw1        TEXT,
+    nw2        TEXT,
+    nw3        TEXT,
+    example    TEXT,
+    created_at INTEGER
 );
 
 INSERT INTO words (
                       word_id,
                       user_id,
-                      foreign_w,
-                      native_w,
-                      foreign_lang,
-                      native_lang,
+                      pos,
+                      fw0,
+                      nw0,
                       example,
                       created_at
                   )
                   SELECT word_id,
                          user_id,
+                         fw_part_of_speech,
                          foreign_w,
                          native_w,
-                         foreign_lang,
-                         native_lang,
                          example,
                          created_at
                     FROM sqlitestudio_temp_table;

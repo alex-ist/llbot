@@ -67,7 +67,12 @@ async def st_trening(self:'LLBot') -> None:
             if lnk:
                 html_lnk=f'<a href="{lnk}">{fw}</a>'
 
-            await self.m2.voice(voice=a, txt=f'{html_lnk} = {tc.GetNative()}', kbd=_kbd_trening(self.sub_state))
+            w = tc.word 
+            t = f'{html_lnk} = {w.GetAllNativesStr()}\n'
+            if w.pos:
+                t += f'<i>[{w.pos}]</i>\n'
+                
+            await self.m2.voice(voice=a, txt=t, kbd=_kbd_trening(self.sub_state))
         self.timer_run(dt.timedelta(minutes=30), "tmr:tren_to1") #запускаем таймер на неактивность пользователя
 
         await self.wait_event()

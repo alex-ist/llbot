@@ -3,11 +3,12 @@ const VER = 55
 let query_id;
 
 class Card {
-    constructor(cid, direction, foreignW, nativeW, example, d_link, q_id) {
+    constructor(cid, direction, foreignW, nw_list, pos, example, d_link, q_id) {
         this.cid = cid;
         this.direction = direction;
         this.foreignW = foreignW;
-        this.nativeW = nativeW;
+        this.nw_list = nw_list;
+        this.pos = pos;
         this.example = example;
         this.answer = -1;  // not showed card
         this.dict_lnk = d_link;
@@ -20,7 +21,7 @@ class Card {
         if (this.direction==0)
             return this.foreignW;
         else
-            return this.nativeW;
+            return this.nw_list[0];
     }
     loadAudio() {
         return new Promise((resolve, reject) => {
@@ -159,17 +160,37 @@ async function updateCardUI(fl, card) {
         const front=fl.querySelector(".front");
         const frontForeign = front.querySelector(".foreign");
         const frontNative = front.querySelector(".native");
-        const back=fl.querySelector(".back");
-        if (card.direction==0)  { //show foreign
-            frontForeign.querySelector(".foreign-text").textContent = card.foreignW;
-            frontNative.style.display = "none";
-            frontForeign.style.display = "flex";
-        } else {
-            frontNative.querySelector(".native-text").textContent = card.nativeW;
-            frontForeign.style.display = "none";
-            frontNative.style.display = "flex";
+        const frontExampleText = front.querySelector(".example .example-text");
+        frontExampleText.textContent = "";
+
+        let n_text = card.nw_list[0];
+        for (let i = 1; i < card.nw_list.length; i++) {
+            if (card.nw_list[i])
+                n_text += ", " + card.nw_list[i];
+            else
+                break;
         }
-        front.style.display = "flex";
+        let pos_text = card.pos ? card.pos : "";
+        if (pos_text == "phrase" || pos_text == "other")
+            pos_text = "";
+
+        if (card.direction==0)  { //show foreign
+            frontNative.style.visibility = "hidden";
+            frontForeign.querySelector(".foreign-text").textContent = card.foreignW;
+            frontForeign.querySelector(".pos-text").textContent = pos_text;
+            frontForeign.style.visibility = "visible";
+
+        } else {
+            frontForeign.style.visibility = "hidden";
+            frontNative.querySelector(".native-text").textContent = n_text;
+            frontNative.style.visibility = "visible";
+        }
+        const back =fl.querySelector(".back");
+        const backExampleText = back.querySelector(".example .example-text");
+        backExampleText.textContent = card.example;
+
+
+        // front.style.display = "flex";
         
         let old_ft=back.querySelector(".foreign-text");
         let new_ft;
@@ -181,15 +202,14 @@ async function updateCardUI(fl, card) {
             new_ft = document.createElement('a');
             new_ft.href = card.dict_lnk;
             new_ft.target = '_blank';
-            console.log("lnk: " + card.dict_lnk);
+            // console.log("lnk: " + card.dict_lnk);
         }
         new_ft.className = 'foreign-text';
         new_ft.textContent = card.foreignW;
         old_ft.parentNode.replaceChild(new_ft, old_ft);
-
-        back.querySelector(".native-text").textContent = card.nativeW;
-        back.querySelector(".example-text").textContent = card.example;
-        back.style.display = "flex";
+        back.querySelector(".native-text").textContent = n_text;
+        back.querySelector(".foreign .pos-text").textContent = pos_text;
+        // back.style.display = "flex";
     }
     else
         fl.style.display = "none";
@@ -380,7 +400,7 @@ ws.addEventListener('message', async (event) => {
         if ('autoplay' in receivedData) 
             setAutoPlay(receivedData.autoplay, false);
         receivedData.card.forEach(cardData => {
-            cardSet.addCard(new Card(cardData.cid, cardData.dir, cardData.fw, cardData.nw, cardData.ex, cardData.lnk, query_id));
+            cardSet.addCard(new Card(cardData.cid, cardData.dir, cardData.fw, cardData.nw_list, cardData.pos, cardData.ex, cardData.lnk, query_id));
         });
     
         document.querySelector('.txt-counter').textContent =cardSet.cards.length;

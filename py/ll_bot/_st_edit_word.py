@@ -3,7 +3,7 @@ from bot_db import word_get_progress
 from utils import select_button
 from msg_txt import *
 import datetime as dt
-from oai import oai_aget_example
+from oai import gen_example_sentence
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
@@ -65,7 +65,7 @@ async def st_edit_word(self:'LLBot') -> None:
         rlnk = self.edited_word.GetDictLink() #full raw link is used because it will be open without asking in telegram
         if rlnk is None:
             rlnk=""
-        txt2=f"\n{pg} {fw} = {self.edited_word.GetNative()}\n\n<i>{self.edited_word.GetExample()}</i>\n\n{rlnk}"
+        txt2=f"\n{pg} {fw} = {self.edited_word.GetAllNativesStr()}\n<i>[{self.edited_word.pos}]</i>\n\n<i>{self.edited_word.GetExample()}</i>\n\n{rlnk}"
         
         if selected_button=="reset":
             txt=msg09_reset_prog()+txt2
@@ -97,9 +97,10 @@ async def st_edit_word(self:'LLBot') -> None:
             if selected_button!="ex":
                 selected_button="ex"
                 cnt1=0
+                ex_list=[self.edited_word.GetExample()]
             else: #create new examle
-                #ex=oai_get_example(self.user_id, self.edited_word.GetForeign())
-                ex=await oai_aget_example(self.user_id, self.edited_word.GetForeign(), cnt1)
+                ex = await gen_example_sentence(self.edited_word.GetForeign(), self.edited_word.nw_list[0], self.edited_word.pos, ex_list)
+                ex_list.append(ex)
                 cnt1+=1
                 self.edited_word.ChangeExample(ex)
             kb=_kbd_edit(self, "kbd:ex", "✏️")

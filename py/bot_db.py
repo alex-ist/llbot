@@ -3,6 +3,9 @@ import sqlite3
 from sqlite3 import Error
 import datetime
 
+FOREIGN_LANG = "en"
+NATIVE_LANG = "ru"
+
 
 DB='data/ll.db'
 
@@ -47,39 +50,47 @@ def load_maintenance_data():
 
 def words_read(user_id:int):
     db, c=open_db()
-    c.execute("SELECT word_id, foreign_w, native_w FROM words WHERE user_id = ? ORDER BY foreign_w ASC", (user_id,))
+    c.execute("SELECT word_id, fw0, nw0 FROM words WHERE user_id = ? ORDER BY fw0 ASC", (user_id,))
     rows = c.fetchall()
     close_db(db)
     return rows
 
 def word_read(user_id:int, word_id:int):
     db, c=open_db()
-    c.execute("SELECT foreign_w, native_w, foreign_lang, native_lang, example FROM words WHERE user_id = ? AND word_id = ?",
+    c.execute("SELECT fw0, nw0, nw1, nw2, nw3, pos, example FROM words WHERE user_id = ? AND word_id = ?",
                     (user_id, word_id))
     row = c.fetchone()
     close_db(db)
     if row:
-        return row[0],row[1],row[2],row[3],row[4]
+        fw = row[0]
+        nw_list = [row[1], row[2], row[3], row[4]]
+        pos = row[5]
+        ex = row[6] 
+        return fw, nw_list, pos, ex
     else:
-        return None, None, None, None, None
+        return None, None, None
 
 def word_read_by_cid(uid:int, cid:int):
     db, c=open_db()
     c.execute("""
-SELECT w.word_id, w.foreign_w, w.native_w, w.foreign_lang, w.native_lang, w.example FROM words AS w
+SELECT w.word_id, w.fw0, w.nw0, w.nw1, w.nw2, w.nw3, w.pos, w.example FROM words AS w
 JOIN training_cards AS tc ON w.word_id = tc.word_id
 WHERE w.user_id = ? AND tc.training_card_id = ?;              
               """,(uid, cid))
     row = c.fetchone()
     close_db(db)
     if row:
-        return row[0],row[1],row[2],row[3], row[4], row[5]
+        fw = row[0]
+        nw_list = [row[1], row[2], row[3], row[4]]
+        pos = row[5]
+        ex = row[6] 
+        return fw, nw_list, pos, ex
     else:
-        return None, None, None, None, None, None
+        return None, None, None
 
 def word_read_by_fw(user_id:int, fw:str):
     db, c=open_db()
-    c.execute("SELECT word_id FROM words WHERE user_id = ? AND foreign_w = ?", (user_id, fw))
+    c.execute("SELECT word_id FROM words WHERE user_id = ? AND fw0 = ?", (user_id, fw))
     row = c.fetchone()
     close_db(db)
     if row is not None:
@@ -97,39 +108,39 @@ def words_delete(user_id:int):
     c.execute("DELETE FROM words WHERE user_id = ?", (user_id,))
     close_db(db, True)
 
-def word_update(user_id:int, word_id:int, foreign_w, native_w, example):
+def word_update(user_id:int, word_id:int, foreign_w, nw_list, example):
     db, c=open_db()
-    c.execute("UPDATE words SET foreign_w = ?, native_w = ?, example = ? WHERE word_id = ? AND user_id = ?", 
-             (foreign_w, native_w, example, word_id, user_id))
+    c.execute("UPDATE words SET fw0 = ?, nw0 = ?, nw1 = ?, nw2 = ?, nw3 = ?, example = ? WHERE word_id = ? AND user_id = ?", 
+             (foreign_w, nw_list[0], nw_list[1], nw_list[2], nw_list[3], example, word_id, user_id))
     close_db(db, commit=True)
 
-def word_add(user_id:int, foreign_w, native_w, foreign_lang, native_lang, example=None):
+def word_add(user_id:int, foreign_w, nw_list, example=None):
     db, c=open_db()
     #fixme: должно ли быть foreign_w уникальным для каждого юзера? если да:
     #if not cursor.execute("SELECT * FROM words WHERE user_id = ? AND foreign_w = ?", (user_id, foreign_w,)).fetchone():
     current_timestamp = t_to_DB(datetime.datetime.now())
-    c.execute("INSERT INTO words (user_id, foreign_w, native_w, foreign_lang, native_lang, example, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
-             (user_id, foreign_w, native_w, foreign_lang, native_lang, example, current_timestamp))
+    c.execute("INSERT INTO words (user_id, fw0, nw0, nw1, nw2, nw3, example, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+             (user_id, foreign_w, nw_list[0], nw_list[1], nw_list[2], nw_list[3], example, current_timestamp))
     word_id=c.lastrowid
     close_db(db, commit=True)
     return word_id
 
-def add_words_by_topic(user_id:int, topic:str, flang= "en", nlang="ru"):
+def add_words_by_topic(user_id:int, topic:str):
     db, c=open_db()
     current_timestamp = t_to_DB(datetime.datetime.now())
 
     #fixme подумать с переводом на другие языки
     sql = f"""
-INSERT INTO words (user_id, foreign_w, native_w, foreign_lang, native_lang, example, created_at)
-SELECT ?, f_word, tr1, '{flang}', '{nlang}', f_example, ?
+INSERT INTO words (user_id, fw0, nw0, example, created_at)
+SELECT ?, f_word, tr1, f_example, ?
 FROM word_set 
-WHERE topic = ? and f_lang= '{flang}' AND NOT EXISTS 
-(SELECT 1 FROM words WHERE foreign_w = word_set.f_word AND user_id = ?)
+WHERE topic = ? and AND NOT EXISTS 
+(SELECT 1 FROM words WHERE fw0 = word_set.f_word AND user_id = ?)
 """
     c.execute(sql, (user_id, current_timestamp, topic, user_id))
     db.commit()
 
-    select_sql = "SELECT foreign_w, native_w FROM words WHERE user_id = ? AND created_at = ?"
+    select_sql = "SELECT fw0, nw0 FROM words WHERE user_id = ? AND created_at = ?"
     c.execute(select_sql, (user_id, current_timestamp))
     inserted_words = c.fetchall()
     close_db(db)
@@ -188,7 +199,7 @@ def word_get_progress(user_id:int, word_id:int):
 
 def cards_stat(user_id:int, len, offset=0):
     db, c=open_db()
-    c.execute(f"SELECT words.foreign_w, words.native_w, training_cards.next_training_t, training_cards.last_training_t, training_cards.direction FROM training_cards INNER JOIN words ON training_cards.word_id = words.word_id WHERE training_cards.user_id = {user_id} ORDER BY training_cards.next_training_t ASC LIMIT {len} OFFSET {offset}")
+    c.execute(f"SELECT words.fw0, words.nw0, training_cards.next_training_t, training_cards.last_training_t, training_cards.direction FROM training_cards INNER JOIN words ON training_cards.word_id = words.word_id WHERE training_cards.user_id = {user_id} ORDER BY training_cards.next_training_t ASC LIMIT {len} OFFSET {offset}")
     rows = c.fetchall()
     close_db(db)
     r=""

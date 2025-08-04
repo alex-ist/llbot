@@ -9,15 +9,19 @@ from bot_db import *
 from trans import get_dict_rawlink
 from singleton import Singleton
 
+FOREIGN_LANG = "en"
+NATIVE_LANG = "ru"
+
 
 class Word:
-    def __init__(self, user_id, foreign_lang, foreign_w, native_lang, native_w, example=None, word_id=-1, lnk=None):
+    def __init__(self, user_id, foreign_w, nw_list, pos, example=None, word_id=-1, lnk=None):
         self.user_id=user_id
         self.word_id=word_id
-        self.native_lang=native_lang
-        self.foreign_lang=foreign_lang
+        self.native_lang=NATIVE_LANG
+        self.foreign_lang=FOREIGN_LANG
         self.foreign_w=foreign_w
-        self.native_w=native_w
+        self.nw_list = nw_list[:4] + [None] * (4 - len(nw_list))
+        self.pos=pos
         if example=="":
             example=None
         self.example=example
@@ -31,7 +35,20 @@ class Word:
         return self.foreign_w
 
     def GetNative(self):
-        return self.native_w
+        return self.nw_list[0]
+
+    def GetNwList(self):
+        return self.nw_list
+
+    def GetAllNativesStr(self):
+        all=self.nw_list[0]
+        for i in range(1, len(self.nw_list)):
+            if self.nw_list[i] is not None:
+                all+=f", {self.nw_list[i]}"
+        return all
+
+    def GetPos(self):
+        return self.pos
 
     def GetExample(self):
         if self.example is None:
@@ -48,12 +65,19 @@ class Word:
         self.audio=None
 
     def ChangeNative(self, new_nw):
-        if new_nw[0]=="+":
-            if new_nw[1].isalpha():
-                self.native_w+=", "
-            self.native_w+=new_nw[1:]
+        if new_nw[0]=="+" and new_nw[1].isalpha():
+            for i in range(1, len(self.nw_list)):
+                if not self.nw_list[i]:
+                    self.nw_list[i] = new_nw
+                    break
+            else: #нет места, меняем последний
+                self.nw_list[len(self.nw_list)-1]=new_nw
         else:
-            self.native_w=new_nw
+            self.nw_list[0]=new_nw
+            self.nw_list[1]=None
+            self.nw_list[2]=None
+            self.nw_list[3]=None
+            
 
     def ChangeExample(self, new_ex):
         if new_ex=="":
@@ -63,13 +87,14 @@ class Word:
     
     #восстанавливает карту по данным из базы
     def ReloadFromDb(self):
-        foreign_w, native_w, foreign_lang, native_lang, example=word_read(self.user_id, self.word_id)
-        self.native_lang=native_lang
-        self.foreign_lang=foreign_lang
-        self.ChangeNative(native_w)
-        self.ChangeForeign(foreign_w)
-        self.ChangeExample(example)
-            
+        foreign_w, nw_list, example=word_read(self.user_id, self.word_id)
+        self.native_lang=NATIVE_LANG
+        self.foreign_lang=FOREIGN_LANG
+        self.foreign_w=foreign_w
+        self.nw_list=nw_list
+        self.example=example
+        self.audio=None
+        self.audio_example=None
 
     #сохраняет карту в базе
     #если self.word_id==-1 (новая слово) то insert
@@ -77,27 +102,27 @@ class Word:
 
     def SaveWordToDb(self):
         if self.word_id>=0:
-            word_update(self.user_id, self.word_id, self.foreign_w, self.native_w, self.example)
+            word_update(self.user_id, self.word_id, self.foreign_w, self.nw_list, self.example)
         else:
-            self.word_id=word_add(self.user_id, self.foreign_w, self.native_w, self.foreign_lang, self.native_lang, self.example)
+            self.word_id=word_add(self.user_id, self.foreign_w, self.nw_list, self.example)
 
     @staticmethod
-    def CreateWord(user_id, foreign_lang, foreign_w, native_lang, native_w, example=None, lnk=None):
-        word=Word(user_id, foreign_lang, foreign_w, native_lang, native_w, example, word_id=-1, lnk=lnk)
+    def CreateWord(user_id, foreign_w, nw_list, pos, example=None,  lnk=None):
+        word=Word(user_id, foreign_w, nw_list, pos, example, word_id=-1, lnk=lnk)
         return word
 
     @staticmethod
     def ReadFromDb(user_id:int, word_id:int) -> 'Word':
-        foreign_w, native_w, foreign_lang, native_lang, example=word_read(user_id, word_id)
-        word=Word(user_id, foreign_lang, foreign_w, native_lang, native_w, example, word_id)
+        foreign_w, nw_list, pos, example=word_read(user_id, word_id)
+        word=Word(user_id, foreign_w, nw_list, pos, example, word_id)
         word.lnk = db_get_dict_link(word.foreign_w)  #пробуем установить ссылку на словарь считав из локального кэша.
         return word
 
     @staticmethod
     async def ReadFromDb_by_cid(uid:int, cid:int) -> 'Word':
-        word_id, foreign_w, native_w, foreign_lang, native_lang, example=word_read_by_cid(uid, cid)
+        word_id, foreign_w, nw_list, pos, example=word_read_by_cid(uid, cid)
         if word_id:
-            word=Word(uid, foreign_lang, foreign_w, native_lang, native_w, example, word_id)
+            word=Word(uid, foreign_w, nw_list, example, pos, word_id)
             await word.SetDictLink()
             return word
         else:

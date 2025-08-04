@@ -1,6 +1,7 @@
 import asyncio
 from trans import translate_text, detect_lang, get_dict_rawlink
-from oai import oai_aget_example, oai_spell
+from oai import oai_aget_example
+from oai import check_fw_input, translate_word, translate_phrase, gen_example_sentence
 from bot_db import word_read_by_fw
 from msg_txt import *
 from card import Word
@@ -69,49 +70,54 @@ async def add_word(self:'LLBot', ev:str):
     #1) выяснить язык слова (для пары русско английский - легко и однозначно: по кодировке)
     src_lang, targ_lang=await detect_lang(self.user_id, self.u.foreign_lang, self.u.native_lang, w)
 
-    #2) если fw: проверяем слово на наличие в базе -> если есть, то редактирование
     if src_lang==self.u.foreign_lang:
         fw=w
+        #2) если fw: проверяем слово на наличие в базе -> если есть, то редактирование
         if is_word_in_db(self, fw):
             return True #будем редактировать вместо добавления
-        #3) пытаемся создать ссылку на слово cambreadge
-        lnk=await get_dict_rawlink(self.user_id, fw)
-        #4)     если нет ссылки: возможно опечатки? исправляем 
-        if lnk=="":
-            w = await oai_spell(fw)
-            #5) если исправили опечатки: проверяяем слово еще раз на наличие в базе еще раз -> если есть то редактирование
-            if w!=fw:
-                self.log_warn(f"spell correction: {fw} -> {w}")
-                lnk=None
-                fw=w
-                if is_word_in_db(self, fw):
-                    return True #будем редактировать, вместо добавления
-    #7) переводим
-    tr_w = await translate_text(src_lang, targ_lang, w)
-    if tr_w==w:
-        self.log_warn(f"can't do translation: {w}")
-        pass #return?
+        
+        cw, pos, word_count = await check_fw_input(fw)
+        #3) если исправили опечатки: проверяяем слово еще раз на наличие в базе еще раз -> если есть то редактирование
+        if cw!=fw:
+            self.log_warn(f"spell correction: {fw} -> {w}")
+            lnk=None
+            fw=cw
+            if is_word_in_db(self, fw):
+                return True #будем редактировать, вместо добавления
+        
+        #4) пытаемся создать ссылку на слово cambreadge
+        lnk=await get_dict_rawlink(self.user_id, cw)
 
-    if src_lang==self.u.foreign_lang:
-        nw=tr_w
-    else:
-        #8) если nw: проверяем на наличие fw слова в базе ->если есть, то редактирование
-        nw=w
-        fw=tr_w
+        #5) переводим
+        if word_count == 1:
+            nw_list = await translate_word(fw, pos)
+        else:
+            nw_list = await translate_phrase(fw, pos)
+        #6) генерируем пример
+        ex = await gen_example_sentence(fw, nw_list[0], pos)
+    
+    else: #было на русском
+        #7) переводим
+        tr_w = await translate_text(src_lang, targ_lang, w)
+        if tr_w==w:
+            self.log_warn(f"can't do translation: {w}")
+            pass #return?
+        nw_listnw=w
+        nw_list=tr_w
         if is_word_in_db(self, fw):
             return True #будем редактировать вместо добавления
 
     #9) генерируем пример
     #6) пытаемся создать ссылку на слово в cambridge, если еще не
-    if lnk is None:
-        lnk, ex = await asyncio.gather(
-            get_dict_rawlink(self.user_id, fw),
-            oai_aget_example(self.user_id, fw)
-        )
-    else:
-        ex = await oai_aget_example(self.user_id, fw)
+        if lnk is None:
+            lnk, ex = await asyncio.gather(
+                get_dict_rawlink(self.user_id, fw),
+                oai_aget_example(self.user_id, fw)
+            )
+        else:
+            ex = await oai_aget_example(self.user_id, fw)
 
-    self.log_info(f"add word: {w} -> {tr_w}")
-    self.edited_word=Word.CreateWord(self.user_id, self.u.foreign_lang, fw, self.u.native_lang, nw, ex, lnk=lnk)
+    self.log_info(f"add word: {w} -> {nw_list} pos={pos}")
+    self.edited_word=Word.CreateWord(self.user_id, fw, nw_list, pos, ex, lnk=lnk)
     self.call_state(self.ST_EDIT_NEW)
     return True

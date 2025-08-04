@@ -146,30 +146,37 @@ img {
     backface-visibility: hidden;
     display: flex;
     flex-direction: column;
+    justify-content: space-around;
 }
 
 .front {
-    /* padding-bottom: 70px; */
-    justify-content: center;
     transform: rotateY(-0deg);
 }
+
+.back {
+    transform: rotateY(-180deg);
+}
+
 .q-text {
+    position: absolute;
+    bottom: 20%;            /* 30 % высоты карточки от нижней границы */    
+    left: 0;
+    width: 100%;
+    text-align: center;
+    align-self: auto;  
+    z-index: 555;  
+    
+    
     color: #964E80;
     font-size: 54px;
     font-style: normal;
     font-weight: 500;
     line-height: normal;    
-    align-self: center;  
-    margin-top: 30px;
 }
 
-.back {
-    justify-content: space-around;
-    transform: rotateY(-180deg);
-}
 
 .f-and-s {
-    align-self: stretch;  /*чтобы spacer раятянулся по возможности*/
+    align-self: stretch;  /*чтобы spacer растянулся по возможности*/
     flex: 0 auto;
     display: flex;
     flex-direction: column;
@@ -177,10 +184,25 @@ img {
 }
 
 .foreign {
-    align-self: stretch;  /*чтобы spacer раятянулся по возможности*/
     display: flex;    
+    align-items: center;      /* выравниваем по центру */
+    align-self: stretch;  /*чтобы spacer растянулся по возможности*/
+    flex-direction: column;   /* сначала ряд, потом часть речи */
+}
+
+.fw-row {
+    display: flex;
     justify-content: center;
     align-items: center;
+    width: 100%;             /* чтобы spacer продолжал «толкать» слово */
+}
+
+.pos-text {
+    font-size: 18px;          /* меньше, чем у слова */
+    font-style: italic;       /* курсив */
+    line-height: 20px;
+    color: #5F634F;
+    margin-top: 10px;          /* небольшой отступ снизу ряда */
 }
 
 .native {
@@ -209,7 +231,7 @@ img {
     margin-top: 20px;
 }
 
-.back-example {
+.example {
     display: flex;
     flex-direction: row;
     justify-content: left;

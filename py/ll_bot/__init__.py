@@ -6,6 +6,8 @@ from card import TrainingCardSet #, Word, TrainingCard,
 from bot_msg import BotMsg
 from msg_txt import *
 from bot_db import save_maintenance_data, t_from_DB, words_count, user_set_status
+import traceback
+
 
 class LLBot:
     ST_INIT = "st_init"
@@ -211,7 +213,8 @@ class LLBot:
             self.log_warn("asyncio.CancelledError")
             raise
         except Exception as e:
-            self.log_err(f"fatal Exception in main_loop(), e={e}")
+            tb = traceback.format_exc()
+            self.log_err(f"Fatal exception in main_loop(): {e}\n{tb}")            
             if self.ev_future:
                 self.ev_future.set_result(None)
                 self.ev_future=None
