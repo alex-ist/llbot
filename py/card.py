@@ -102,9 +102,9 @@ class Word:
 
     def SaveWordToDb(self):
         if self.word_id>=0:
-            word_update(self.user_id, self.word_id, self.foreign_w, self.nw_list, self.example)
+            word_update(self.user_id, self.word_id, self.foreign_w, self.nw_list, self.pos, self.example)
         else:
-            self.word_id=word_add(self.user_id, self.foreign_w, self.nw_list, self.example)
+            self.word_id=word_add(self.user_id, self.foreign_w, self.nw_list, self.pos, self.example)
 
     @staticmethod
     def CreateWord(user_id, foreign_w, nw_list, pos, example=None,  lnk=None):

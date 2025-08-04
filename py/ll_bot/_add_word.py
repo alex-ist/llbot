@@ -79,7 +79,7 @@ async def add_word(self:'LLBot', ev:str):
         cw, pos, word_count = await check_fw_input(fw)
         #3) если исправили опечатки: проверяяем слово еще раз на наличие в базе еще раз -> если есть то редактирование
         if cw!=fw:
-            self.log_warn(f"spell correction: {fw} -> {w}")
+            self.log_warn(f"spell correction: {fw} -> {cw}")
             lnk=None
             fw=cw
             if is_word_in_db(self, fw):

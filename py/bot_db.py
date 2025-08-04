@@ -55,6 +55,30 @@ def words_read(user_id:int):
     close_db(db)
     return rows
 
+def posdb_to_str(pos):
+    if pos == "adj":
+        return "adjective"
+    elif pos == "p.verb":
+        return "phrasal verb"
+    elif pos == "prep":
+        return "preposition"
+    elif pos == "adv":
+        return "adverb"
+    else:
+        return pos
+    
+def str_to_posdb(pos_str):
+    if pos_str == "adjective":
+        return "adj"
+    elif pos_str == "phrasal verb":
+        return "p.verb"
+    elif pos_str == "preposition":
+        return "prep"
+    elif pos_str == "adverb":
+        return "adv"
+    else:
+        return pos_str    
+
 def word_read(user_id:int, word_id:int):
     db, c=open_db()
     c.execute("SELECT fw0, nw0, nw1, nw2, nw3, pos, example FROM words WHERE user_id = ? AND word_id = ?",
@@ -64,7 +88,7 @@ def word_read(user_id:int, word_id:int):
     if row:
         fw = row[0]
         nw_list = [row[1], row[2], row[3], row[4]]
-        pos = row[5]
+        pos = posdb_to_str(row[5])
         ex = row[6] 
         return fw, nw_list, pos, ex
     else:
@@ -82,7 +106,7 @@ WHERE w.user_id = ? AND tc.training_card_id = ?;
     if row:
         fw = row[0]
         nw_list = [row[1], row[2], row[3], row[4]]
-        pos = row[5]
+        pos = posdb_to_str(row[5])
         ex = row[6] 
         return fw, nw_list, pos, ex
     else:
@@ -108,19 +132,23 @@ def words_delete(user_id:int):
     c.execute("DELETE FROM words WHERE user_id = ?", (user_id,))
     close_db(db, True)
 
-def word_update(user_id:int, word_id:int, foreign_w, nw_list, example):
+def word_update(user_id:int, word_id:int, foreign_w, nw_list, pos, example):
     db, c=open_db()
-    c.execute("UPDATE words SET fw0 = ?, nw0 = ?, nw1 = ?, nw2 = ?, nw3 = ?, example = ? WHERE word_id = ? AND user_id = ?", 
-             (foreign_w, nw_list[0], nw_list[1], nw_list[2], nw_list[3], example, word_id, user_id))
+    pos_db = str_to_posdb(pos)
+    nw_list = (nw_list + [None] * 4)[:4]
+    c.execute("UPDATE words SET fw0 = ?, nw0 = ?, nw1 = ?, nw2 = ?, nw3 = ?, pos = ?, example = ? WHERE word_id = ? AND user_id = ?", 
+             (foreign_w, nw_list[0], nw_list[1], nw_list[2], nw_list[3], pos_db, example, word_id, user_id))
     close_db(db, commit=True)
 
-def word_add(user_id:int, foreign_w, nw_list, example=None):
+def word_add(user_id:int, foreign_w, nw_list, pos, example=None):
     db, c=open_db()
     #fixme: должно ли быть foreign_w уникальным для каждого юзера? если да:
     #if not cursor.execute("SELECT * FROM words WHERE user_id = ? AND foreign_w = ?", (user_id, foreign_w,)).fetchone():
     current_timestamp = t_to_DB(datetime.datetime.now())
-    c.execute("INSERT INTO words (user_id, fw0, nw0, nw1, nw2, nw3, example, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-             (user_id, foreign_w, nw_list[0], nw_list[1], nw_list[2], nw_list[3], example, current_timestamp))
+    pos_db = str_to_posdb(pos)
+    nw_list = (nw_list + [None] * 4)[:4]
+    c.execute("INSERT INTO words (user_id, fw0, nw0, nw1, nw2, nw3, example, pos, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+             (user_id, foreign_w, nw_list[0], nw_list[1], nw_list[2], nw_list[3], pos_db, example, current_timestamp))
     word_id=c.lastrowid
     close_db(db, commit=True)
     return word_id

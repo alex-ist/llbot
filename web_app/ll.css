@@ -164,7 +164,8 @@ img {
     width: 100%;
     text-align: center;
     align-self: auto;  
-    z-index: 555;  
+    z-index: 555;
+    pointer-events: none;
     
     
     color: #964E80;
