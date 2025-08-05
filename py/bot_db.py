@@ -104,11 +104,12 @@ WHERE w.user_id = ? AND tc.training_card_id = ?;
     row = c.fetchone()
     close_db(db)
     if row:
-        fw = row[0]
-        nw_list = [row[1], row[2], row[3], row[4]]
-        pos = posdb_to_str(row[5])
-        ex = row[6] 
-        return fw, nw_list, pos, ex
+        word_id = row[0]
+        fw = row[1]
+        nw_list = [row[2], row[3], row[4], row[5]]
+        pos = posdb_to_str(row[6])
+        ex = row[7]
+        return word_id, fw, nw_list, pos, ex
     else:
         return None, None, None
 

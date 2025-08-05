@@ -448,8 +448,9 @@ async def update_table_words():
     count = 0
     from bot_db import open_db, close_db, posdb_to_str, str_to_posdb
     db, c=open_db()
-    c.execute("SELECT fw0, pos, nw0 FROM words WHERE nw1 IS NULL and pos IS NOT NULL and fw3 IS NULL GROUP BY fw0 order by fw0 DESC")
+    c.execute("SELECT fw0, pos, nw0 FROM words WHERE nw1 IS NULL and pos IS NOT NULL and fw3 = '' GROUP BY fw0 order by fw0 DESC")
     rows = c.fetchall()
+    print(f"Found {len(rows)} words to update")
     for row in rows:
         fw = row[0]
         pos = posdb_to_str(row[1])
@@ -464,38 +465,50 @@ async def update_table_words():
              print(f"################ Error: {fw} -> {nfw}   Skip")
              continue
 
-        if npos != pos:
+
+    
+        if npos != pos and {pos, npos} != {'noun', 'verb'}:
             #спросить пользователя
             print(f"{fw} -> {nfw} :  {pos} -> {npos}. Update? (y/n)")
             ans = input().strip().lower()
-            if ans == 'n':
-                continue
-            pos = npos
-            c.execute("UPDATE words SET  pos = ?  WHERE fw0 = ? ", 
-                        (pos, fw))
+            if ans == 'y':
+                pos = npos
+                c.execute("UPDATE words SET  pos = ?  WHERE fw0 = ? ", 
+                            (pos, fw))
         
         if wc == 1:
             nw_list = await translate_word(fw, pos)
         else:
             nw_list = await translate_phrase(fw, pos)
 
-        print(f"{fw} -> {nw0} -> {nw_list} update? (y/n/3/2/1)")
+        print(f"{fw} -> {nw0} -> {nw_list} {pos}")
         if nw0 == nw_list[0] and len(nw_list) == 1:
             print("Skip")
+            c.execute("UPDATE words SET  fw3 = ?  WHERE fw0 = ? ", 
+                        ("00", fw))
             continue
 
+        print(f"update? (y/n/3/2/1/u)")
         nw_list = (nw_list + [None] * 4)[:4]
         while True:
             ans = input().strip().lower()
             if ans in {'1', '2', '3'}:
                 for i in range(int(ans), 4):
                     nw_list[i] = None
-                print(f"{fw} -> {nw0} -> {nw_list} update? (y/n/3/2/1)")
+                print(f"{fw} -> {nw0} -> {nw_list} {pos} update? (y/n/3/2/1)")
                 continue
             break
-            
-        if ans == 'y':
-            pos_db = str_to_posdb(pos)
+        pos_db = str_to_posdb(pos)
+        if ans == 'u':
+            ws = input().strip()
+            parts = ws.split(',')  
+            parts = [w.strip() for w in parts]
+            nw_list = (parts + [None] * 4)[:4]
+            print(f"{fw} -> {nw_list} {pos}")
+            c.execute("UPDATE words SET nw0 = ?, nw1 = ?, nw2 = ?, nw3 = ?, pos = ?, fw3 = ? WHERE fw0 = ? ", 
+                        (nw_list[0], nw_list[1], nw_list[2], nw_list[3], pos_db, "1", fw))
+
+        elif ans == 'y':
             c.execute("UPDATE words SET nw0 = ?, nw1 = ?, nw2 = ?, nw3 = ?, pos = ?, fw3 = ? WHERE fw0 = ? ", 
                         (nw_list[0], nw_list[1], nw_list[2], nw_list[3], pos_db, "1", fw))
         else:
@@ -533,7 +546,7 @@ async def main() -> None:
     await update_table_words()
 
 import asyncio
-asyncio.run(main())
+#asyncio.run(main())
 
 
 
