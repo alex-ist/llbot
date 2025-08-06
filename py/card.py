@@ -1,6 +1,4 @@
-import sqlite3
 from sqlite3 import Error
-import os
 from botlog import logger
 from ttos import tts_example, tts_word
 import datetime
@@ -135,7 +133,7 @@ class Word:
 
     #Устанавливает Аудио файл для записи в наборе. Проеверяет есть ли на локальном хранилище этот файл, если нет, то пытается его получить из сети.
     async def SetAudio(self):
-        self.audio=await tts_word(self.foreign_w, self.foreign_lang)
+        self.audio=await tts_word(self.foreign_w, self.foreign_lang, self.pos)
 
     async def SetAudioExample(self):
         self.audio_example = await tts_example(self.example, self.foreign_lang)

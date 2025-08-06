@@ -1,12 +1,9 @@
-import asyncio
 from gog import google_speach
 from oai import oai_speach
+from eleven import eleven_speach
 
 SPEACH_EXT=".ogg"
 
-async def tts_speach(foreign_txt, lang, path):
-    await oai_speach(foreign_txt, lang, path)
-    #await google_speach(foreign_txt, lang, path)
 
 import hashlib
 def get_hash_sha256(input_string):
@@ -29,19 +26,26 @@ async def tts_example(example, lang):
             os.makedirs(dir_name)  # создать директорию, если ее еще нет
         with open(map_file, 'a', encoding='utf-8') as f:
             f.write(f"{hash};{example}\n")
-        #now only google:
-        #fixme check errors
-        #await tts_speach(example, lang, p)
         await oai_speach(example, lang, p)        
         return p
 
-async def tts_word(word, lang):
+async def tts_word(word, lang, pos=None):
     p=f"data/{lang}/w/{word}"+SPEACH_EXT
     if os.path.isfile(p):
         return p
     else:
         #fixme check errors
-        await google_speach(word, lang, p)
+        # await google_speach(word, lang, p)
+        if pos == 'verb':
+            word = f"to {word}"
+        await eleven_speach(word, lang, p)
         return p
 
-#asyncio.run(tts_speach("Нешто као аутобиографија је аутобиографска књига познатог јапанског режисера Акире Куросаве. Књига је написана 1981. године.", "ru", "sp2.aac"))
+
+# async def tts_speach(foreign_txt, lang, path):
+#     await eleven_speach(foreign_txt, lang, path)
+    # await oai_speach(foreign_txt, lang, path)
+    #await google_speach(foreign_txt, lang, path)
+
+# import asyncio
+# asyncio.run(tts_speach("obsessed", "en", "sp2.aac"))

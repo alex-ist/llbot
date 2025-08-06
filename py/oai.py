@@ -139,15 +139,13 @@ async def oai_aget_example(user_id, fword, n=0, fw2=None):
 #     #ex = await oai_aget_example(123, w, n=5, fw2=None)
 #     print (ex)
 
-async def oai_speach(text, lang, file_name):
+async def oai_speach(text, lang, file_name, model="tts-1", speed=1.0):
     #it loks, lang is not supported. руский понимает автоматом, сербский оч плохо, скорее нет.
-    i=random.randint(1, 3)
-    if i==1:
-        v="onyx"
-    elif i==2:
-        v="nova"
-    else:
-        v="alloy"
+    v = random.choice([
+        "onyx",
+        "nova",
+        "alloy"
+])    
 
     ac=None
     _, format = os.path.splitext(file_name)
@@ -165,16 +163,19 @@ async def oai_speach(text, lang, file_name):
         text = text[:2000]
 
     response = await aclient.audio.speech.create(
-            model="tts-1",
+            model=model,
             voice=v,
             response_format=ac,
-            input=text
+            input=text,
+            speed=speed
         )
 
     dir_name = os.path.dirname(file_name)  # получить имя директории из полного пути файла
     if dir_name != '' and not os.path.exists(dir_name):  # проверить, существует ли уже директория
          os.makedirs(dir_name)  # создать директорию, если ее еще нет
-    response.stream_to_file(file_name)
+    
+    with open(file_name, "wb") as f:
+        f.write(response.content)
 
 
 
@@ -520,8 +521,57 @@ async def update_table_words():
     return rows
     
 
-async def main() -> None:
+
+
+
+async def oai_transcript(file_name, lang=None, await_word=None):
+    with open(file_name, "rb") as file:
+        transcript = await aclient.audio.transcriptions.create(
+            model="whisper-1",
+            language=lang,
+            #prompt="",
+            file=file,
+            response_format="text"
+        )
+        logger.info(f"openAI - whisper responce, lang={lang}: {transcript}")
+        return transcript
+
+
+w="get away with"
+async def main() -> None:   
     init_oai()
+    # await oai_speach("Regular exercise and a balanced diet can do wonders for your overall well-being.", "en", "speech.mp3")
+    # await oai_speach("achievement", "en", "ach-g.ogg", "gpt-4o-mini-tts", speed=0.85)
+    # await oai_speach("achievement", "en", "ach-h.ogg", "tts-1-hd", speed=0.85)
+    # await oai_speach("achievement", "en", "ach-1.ogg", "tts-1", speed=0.85)
+    await oai_speach("environment", "en", "env-g.ogg", "gpt-4o-mini-tts", speed=0.85)
+    await oai_speach("environment", "en", "env-h.ogg", "tts-1-hd", speed=0.85)
+    await oai_speach("environment", "en", "env-1.ogg", "tts-1", speed=0.85)
+    # await oai_speach("An achievement is something gained or completed through effort, skill, or courage.", "en", "ae-1.mp3", "tts-1")
+    
+    # from gog import google_speach
+    # await google_speach("well-being", "en", "s2-g.ogg")
+    
+
+    # speech_file_path = "speech.mp3"
+    # v="onyx"
+    # #v="nova"
+    # #v="alloy"
+    # response = await aclient.audio.speech.create(
+    #         model="tts-1-hd",
+    #         voice=v,    
+    #         response_format="mp3",
+    #         input="Regular exercise and a balanced diet can do wonders for your overall well-being."
+    #     )
+    # response.stream_to_file(speech_file_path)
+
+import asyncio
+asyncio.run(main())
+
+
+
+# async def main() -> None:
+#     init_oai()
 #     # m=["Oops, I accidentally spilled my coffee all over the laptop this morning.",
 #     #     "Carefully pour the juice; I don't want you to spill it on the couch."
 #     #    ]
@@ -543,83 +593,5 @@ async def main() -> None:
 #     ex = await gen_example_sentence(fw, nw, pos, ea)
 #     ea.append(ex)
 #     ex = await gen_example_sentence(fw, nw, pos, ea)
-    await update_table_words()
-
-import asyncio
-#asyncio.run(main())
-
-
-
-async def oai_transcript(file_name, lang=None, await_word=None):
-    with open(file_name, "rb") as file:
-        transcript = await aclient.audio.transcriptions.create(
-            model="whisper-1",
-            language=lang,
-            #prompt="",
-            file=file,
-            response_format="text"
-        )
-        logger.info(f"openAI - whisper responce, lang={lang}: {transcript}")
-        return transcript
-
-
-#w="get away with"
-# async def main() -> None:
-#     init_oai()
-#     speech_file_path = "speech.mp3"
-#     v="onyx"
-#     #v="nova"
-#     #v="alloy"
-#     response = await aclient.audio.speech.create(
-#             model="tts-1-hd",
-#             voice=v,
-#             response_format="mp3",
-#             input="Today is a wonderful day to build something people love!"
-#         )
-#     response.stream_to_file(speech_file_path)
-
-#     w="imprave"
-#     ex, _= await oai_spell(w)
-#     #ex = await oai_aget_example(123, w, n=0, fw2=None)
-#     #ex = await oai_aget_example(123, w, n=5, fw2=None)
-#     print (ex)
-
-async def oai_speach(text, lang, file_name):
-    #it loks, lang is not supported. руский понимает автоматом, сербский оч плохо, скорее нет.
-    i=random.randint(1, 3)
-    if i==1:
-        v="onyx"
-    elif i==2:
-        v="nova"
-    else:
-        v="alloy"
-
-    ac=None
-    _, format = os.path.splitext(file_name)
-    if format==".mp3":
-        ac="mp3"
-    elif format==".aac":
-        ac="aac"
-    elif format==".ogg":
-        ac="opus"
-    else:
-        logger.error(f"oai: unsupported speeach encoding,  file={file_name}")
-        return
-
-    if (len(text)>2000):
-        text = text[:2000]
-
-    response = await aclient.audio.speech.create(
-            model="tts-1",
-            voice=v,
-            response_format=ac,
-            input=text
-        )
-
-    dir_name = os.path.dirname(file_name)  # получить имя директории из полного пути файла
-    if dir_name != '' and not os.path.exists(dir_name):  # проверить, существует ли уже директория
-         os.makedirs(dir_name)  # создать директорию, если ее еще нет
-    response.stream_to_file(file_name)
-
-
+    # await update_table_words()
 
