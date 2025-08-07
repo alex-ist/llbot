@@ -237,6 +237,11 @@ class TranslatedWord(BaseModel):
         Field(min_items=1, max_items=4)
     ]
 
+class TranslatedRuWord(BaseModel):
+    en_word: str
+    part_of_speech: POS_WORD
+
+
 class TranslatedPhrase(BaseModel):
     translated_phrase: str
 
@@ -376,6 +381,31 @@ async def translate_word(fw, pos):
     logger.info(f"translate_word: {fw}->{nw}")
     # logger.info(f"Usage tokens: {response.usage.input_tokens}, {response.usage.output_tokens}")
     return nw
+
+
+async def translate_ru_word(nw):
+    SYSTEM_PROMPT = """You are a Russian to English vocabulary.
+1. Give me the main English meaning of the word in the base form. (ignore rare or outdated ones).
+2. Give me the part of speech of thIS word.
+"""
+    USER_PROMPT = f'Word: "{nw}"\n'
+    messages =[
+        {"role": "system", "content": SYSTEM_PROMPT},
+        {"role": "user",   "content": USER_PROMPT},
+    ]
+    response = await aclient.responses.parse(
+        model="gpt-4.1",
+        input=messages,
+        text_format=TranslatedRuWord, 
+        temperature=0.0,        
+    )
+
+    fw = response.output_parsed.en_word
+    pos = response.output_parsed.part_of_speech
+    
+    logger.info(f"translate_word: {nw}->{fw}, {pos}")
+    # logger.info(f"Usage tokens: {response.usage.input_tokens}, {response.usage.output_tokens}")
+    return fw, pos
 
 async def translate_phrase(fw, pos):
     SYSTEM_PROMPT = "Translate the phrase or idiom from English to Russian. Give only main meaning."

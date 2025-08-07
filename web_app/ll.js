@@ -422,7 +422,9 @@ ws.addEventListener('message', async (event) => {
                 console.log(d()+`:Error loading audio for "${card.foreignW}":`, error);
             }
             loadedCount++;
-            if (loadedCount === 2) { // Если загружено 2 карточки, показываем их
+            if (loadedCount === 2) { // Если загружено 2 карточки, скрываем индикатор и показываем карточки
+                downFlash.querySelector(".loading").style.display = 'none';
+                downFlash.querySelector(".front").style.display = 'flex';
                 upFlash.querySelector(".loading").style.display = 'none';
                 upFlash.querySelector(".front").style.display = 'flex';
             }

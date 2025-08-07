@@ -1,7 +1,7 @@
 import asyncio
 from trans import translate_text, detect_lang, get_dict_rawlink
 from oai import oai_aget_example
-from oai import check_fw_input, translate_word, translate_phrase, gen_example_sentence
+from oai import check_fw_input, translate_word, translate_phrase, gen_example_sentence, translate_ru_word
 from bot_db import word_read_by_fw
 from msg_txt import *
 from card import Word
@@ -70,6 +70,7 @@ async def add_word(self:'LLBot', ev:str):
     #1) выяснить язык слова (для пары русско английский - легко и однозначно: по кодировке)
     src_lang, targ_lang=await detect_lang(self.user_id, self.u.foreign_lang, self.u.native_lang, w)
 
+    nw_list = []
     if src_lang==self.u.foreign_lang:
         fw=w
         #2) если fw: проверяем слово на наличие в базе -> если есть, то редактирование
@@ -98,24 +99,25 @@ async def add_word(self:'LLBot', ev:str):
     
     else: #было на русском
         #7) переводим
-        tr_w = await translate_text(src_lang, targ_lang, w)
+        tr_w, pos = await translate_ru_word(w)
         if tr_w==w:
             self.log_warn(f"can't do translation: {w}")
             pass #return?
-        nw_listnw=w
-        nw_list=tr_w
+        fw = tr_w
         if is_word_in_db(self, fw):
             return True #будем редактировать вместо добавления
+        nw_list.append(w)
 
     #9) генерируем пример
     #6) пытаемся создать ссылку на слово в cambridge, если еще не
         if lnk is None:
             lnk, ex = await asyncio.gather(
                 get_dict_rawlink(self.user_id, fw),
-                oai_aget_example(self.user_id, fw)
+                gen_example_sentence(fw, nw_list[0], pos)
             )
         else:
-            ex = await oai_aget_example(self.user_id, fw)
+            # ex = await oai_aget_example(self.user_id, fw)
+            ex = await gen_example_sentence(fw, nw_list[0], pos)
 
     self.log_info(f"add word: {w} -> {nw_list} pos={pos}")
     self.edited_word=Word.CreateWord(self.user_id, fw, nw_list, pos, ex, lnk=lnk)

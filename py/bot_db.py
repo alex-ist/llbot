@@ -148,7 +148,7 @@ def word_add(user_id:int, foreign_w, nw_list, pos, example=None):
     current_timestamp = t_to_DB(datetime.datetime.now())
     pos_db = str_to_posdb(pos)
     nw_list = (nw_list + [None] * 4)[:4]
-    c.execute("INSERT INTO words (user_id, fw0, nw0, nw1, nw2, nw3, example, pos, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+    c.execute("INSERT INTO words (user_id, fw0, nw0, nw1, nw2, nw3, pos, example, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
              (user_id, foreign_w, nw_list[0], nw_list[1], nw_list[2], nw_list[3], pos_db, example, current_timestamp))
     word_id=c.lastrowid
     close_db(db, commit=True)
