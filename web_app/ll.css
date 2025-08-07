@@ -339,3 +339,32 @@ img {
     background: var(--dark-red);
     transform: translateY(-1px);
 }
+
+.loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%; 
+    gap: 8px;
+    color:  #6D4880;;
+    font-style: italic;
+    margin-bottom: 10px;
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color:  #6D4880;
+  animation: pulse 1s infinite ease-in-out;
+}
+.front {
+    display: none;
+}
+
+
+@keyframes pulse {
+  0%   { transform: scale(1); opacity: 1; }
+  50%  { transform: scale(1.5); opacity: 0.5; }
+  100% { transform: scale(1); opacity: 1; }
+}

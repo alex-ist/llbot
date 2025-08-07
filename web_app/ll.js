@@ -399,6 +399,7 @@ ws.addEventListener('message', async (event) => {
     else if (receivedData.type === "tren-data") {
         if ('autoplay' in receivedData) 
             setAutoPlay(receivedData.autoplay, false);
+
         receivedData.card.forEach(cardData => {
             cardSet.addCard(new Card(cardData.cid, cardData.dir, cardData.fw, cardData.nw_list, cardData.pos, cardData.ex, cardData.lnk, query_id));
         });
@@ -412,6 +413,7 @@ ws.addEventListener('message', async (event) => {
         downFlash.style.zIndex = -1;
 
         // Последовательно загружаем аудиофайлы
+        let loadedCount = 0;
         for (const card of cardSet.cards) {
             try {
                 await card.loadAudio();
@@ -419,7 +421,12 @@ ws.addEventListener('message', async (event) => {
             } catch (error) {
                 console.log(d()+`:Error loading audio for "${card.foreignW}":`, error);
             }
-        }            
+            loadedCount++;
+            if (loadedCount === 2) { // Если загружено 2 карточки, показываем их
+                upFlash.querySelector(".loading").style.display = 'none';
+                upFlash.querySelector(".front").style.display = 'flex';
+            }
+        }
     }
     else if (receivedData.type === "info-msg") {
         console.log("Rx info msg:"+receivedData.text);

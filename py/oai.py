@@ -537,16 +537,16 @@ async def oai_transcript(file_name, lang=None, await_word=None):
         return transcript
 
 
-w="get away with"
-async def main() -> None:   
-    init_oai()
+# w="get away with"
+# async def main() -> None:   
+#     init_oai()
     # await oai_speach("Regular exercise and a balanced diet can do wonders for your overall well-being.", "en", "speech.mp3")
     # await oai_speach("achievement", "en", "ach-g.ogg", "gpt-4o-mini-tts", speed=0.85)
     # await oai_speach("achievement", "en", "ach-h.ogg", "tts-1-hd", speed=0.85)
     # await oai_speach("achievement", "en", "ach-1.ogg", "tts-1", speed=0.85)
-    await oai_speach("environment", "en", "env-g.ogg", "gpt-4o-mini-tts", speed=0.85)
-    await oai_speach("environment", "en", "env-h.ogg", "tts-1-hd", speed=0.85)
-    await oai_speach("environment", "en", "env-1.ogg", "tts-1", speed=0.85)
+    # await oai_speach("environment", "en", "env-g.ogg", "gpt-4o-mini-tts", speed=0.85)
+    # await oai_speach("environment", "en", "env-h.ogg", "tts-1-hd", speed=0.85)
+    # await oai_speach("environment", "en", "env-1.ogg", "tts-1", speed=0.85)
     # await oai_speach("An achievement is something gained or completed through effort, skill, or courage.", "en", "ae-1.mp3", "tts-1")
     
     # from gog import google_speach
@@ -565,8 +565,8 @@ async def main() -> None:
     #     )
     # response.stream_to_file(speech_file_path)
 
-import asyncio
-asyncio.run(main())
+# import asyncio
+# asyncio.run(main())
 
 
 

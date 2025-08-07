@@ -1,6 +1,8 @@
 import asyncio
 from elevenlabs.client import AsyncElevenLabs
 import random
+from botlog import logger
+
 #fixme - add second account to elevenlabs
 
 elevenlabs = None
@@ -21,6 +23,7 @@ async def eleven_speach(text, lang, file_name, model="eleven_multilingual_v2", p
     if elevenlabs is None:
         init_eleven()
 
+    logger.info(f"generate audio for w: {text}")
     v_id = random.choice([
         voice_id['def'],
         voice_id['osvald'],
