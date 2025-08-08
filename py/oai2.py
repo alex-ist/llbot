@@ -359,31 +359,6 @@ async def oai_transcript(file_name, lang=None, await_word=None):
 
 
 
-
-#w="overhasty"
-
-
-#w="get away with"
-# async def main() -> None:
-#     init_oai()
-#     speech_file_path = "speech.mp3"
-#     v="onyx"
-#     #v="nova"
-#     #v="alloy"
-#     response = await aclient.audio.speech.create(
-#             model="tts-1-hd",
-#             voice=v,
-#             response_format="mp3",
-#             input="Today is a wonderful day to build something people love!"
-#         )
-#     response.stream_to_file(speech_file_path)
-
-#     w="imprave"
-#     ex, _= await oai_spell(w)
-#     #ex = await oai_aget_example(123, w, n=0, fw2=None)
-#     #ex = await oai_aget_example(123, w, n=5, fw2=None)
-#     print (ex)
-
 async def oai_speach(text, lang, file_name):
     #it loks, lang is not supported. руский понимает автоматом, сербский оч плохо, скорее нет.
     i=random.randint(1, 3)

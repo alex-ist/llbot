@@ -1,6 +1,5 @@
 import asyncio
 from trans import translate_text, detect_lang, get_dict_rawlink
-from oai import oai_aget_example
 from oai import check_fw_input, translate_word, translate_phrase, gen_example_sentence, translate_ru_word
 from bot_db import word_read_by_fw
 from msg_txt import *
@@ -116,7 +115,6 @@ async def add_word(self:'LLBot', ev:str):
                 gen_example_sentence(fw, nw_list[0], pos)
             )
         else:
-            # ex = await oai_aget_example(self.user_id, fw)
             ex = await gen_example_sentence(fw, nw_list[0], pos)
 
     self.log_info(f"add word: {w} -> {nw_list} pos={pos}")

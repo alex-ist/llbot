@@ -81,7 +81,7 @@ def str_to_posdb(pos_str):
 
 def word_read(user_id:int, word_id:int):
     db, c=open_db()
-    c.execute("SELECT fw0, nw0, nw1, nw2, nw3, pos, example FROM words WHERE user_id = ? AND word_id = ?",
+    c.execute("SELECT fw0, nw0, nw1, nw2, nw3, pos, example0, example1 FROM words WHERE user_id = ? AND word_id = ?",
                     (user_id, word_id))
     row = c.fetchone()
     close_db(db)
@@ -90,6 +90,9 @@ def word_read(user_id:int, word_id:int):
         nw_list = [row[1], row[2], row[3], row[4]]
         pos = posdb_to_str(row[5])
         ex = row[6] 
+        ex1 = row[7] 
+        if ex is None:
+            ex = ex1
         return fw, nw_list, pos, ex
     else:
         return None, None, None
@@ -97,7 +100,7 @@ def word_read(user_id:int, word_id:int):
 def word_read_by_cid(uid:int, cid:int):
     db, c=open_db()
     c.execute("""
-SELECT w.word_id, w.fw0, w.nw0, w.nw1, w.nw2, w.nw3, w.pos, w.example FROM words AS w
+SELECT w.word_id, w.fw0, w.nw0, w.nw1, w.nw2, w.nw3, w.pos, w.example0 FROM words AS w
 JOIN training_cards AS tc ON w.word_id = tc.word_id
 WHERE w.user_id = ? AND tc.training_card_id = ?;              
               """,(uid, cid))
@@ -137,7 +140,7 @@ def word_update(user_id:int, word_id:int, foreign_w, nw_list, pos, example):
     db, c=open_db()
     pos_db = str_to_posdb(pos)
     nw_list = (nw_list + [None] * 4)[:4]
-    c.execute("UPDATE words SET fw0 = ?, nw0 = ?, nw1 = ?, nw2 = ?, nw3 = ?, pos = ?, example = ? WHERE word_id = ? AND user_id = ?", 
+    c.execute("UPDATE words SET fw0 = ?, nw0 = ?, nw1 = ?, nw2 = ?, nw3 = ?, pos = ?, example0 = ? WHERE word_id = ? AND user_id = ?", 
              (foreign_w, nw_list[0], nw_list[1], nw_list[2], nw_list[3], pos_db, example, word_id, user_id))
     close_db(db, commit=True)
 
@@ -148,7 +151,7 @@ def word_add(user_id:int, foreign_w, nw_list, pos, example=None):
     current_timestamp = t_to_DB(datetime.datetime.now())
     pos_db = str_to_posdb(pos)
     nw_list = (nw_list + [None] * 4)[:4]
-    c.execute("INSERT INTO words (user_id, fw0, nw0, nw1, nw2, nw3, pos, example, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+    c.execute("INSERT INTO words (user_id, fw0, nw0, nw1, nw2, nw3, pos, example0, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
              (user_id, foreign_w, nw_list[0], nw_list[1], nw_list[2], nw_list[3], pos_db, example, current_timestamp))
     word_id=c.lastrowid
     close_db(db, commit=True)
@@ -160,7 +163,7 @@ def add_words_by_topic(user_id:int, topic:str):
 
     #fixme подумать с переводом на другие языки
     sql = f"""
-INSERT INTO words (user_id, fw0, nw0, example, created_at)
+INSERT INTO words (user_id, fw0, nw0, example0, created_at)
 SELECT ?, f_word, tr1, f_example, ?
 FROM word_set 
 WHERE topic = ? and AND NOT EXISTS 

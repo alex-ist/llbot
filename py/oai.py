@@ -74,7 +74,7 @@ async def oai_aget_example2(fw, n=0, fw2=None):
 
     try:
         m=[
-                {"role": "system", "content": "You are American native speaker. I give you english word or idiom. You give me an example of english sentence. Max length of example must be 17 words"},
+                {"role": "system", "content": "You are American native speaker. I give you english word or idiom. You give me an example of english sentence. Max length of example must be 12 words"},
                 {'role': 'user', 'content': fw}
             ]
         #logger.info(m)
@@ -91,29 +91,6 @@ async def oai_aget_example2(fw, n=0, fw2=None):
     r=response.choices[0].message.content.strip()
     #print(response.choices[0].message.content)
     return r, response
-
-#n задает какой раз подряд пытаемся сгенерить это предложение
-async def oai_aget_example(user_id, fword, n=0, fw2=None):
-    ex=None
-    if n<2:
-        #if random.randint(1, 2) == 2: #каждый втрой пример через text-davinci-002
-        mode="gpt-3.5-turbo"
-        ex, rsp=await oai_aget_example2(fword, n)
-    
-    if ex is None:
-        ex, rsp= await oai_aget_example1(fword)
-        mode="gpt-4o"
-
-    if ex is not None:
-        pt=rsp.usage.prompt_tokens
-        ct=rsp.usage.completion_tokens
-        model=rsp.model
-        logger.info(f"{user_id}: {model}: pt={pt}, ct={ct}: mode={mode}: {fword}: {ex}")
-    else:
-        logger.error(f"{user_id}: cannot create example!")
-
-    return ex
-
 
 #w="overhasty"
 
@@ -386,7 +363,7 @@ async def translate_word(fw, pos):
 async def translate_ru_word(nw):
     SYSTEM_PROMPT = """You are a Russian to English vocabulary.
 1. Give me the main English meaning of the word in the base form. (ignore rare or outdated ones).
-2. Give me the part of speech of thIS word.
+2. Give me the part of speech of this word.
 """
     USER_PROMPT = f'Word: "{nw}"\n'
     messages =[
@@ -403,7 +380,7 @@ async def translate_ru_word(nw):
     fw = response.output_parsed.en_word
     pos = response.output_parsed.part_of_speech
     
-    logger.info(f"translate_word: {nw}->{fw}, {pos}")
+    logger.info(f"translate_ru_word: {nw}->{fw}, {pos}")
     # logger.info(f"Usage tokens: {response.usage.input_tokens}, {response.usage.output_tokens}")
     return fw, pos
 
@@ -432,7 +409,7 @@ class ExampleSentence(BaseModel):
     example_sentence: str
 
 
-async def gen_example_sentence ( fw, nw, pos, rejected_sentences = None):
+async def gen_example_sentence ( fw, nw, pos, rejected_sentences = None, extra = None):
     SYSTEM_PROMPT = """
 Generate a natural-sounding English sentence as an example for a given English word or phrase. 
 The sentence should be a realistic example that an American native speaker might use in everyday conversation.
@@ -447,14 +424,16 @@ The sentence should be a realistic example that an American native speaker might
         if tense:
             SYSTEM_PROMPT += f"Try to use a {tense} tense of the word. Ensure that the sentence is typical of native American English.\n"
 
-    extra = ""
+    e = ""
     if rejected_sentences:
         ss='",\n"'.join(rejected_sentences)
         ss=f'"{ss}"'
-        extra = "The sentences below were rejected. Produce a NEW sentence.\n" + \
+        e = "The sentences below were rejected. Produce a NEW sentence.\n" + \
             f'Rejected: {ss}\n'
+    if extra:
+        e += f"Additional information from user: {extra}\n"
     
-    USER_PROMPT = f'Word or phrase: "{fw}"\nPart of speech: "{pos}"\nRussian meaning: "{nw}"\n{extra}\n'
+    USER_PROMPT = f'Word or phrase: "{fw}"\nPart of speech: "{pos}"\nRussian meaning: "{nw}"\n{e}\n'
    
     messages =[
         {"role": "system", "content": SYSTEM_PROMPT},
@@ -473,6 +452,75 @@ The sentence should be a realistic example that an American native speaker might
     logger.info(f"generate example: {fw}->{ex}")
     # logger.info(f"Usage tokens: {response.usage.input_tokens}, {response.usage.output_tokens}")
     return ex
+
+
+class TranslatedSentence(BaseModel):
+    russian_sentence: str
+
+async def translate_en_ex(en_ex):
+    SYSTEM_PROMPT = "Translate the sentence from English to Russian."
+    USER_PROMPT = f'English sentence: \n{en_ex}\n'
+    messages =[
+        {"role": "system", "content": SYSTEM_PROMPT},
+        {"role": "user",   "content": USER_PROMPT},
+    ]
+    response = await aclient.responses.parse(
+        model="gpt-4.1",
+        input=messages,
+        text_format=TranslatedSentence, 
+        temperature=0.01,        
+    )
+
+    ru_ex = response.output_parsed.russian_sentence
+    
+    logger.info(f"translate_phrase: {en_ex}\n->\n{ru_ex}")
+    # logger.info(f"Usage tokens: {response.usage.input_tokens}, {response.usage.output_tokens}")
+    return ru_ex
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 async def update_table_words():
@@ -551,6 +599,60 @@ async def update_table_words():
     return rows
     
 
+async def update2_table_words():
+    count = 0
+    init_oai()
+    from bot_db import open_db, close_db, posdb_to_str, str_to_posdb
+    db, c=open_db()
+    c.execute("SELECT fw0, pos, nw0, example1, user_id FROM words WHERE example0 IS NULL")
+    rows = c.fetchall()
+    print(f"Found {len(rows)} words to update")
+    for row in rows:
+        fw = row[0]
+        pos = posdb_to_str(row[1])
+        nw = row[2]
+        ex = row[3]
+        uid = row[4]
+        print(f"Processing: {uid}: {fw}, {nw}, {pos}:\n{ex}")
+        ea = []
+        extra = None
+        while True:
+            n_ex = await gen_example_sentence(fw, nw, pos, ea, extra)
+            extra = None            
+            print(f":{n_ex}")
+            print(f"Ok? (y/n/s/:)")
+            ans = input().strip().lower()
+            if ans.startswith(':'):
+                extra = ans[1:]
+                continue
+            if ans == 'y':
+                pass
+            elif ans == 's':
+                break
+            else:
+                ea.append(n_ex)
+                continue
+                
+            n_ex_ru = await translate_en_ex(n_ex)
+            print(f":{n_ex_ru}")
+            print(f"Ok? (y/n/s)")
+            ans = input().strip().lower()
+            if ans == 's':
+                break
+            elif ans != 'y':
+                ea.append(n_ex)
+                continue
+            break
+    
+        if ans != 's':
+            c.execute("UPDATE words SET example0 = ?, ex_ru0 = ?  WHERE fw0 = ?  and pos = ?" , 
+                    (n_ex, n_ex_ru , fw, pos))
+        
+        db.commit()
+    
+    close_db(db, commit=True)
+    return rows
+
 
 
 
@@ -569,7 +671,7 @@ async def oai_transcript(file_name, lang=None, await_word=None):
 
 # w="get away with"
 # async def main() -> None:   
-#     init_oai()
+#     
     # await oai_speach("Regular exercise and a balanced diet can do wonders for your overall well-being.", "en", "speech.mp3")
     # await oai_speach("achievement", "en", "ach-g.ogg", "gpt-4o-mini-tts", speed=0.85)
     # await oai_speach("achievement", "en", "ach-h.ogg", "tts-1-hd", speed=0.85)
@@ -595,8 +697,8 @@ async def oai_transcript(file_name, lang=None, await_word=None):
     #     )
     # response.stream_to_file(speech_file_path)
 
-# import asyncio
-# asyncio.run(main())
+import asyncio
+asyncio.run(update2_table_words())
 
 
 
@@ -623,5 +725,5 @@ async def oai_transcript(file_name, lang=None, await_word=None):
 #     ex = await gen_example_sentence(fw, nw, pos, ea)
 #     ea.append(ex)
 #     ex = await gen_example_sentence(fw, nw, pos, ea)
-    # await update_table_words()
+     
 

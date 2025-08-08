@@ -17,7 +17,10 @@ CREATE TABLE words (
     nw1        TEXT,
     nw2        TEXT,
     nw3        TEXT,
-    example    TEXT,
+    example0   TEXT,
+    ex_ru0     TEXT,
+    example1   TEXT,
+    ex_ru1     TEXT,
     created_at INTEGER
 );
 
@@ -26,15 +29,27 @@ INSERT INTO words (
                       user_id,
                       pos,
                       fw0,
+                      fw1,
+                      fw2,
+                      fw3,
                       nw0,
-                      example,
+                      nw1,
+                      nw2,
+                      nw3,
+                      example1,
                       created_at
                   )
                   SELECT word_id,
                          user_id,
-                         fw_part_of_speech,
-                         foreign_w,
-                         native_w,
+                         pos,
+                         fw0,
+                         fw1,
+                         fw2,
+                         fw3,
+                         nw0,
+                         nw1,
+                         nw2,
+                         nw3,
                          example,
                          created_at
                     FROM sqlitestudio_temp_table;
