@@ -169,7 +169,8 @@ async def websocket_handler(request):
                             'fw': card.word.GetForeign(), 
                             'nw_list': card.word.GetNwList(), 
                             'pos': card.word.GetPos(), 
-                            'ex': card.word.GetExample()
+                            'ex': card.word.GetExample(),
+                            'n_ex': card.word.GetNativeExample()
                         }
                         lnk=card.GetDictLink()
                         if lnk:  # Проверяем, существует ли lnk (не None и не пустая строка)

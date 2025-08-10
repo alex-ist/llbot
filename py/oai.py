@@ -92,29 +92,7 @@ async def oai_aget_example2(fw, n=0, fw2=None):
     #print(response.choices[0].message.content)
     return r, response
 
-#w="overhasty"
 
-
-#w="get away with"
-# async def main() -> None:
-#     init_oai()
-#     speech_file_path = "speech.mp3"
-#     v="onyx"
-#     #v="nova"
-#     #v="alloy"
-#     response = await aclient.audio.speech.create(
-#             model="tts-1-hd",
-#             voice=v,
-#             response_format="mp3",
-#             input="Today is a wonderful day to build something people love!"
-#         )
-#     response.stream_to_file(speech_file_path)
-
-#     w="imprave"
-#     ex, _= await oai_spell(w)
-#     #ex = await oai_aget_example(123, w, n=0, fw2=None)
-#     #ex = await oai_aget_example(123, w, n=5, fw2=None)
-#     print (ex)
 
 async def oai_speach(text, lang, file_name, model="tts-1", speed=1.0):
     #it loks, lang is not supported. руский понимает автоматом, сербский оч плохо, скорее нет.
@@ -409,9 +387,9 @@ class ExampleSentence(BaseModel):
     example_sentence: str
 
 
-async def gen_example_sentence ( fw, nw, pos, rejected_sentences = None, extra = None):
+async def gen_example_sentence ( fw, nw, pos, rejected_sentences = None, extra = None, prof_level=None, model="gpt-4.1"):
     SYSTEM_PROMPT = """
-Generate a natural-sounding English sentence as an example for a given English word or phrase. 
+Generate a natural-sounding English sentence as an example for a given English word or phrase for language-learning purposes. 
 The sentence should be a realistic example that an American native speaker might use in everyday conversation.
 """
     if pos == 'verb':
@@ -424,33 +402,50 @@ The sentence should be a realistic example that an American native speaker might
         if tense:
             SYSTEM_PROMPT += f"Try to use a {tense} tense of the word. Ensure that the sentence is typical of native American English.\n"
 
-    e = ""
-    if rejected_sentences:
-        ss='",\n"'.join(rejected_sentences)
-        ss=f'"{ss}"'
-        e = "The sentences below were rejected. Produce a NEW sentence.\n" + \
-            f'Rejected: {ss}\n'
+    USER_PROMPT = f'Word or phrase: "{fw}"\nPart of speech: "{pos}"\nRussian meaning: "{nw}"\n'
+    if prof_level:
+        USER_PROMPT += f'Language proficiency level: "{prof_level}"\n'
+
     if extra:
-        e += f"Additional information from user: {extra}\n"
-    
-    USER_PROMPT = f'Word or phrase: "{fw}"\nPart of speech: "{pos}"\nRussian meaning: "{nw}"\n{e}\n'
+        USER_PROMPT += f"Important information from user: {extra}\n"
+        
+    if rejected_sentences:
+        ss='",\n"'.join(rejected_sentences) 
+        ss=f'"{ss}"'
+        USER_PROMPT += "The sentences below were rejected. Produce a NEW sentence.\n" + \
+            f'Rejected sentences: {ss}\n'
    
     messages =[
         {"role": "system", "content": SYSTEM_PROMPT},
         {"role": "user",   "content": USER_PROMPT},
     ]
-    response = await aclient.responses.parse(
-        model="gpt-4.1",
-        input=messages,
-        text_format=ExampleSentence, 
-        temperature=1.8,        
-        max_output_tokens=100
-    )
+    if model=="gpt-5":
+        response = await aclient.responses.parse(
+            model=model,
+            input=messages,
+            text_format=ExampleSentence, 
+            max_output_tokens=200,
+            reasoning={
+                "effort": "minimal"
+            },
+            text={
+                "verbosity": "low"
+            }            
+        )
+    else:
+        response = await aclient.responses.parse(
+            model=model,
+            input=messages,
+            text_format=ExampleSentence, 
+            temperature=1.8,        
+            max_output_tokens=100
+        )
+        
 
     ex = response.output_parsed.example_sentence
     
     logger.info(f"generate example: {fw}->{ex}")
-    # logger.info(f"Usage tokens: {response.usage.input_tokens}, {response.usage.output_tokens}")
+    logger.info(f"Usage tokens: {response.usage.input_tokens}, {response.usage.output_tokens}")
     return ex
 
 
@@ -473,59 +468,30 @@ async def translate_en_ex(en_ex):
 
     ru_ex = response.output_parsed.russian_sentence
     
-    logger.info(f"translate_phrase: {en_ex}\n->\n{ru_ex}")
+    logger.info(f"translate_en_ex: {en_ex}\n->\n{ru_ex}")
     # logger.info(f"Usage tokens: {response.usage.input_tokens}, {response.usage.output_tokens}")
     return ru_ex
 
 
 
 
+async def oai_transcript(file_name, lang=None, await_word=None):
+    with open(file_name, "rb") as file:
+        transcript = await aclient.audio.transcriptions.create(
+            model="whisper-1",
+            language=lang,
+            #prompt="",
+            file=file,
+            response_format="text"
+        )
+        logger.info(f"openAI - whisper responce, lang={lang}: {transcript}")
+        return transcript
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+from bot_db import open_db, close_db, posdb_to_str, str_to_posdb
 async def update_table_words():
     count = 0
-    from bot_db import open_db, close_db, posdb_to_str, str_to_posdb
     db, c=open_db()
     c.execute("SELECT fw0, pos, nw0 FROM words WHERE nw1 IS NULL and pos IS NOT NULL and fw3 = '' GROUP BY fw0 order by fw0 DESC")
     rows = c.fetchall()
@@ -599,12 +565,25 @@ async def update_table_words():
     return rows
     
 
+def change_level(level, op):
+    levels = ["A1", "A2", "B1", "B2", "C1", "C2"]
+    current = levels.index(level)
+    if op == "+":
+        if current < len(levels) - 1:
+            return levels[current + 1]
+    elif op == "-":
+        if current > 0:
+            return levels[current - 1]
+    return "B1"
+    
+
 async def update2_table_words():
+    #генерит предложения example0
     count = 0
     init_oai()
     from bot_db import open_db, close_db, posdb_to_str, str_to_posdb
     db, c=open_db()
-    c.execute("SELECT fw0, pos, nw0, example1, user_id FROM words WHERE example0 IS NULL")
+    c.execute("SELECT fw0, pos, nw0, example1, user_id, word_id FROM words WHERE example0 IS NULL")
     rows = c.fetchall()
     print(f"Found {len(rows)} words to update")
     for row in rows:
@@ -613,31 +592,70 @@ async def update2_table_words():
         nw = row[2]
         ex = row[3]
         uid = row[4]
+        word_id = row[5]   
         print(f"Processing: {uid}: {fw}, {nw}, {pos}:\n{ex}")
         ea = []
         extra = None
+        skip = False
+        if uid == 484679683:
+            level = 'B1'
+        else:
+            level = 'A2'
+            
         while True:
-            n_ex = await gen_example_sentence(fw, nw, pos, ea, extra)
+            if not skip:
+                n_ex5 = await gen_example_sentence(fw, nw, pos, ea, extra, model="gpt-5", prof_level=level)
+                n_ex4 = await gen_example_sentence(fw, nw, pos, ea, extra, model="gpt-4.1", prof_level=level)
+                pos = str_to_posdb(pos)
+            skip = False
             extra = None            
-            print(f":{n_ex}")
-            print(f"Ok? (y/n/s/:)")
+            print(f"gpt5: {n_ex5}")
+            print(f"gpt4: {n_ex4}")
+            print(f"Ok? (y/n/s/p/:/q/+/-)")
             ans = input().strip().lower()
-            if ans.startswith(':'):
+            if ans.startswith('q'):
+                exit(0)
+            elif ans.startswith('+') or ans.startswith('-'):
+                level = change_level(level, ans[0])
+                print(f"Level changed to {level}")
+                continue
+                
+            elif ans.startswith(':'):
                 extra = ans[1:]
                 continue
-            if ans == 'y':
-                pass
+            elif ans == 'p':
+                if len(ea) > 0:
+                    n_ex = ea[-1]
+                    ea = ea[:-1]
+                    print(f"Previous: {n_ex}")
+                    skip = True
+                    continue
+            elif ans == 'y':
+                n_ex=n_ex5
+            elif ans == '4':
+                n_ex=n_ex4
             elif ans == 's':
                 break
             else:
+                n_ex=n_ex5
                 ea.append(n_ex)
                 continue
                 
             n_ex_ru = await translate_en_ex(n_ex)
             print(f":{n_ex_ru}")
-            print(f"Ok? (y/n/s)")
+            print(f"Ok? (y/n/s/p/*)")
             ans = input().strip().lower()
-            if ans == 's':
+            if ans.startswith('*'):
+                n_ex_ru = ans[1:]
+                break
+            elif ans == 'p':
+                if len(ea) > 0:
+                    n_ex = ea[-1]
+                    ea = ea[:-1]
+                    print(f"Previous: {n_ex}")
+                    skip = True
+                    continue
+            elif ans == 's':
                 break
             elif ans != 'y':
                 ea.append(n_ex)
@@ -645,9 +663,42 @@ async def update2_table_words():
             break
     
         if ans != 's':
-            c.execute("UPDATE words SET example0 = ?, ex_ru0 = ?  WHERE fw0 = ?  and pos = ?" , 
-                    (n_ex, n_ex_ru , fw, pos))
-        
+            c.execute("UPDATE words SET example0 = ?, ex_ru0 = ?  WHERE word_id = ?" , 
+                    (n_ex, n_ex_ru, word_id))
+            db.commit()
+            print(f"Commit")
+    
+    close_db(db, commit=True)
+    return rows
+
+
+
+async def update3_table_words():
+    #генерит перевод example1
+    count = 0
+    init_oai()
+    from bot_db import open_db, close_db, posdb_to_str, str_to_posdb
+    db, c=open_db()
+    c.execute("SELECT fw0, pos, nw0, example1, user_id, word_id FROM words WHERE example1 IS NOT NULL AND ex_ru1 IS NULL")
+    rows = c.fetchall()
+    print(f"Found {len(rows)} lines to update")
+    for row in rows:
+        fw = row[0]
+        pos = posdb_to_str(row[1])
+        nw = row[2]
+        ex1 = row[3]
+        uid = row[4]
+        word_id = row[5]   
+        print(f"Processing: {uid}: {fw}, {nw}, {pos}:\n{ex1}")
+        n_ex_ru = await translate_en_ex(ex1)
+        print(f":{n_ex_ru}")
+        print(f"Ok? (y/s/q)")
+        #ans = input().strip().lower()
+#        if ans == 's':
+#            continue
+#        elif ans == 'q':
+#            break
+        c.execute("UPDATE words SET ex_ru1 = ?  WHERE word_id = ?" , (n_ex_ru, word_id))
         db.commit()
     
     close_db(db, commit=True)
@@ -656,17 +707,60 @@ async def update2_table_words():
 
 
 
-async def oai_transcript(file_name, lang=None, await_word=None):
-    with open(file_name, "rb") as file:
-        transcript = await aclient.audio.transcriptions.create(
-            model="whisper-1",
-            language=lang,
-            #prompt="",
-            file=file,
-            response_format="text"
-        )
-        logger.info(f"openAI - whisper responce, lang={lang}: {transcript}")
-        return transcript
+
+import asyncio
+# asyncio.run(update2_table_words())
+
+
+
+# async def main() -> None:
+#     init_oai()
+#     # m=["Oops, I accidentally spilled my coffee all over the laptop this morning.",
+#     #     "Carefully pour the juice; I don't want you to spill it on the couch."
+#     #    ]
+#     # 
+#     import sys
+#     word = 'shared'
+#     word = sys.argv[1]  # первый аргумент (после имени скрипта)
+#     print(f"Word to check: {word}")    
+#     fw, pos, wc =await check_fw_input(word)
+#     if wc == 1:
+#         nw = await translate_word(fw, pos)
+#     else:
+#         nw = await translate_phrase(fw, pos)
+        
+#     ex = await gen_example_sentence(fw, nw, pos)
+#     ea = [ex]
+#     ex = await gen_example_sentence(fw, nw, pos, ea)
+#     ea.append(ex)
+#     ex = await gen_example_sentence(fw, nw, pos, ea)
+#     ea.append(ex)
+#     ex = await gen_example_sentence(fw, nw, pos, ea)
+     
+
+#w="overhasty"
+
+
+#w="get away with"
+# async def main() -> None:
+#     init_oai()
+#     speech_file_path = "speech.mp3"
+#     v="onyx"
+#     #v="nova"
+#     #v="alloy"
+#     response = await aclient.audio.speech.create(
+#             model="tts-1-hd",
+#             voice=v,
+#             response_format="mp3",
+#             input="Today is a wonderful day to build something people love!"
+#         )
+#     response.stream_to_file(speech_file_path)
+
+#     w="imprave"
+#     ex, _= await oai_spell(w)
+#     #ex = await oai_aget_example(123, w, n=0, fw2=None)
+#     #ex = await oai_aget_example(123, w, n=5, fw2=None)
+#     print (ex)
 
 
 # w="get away with"
@@ -696,34 +790,3 @@ async def oai_transcript(file_name, lang=None, await_word=None):
     #         input="Regular exercise and a balanced diet can do wonders for your overall well-being."
     #     )
     # response.stream_to_file(speech_file_path)
-
-import asyncio
-asyncio.run(update2_table_words())
-
-
-
-# async def main() -> None:
-#     init_oai()
-#     # m=["Oops, I accidentally spilled my coffee all over the laptop this morning.",
-#     #     "Carefully pour the juice; I don't want you to spill it on the couch."
-#     #    ]
-#     # 
-#     import sys
-#     word = 'shared'
-#     word = sys.argv[1]  # первый аргумент (после имени скрипта)
-#     print(f"Word to check: {word}")    
-#     fw, pos, wc =await check_fw_input(word)
-#     if wc == 1:
-#         nw = await translate_word(fw, pos)
-#     else:
-#         nw = await translate_phrase(fw, pos)
-        
-#     ex = await gen_example_sentence(fw, nw, pos)
-#     ea = [ex]
-#     ex = await gen_example_sentence(fw, nw, pos, ea)
-#     ea.append(ex)
-#     ex = await gen_example_sentence(fw, nw, pos, ea)
-#     ea.append(ex)
-#     ex = await gen_example_sentence(fw, nw, pos, ea)
-     
-

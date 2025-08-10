@@ -3,13 +3,14 @@ const VER = 55
 let query_id;
 
 class Card {
-    constructor(cid, direction, foreignW, nw_list, pos, example, d_link, q_id) {
+    constructor(cid, direction, foreignW, nw_list, pos, example, n_ex, d_link, q_id) {
         this.cid = cid;
         this.direction = direction;
         this.foreignW = foreignW;
         this.nw_list = nw_list;
         this.pos = pos;
         this.example = example;
+        this.native_example = n_ex;
         this.answer = -1;  // not showed card
         this.dict_lnk = d_link;
         this.q_id = q_id;
@@ -160,8 +161,6 @@ async function updateCardUI(fl, card) {
         const front=fl.querySelector(".front");
         const frontForeign = front.querySelector(".foreign");
         const frontNative = front.querySelector(".native");
-        const frontExampleText = front.querySelector(".example .example-text");
-        frontExampleText.textContent = "";
 
         let n_text = card.nw_list[0];
         for (let i = 1; i < card.nw_list.length; i++) {
@@ -187,8 +186,11 @@ async function updateCardUI(fl, card) {
         }
         const back =fl.querySelector(".back");
         const backExampleText = back.querySelector(".example .example-text");
-        backExampleText.textContent = card.example;
 
+        backExampleText.querySelector(".ex-native").textContent  = card.native_example || "";
+        backExampleText.querySelector(".ex-foreign").textContent = card.example || "";
+        backExampleText.dataset.state = "native";
+        backExampleText.onclick = () => toggleExample(backExampleText);
 
         // front.style.display = "flex";
         
@@ -401,7 +403,7 @@ ws.addEventListener('message', async (event) => {
             setAutoPlay(receivedData.autoplay, false);
 
         receivedData.card.forEach(cardData => {
-            cardSet.addCard(new Card(cardData.cid, cardData.dir, cardData.fw, cardData.nw_list, cardData.pos, cardData.ex, cardData.lnk, query_id));
+            cardSet.addCard(new Card(cardData.cid, cardData.dir, cardData.fw, cardData.nw_list, cardData.pos, cardData.ex, cardData.n_ex, cardData.lnk, query_id));
         });
     
         document.querySelector('.txt-counter').textContent =cardSet.cards.length;
@@ -747,4 +749,20 @@ function showSuccessAnimation(word) {
             }
         });
     }, 2000);
+}
+
+function toggleExample(wrap) {
+  const toForeign = wrap.dataset.state === "native";
+  const exN = wrap.querySelector(".ex-native");
+  const exF = wrap.querySelector(".ex-foreign");
+
+  if (toForeign) {
+    wrap.dataset.state = "foreign";
+    gsap.to(exN, { opacity: 0, duration: 0.2 });
+    gsap.to(exF, { opacity: 1, duration: 0.2, onComplete: () => playAudio("ex") });
+  } else {
+    wrap.dataset.state = "native";
+    gsap.to(exF, { opacity: 0, duration: 0.2 });
+    gsap.to(exN, { opacity: 1, duration: 0.2 });
+  }
 }

@@ -232,19 +232,6 @@ img {
     margin-top: 20px;
 }
 
-.example {
-    display: flex;
-    flex-direction: row;
-    justify-content: left;
-    padding-left: 10px;
-}
-
-.example-text {
-    font-size: 18px;
-    font-style: italic;
-    line-height: 22px;
-}
-
 .t-left, .f-left {
     flex: none;
     margin-right: 10px;
@@ -368,3 +355,31 @@ img {
   50%  { transform: scale(1.5); opacity: 0.5; }
   100% { transform: scale(1); opacity: 1; }
 }
+
+
+.example {
+    display: flex;
+    flex-direction: row;
+    justify-content: left;
+    padding-left: 10px;
+}
+
+.example-text {
+    font-size: 18px;
+    font-style: italic;
+    line-height: 22px;
+}
+
+
+.example .example-text {
+  display: grid;       /* слои в одной ячейке */
+  position: relative;
+  cursor: pointer;
+  user-select: none;
+}
+.example .example-text .ex {
+  grid-area: 1 / 1;    
+  pointer-events: none;
+}
+.example .example-text .ex-native  { opacity: 1; }
+.example .example-text .ex-foreign { opacity: 0; }

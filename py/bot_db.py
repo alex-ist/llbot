@@ -81,7 +81,7 @@ def str_to_posdb(pos_str):
 
 def word_read(user_id:int, word_id:int):
     db, c=open_db()
-    c.execute("SELECT fw0, nw0, nw1, nw2, nw3, pos, example0, example1 FROM words WHERE user_id = ? AND word_id = ?",
+    c.execute("SELECT fw0, nw0, nw1, nw2, nw3, pos, example0, ex_ru0, example1, ex_ru1 FROM words WHERE user_id = ? AND word_id = ?",
                     (user_id, word_id))
     row = c.fetchone()
     close_db(db)
@@ -89,18 +89,21 @@ def word_read(user_id:int, word_id:int):
         fw = row[0]
         nw_list = [row[1], row[2], row[3], row[4]]
         pos = posdb_to_str(row[5])
-        ex = row[6] 
-        ex1 = row[7] 
-        if ex is None:
+        ex = row[6]
+        ex_ru = row[7]
+        ex1 = row[8] 
+        ex_ru1 = row[9]
+        if ex is None or ex == "":
             ex = ex1
-        return fw, nw_list, pos, ex
+            ex_ru = ex_ru1
+        return fw, nw_list, pos, ex, ex_ru
     else:
-        return None, None, None
+        return None, None, None, None, None
 
 def word_read_by_cid(uid:int, cid:int):
     db, c=open_db()
     c.execute("""
-SELECT w.word_id, w.fw0, w.nw0, w.nw1, w.nw2, w.nw3, w.pos, w.example0 FROM words AS w
+SELECT w.word_id, w.fw0, w.nw0, w.nw1, w.nw2, w.nw3, w.pos, w.example0, w.ex_ru0, w.example1, w.ex_ru1 FROM words AS w
 JOIN training_cards AS tc ON w.word_id = tc.word_id
 WHERE w.user_id = ? AND tc.training_card_id = ?;              
               """,(uid, cid))
@@ -112,9 +115,13 @@ WHERE w.user_id = ? AND tc.training_card_id = ?;
         nw_list = [row[2], row[3], row[4], row[5]]
         pos = posdb_to_str(row[6])
         ex = row[7]
-        return word_id, fw, nw_list, pos, ex
+        n_ex = row[8]
+        if ex is None or ex == "":
+            ex = row[9]
+            n_ex = row[10]
+        return word_id, fw, nw_list, pos, ex, n_ex
     else:
-        return None, None, None
+        return None, None, None, None, None, None
 
 def word_read_by_fw(user_id:int, fw:str):
     db, c=open_db()

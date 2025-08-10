@@ -1,6 +1,6 @@
 import asyncio
 from trans import translate_text, detect_lang, get_dict_rawlink
-from oai import check_fw_input, translate_word, translate_phrase, gen_example_sentence, translate_ru_word
+from oai import check_fw_input, translate_word, translate_phrase, gen_example_sentence, translate_ru_word, translate_en_ex
 from bot_db import word_read_by_fw
 from msg_txt import *
 from card import Word
@@ -116,8 +116,10 @@ async def add_word(self:'LLBot', ev:str):
             )
         else:
             ex = await gen_example_sentence(fw, nw_list[0], pos)
+            
+    n_ex = await translate_en_ex(ex)
 
     self.log_info(f"add word: {w} -> {nw_list} pos={pos}")
-    self.edited_word=Word.CreateWord(self.user_id, fw, nw_list, pos, ex, lnk=lnk)
+    self.edited_word=Word.CreateWord(self.user_id, fw, nw_list, pos, example=ex, native_example=n_ex, lnk=lnk)
     self.call_state(self.ST_EDIT_NEW)
     return True

@@ -12,7 +12,7 @@ NATIVE_LANG = "ru"
 
 
 class Word:
-    def __init__(self, user_id, foreign_w, nw_list, pos, example=None, word_id=-1, lnk=None):
+    def __init__(self, user_id, foreign_w, nw_list, pos, example=None, native_example = None, word_id=-1, lnk=None):
         self.user_id=user_id
         self.word_id=word_id
         self.native_lang=NATIVE_LANG
@@ -23,6 +23,7 @@ class Word:
         if example=="":
             example=None
         self.example=example
+        self.n_example=native_example
         self.audio=None
         self.audio_example=None
         self.lnk=lnk
@@ -52,6 +53,11 @@ class Word:
         if self.example is None:
             return ""
         return self.example
+
+    def GetNativeExample(self):
+        if self.n_example is None:
+            return ""
+        return self.n_example
 
     def ChangeForeign(self, new_fw):
         if new_fw[0]=="+":
@@ -85,12 +91,14 @@ class Word:
     
     #восстанавливает карту по данным из базы
     def ReloadFromDb(self):
-        foreign_w, nw_list, example=word_read(self.user_id, self.word_id)
+        foreign_w, nw_list, pos, example, n_example = word_read(self.user_id, self.word_id)
         self.native_lang=NATIVE_LANG
         self.foreign_lang=FOREIGN_LANG
         self.foreign_w=foreign_w
         self.nw_list=nw_list
+        self.pos=pos
         self.example=example
+        self.n_example=n_example
         self.audio=None
         self.audio_example=None
 
@@ -105,22 +113,22 @@ class Word:
             self.word_id=word_add(self.user_id, self.foreign_w, self.nw_list, self.pos, self.example)
 
     @staticmethod
-    def CreateWord(user_id, foreign_w, nw_list, pos, example=None,  lnk=None):
-        word=Word(user_id, foreign_w, nw_list, pos, example, word_id=-1, lnk=lnk)
+    def CreateWord(user_id, foreign_w, nw_list, pos, example=None,    native_example=None, lnk=None):
+        word=Word (user_id, foreign_w, nw_list, pos, example=example, native_example=native_example, word_id=-1, lnk=lnk)
         return word
 
     @staticmethod
     def ReadFromDb(user_id:int, word_id:int) -> 'Word':
-        foreign_w, nw_list, pos, example=word_read(user_id, word_id)
-        word=Word(user_id, foreign_w, nw_list, pos, example, word_id)
+        foreign_w, nw_list, pos, example, n_example =word_read(user_id, word_id)
+        word=Word(user_id, foreign_w, nw_list, pos, example=example, native_example=n_example, word_id=word_id)
         word.lnk = db_get_dict_link(word.foreign_w)  #пробуем установить ссылку на словарь считав из локального кэша.
         return word
 
     @staticmethod
     async def ReadFromDb_by_cid(uid:int, cid:int) -> 'Word':
-        word_id, foreign_w, nw_list, pos, example=word_read_by_cid(uid, cid)
+        word_id, foreign_w, nw_list, pos, example, n_example=word_read_by_cid(uid, cid)
         if word_id:
-            word=Word(uid, foreign_w, nw_list, example, pos, word_id)
+            word=Word(uid, foreign_w, nw_list, pos=pos, example=example, native_example=n_example,  word_id=word_id)
             await word.SetDictLink()
             return word
         else:
@@ -255,6 +263,12 @@ class TrainingCard:
         if self.word is None:
             return None
         return self.word.GetExample()
+
+    def GetNativeExample(self):
+        if self.word is None:
+            return None
+        return self.word.GetNativeExample()
+
     
     def GetDictLink(self):
         if self.word is None:
