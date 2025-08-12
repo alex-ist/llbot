@@ -3,22 +3,28 @@ from bot_db import word_get_progress
 from utils import select_button
 from msg_txt import *
 import datetime as dt
-from oai import gen_example_sentence
+from oai import gen_example_sentence, translate_en_ex
+from card import Word
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from . import LLBot
 
 def _kbd_edit(self:'LLBot', selected=None, sel_symb=None):
-    ex=self.edited_word.GetExample()
-    if ex is None or ex=="": ex="_"
-    kbd = [[
-            InlineKeyboardButton(f"{self.edited_word.GetForeign()}", callback_data="kbd:fw"),
-            InlineKeyboardButton(f"{self.edited_word.GetNative()}", callback_data="kbd:nw"),
-            ],[
-            InlineKeyboardButton(f"{ex}", callback_data="kbd:ex"),
-        ]]
+    lv = self.edited_word.GetExProfLevel()
+    if lv:
+        lv_less=Word.ShiftLevel(lv, "-")
+        lv_more=Word.ShiftLevel(lv, "+")
     
+    kbd = [[
+        InlineKeyboardButton(self.edited_word.GetForeign(), callback_data="kbd:fw"),
+        InlineKeyboardButton(self.edited_word.GetNative(), callback_data="kbd:nw"),
+    ], [
+        *( [InlineKeyboardButton(lv_less, callback_data="kbd:lv_less")] if lv else [] ),
+        InlineKeyboardButton(f"Другой ({lv})", callback_data="kbd:new_ex"),
+        *( [InlineKeyboardButton(lv_more, callback_data="kbd:lv_more")] if lv else [] ),
+    ]]    
+
     if self.state==self.ST_EDIT_OLD:
         kbd.append([
             InlineKeyboardButton("Удалить слово", callback_data="kbd:delete"),
@@ -57,15 +63,27 @@ async def st_edit_word(self:'LLBot') -> None:
     self.state_prev = self.state
     
 
+    ex_list=[]
     selected_button=None
-    kb=_kbd_edit(self)
+    pl = self.edited_word.ex_prof_level
+    new_word_flag = (self.edited_word.word_id == -1)
+    pg = word_get_progress(self.user_id, self.edited_word.word_id)
+    pos = self.edited_word.pos
+    rlnk = self.edited_word.GetDictLink() #full raw link is used because it will be open without asking in telegram
+    if rlnk is None:
+        rlnk=""
+    fw = self.edited_word.GetForeign()
+    nw_str = self.edited_word.GetAllNativesStr()
+    ex = self.edited_word.GetExample()
+    ru_ex = self.edited_word.GetNativeExample()
+
     while True:
-        pg = word_get_progress(self.user_id, self.edited_word.word_id)
-        fw = self.edited_word.GetForeign()
-        rlnk = self.edited_word.GetDictLink() #full raw link is used because it will be open without asking in telegram
-        if rlnk is None:
-            rlnk=""
-        txt2=f"\n{pg} {fw} = {self.edited_word.GetAllNativesStr()}\n<i>[{self.edited_word.pos}]</i>\n\n<i>{self.edited_word.GetExample()}</i>\n\n{rlnk}"
+        txt2=f"\n{pg} {fw} (<i>{pos}</i>) = {nw_str}\n\n"
+        if new_word_flag:
+            txt2+=f"Example ({pl}):\n\n"
+        else:
+            txt2+="Example:\n\n"
+        txt2+=f"<i>{ex}</i>\n---\n<tg-spoiler>{ru_ex}</tg-spoiler>\n\n{rlnk}"
         
         if selected_button=="reset":
             txt=msg09_reset_prog()+txt2
@@ -76,12 +94,33 @@ async def st_edit_word(self:'LLBot') -> None:
             txt=msg07_edit_word()+txt2
         else:
             txt=msg07_add_word()+txt2
+
+        kb=_kbd_edit(self)
         await self.m2.text(txt, kbd=kb)
 
         self.timer_run(dt.timedelta(hours=23), "tmr:edit_word") #запускаем таймер на неактивность пользователя
         
         await self.wait_event()
         self.timer_stop()
+
+        if self.ev=='kbd:lv_less':
+            pl=self.edited_word.ex_prof_level=Word.ShiftLevel(pl, "-")
+            self.ev='kbd:new_ex'
+        elif self.ev=='kbd:lv_more':
+            pl=self.edited_word.ex_prof_level=Word.ShiftLevel(pl, "+")
+            self.ev='kbd:new_ex'
+
+        if self.ev=='kbd:new_ex':
+            if selected_button!="ex":
+                selected_button="ex"
+                cnt1=0
+            ex_list.append(ex)
+            ex = await gen_example_sentence(fw, self.edited_word.nw_list[0], pos, rejected_sentences=ex_list, prof_level=pl)
+            ru_ex = await translate_en_ex(ex)
+            cnt1+=1
+            self.edited_word.ChangeNativeExample(ru_ex)
+            continue
+
 
         if self.ev=="tmr:edit_word": #таймаут неактивности пользователя, переход в состояние ожидания начала тренинга
             self.log_info(f"{self.state}: inactivity timeout")
@@ -93,17 +132,7 @@ async def st_edit_word(self:'LLBot') -> None:
         elif self.ev=='kbd:nw':
             selected_button="nw"
             kb=_kbd_edit(self, "kbd:nw", "✏️")
-        elif self.ev=='kbd:ex':
-            if selected_button!="ex":
-                selected_button="ex"
-                cnt1=0
-                ex_list=[self.edited_word.GetExample()]
-            else: #create new examle
-                ex = await gen_example_sentence(self.edited_word.GetForeign(), self.edited_word.nw_list[0], self.edited_word.pos, ex_list)
-                ex_list.append(ex)
-                cnt1+=1
-                self.edited_word.ChangeExample(ex)
-            kb=_kbd_edit(self, "kbd:ex", "✏️")
+        
         elif self.ev=='kbd:reset'and self.state==self.ST_EDIT_OLD: 
             selected_button="reset"
             kb=_kbd_edit(self, "kbd:reset")

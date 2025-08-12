@@ -298,6 +298,26 @@ def user_get_data(user_id:int):
     else:
         return None, None, None, None, None,
 
+def user_get_level(user_id:int):
+    db, c=open_db()
+    c.execute(f"SELECT prof_level FROM users WHERE user_id = {user_id}")
+    row = c.fetchone()
+    close_db(db)
+    lv = None
+    if row:
+        lv = row[0]
+    if lv:
+        return lv
+    else:
+        return "B1"
+
+def user_set_level(user_id:int, lv):
+    db, c=open_db()
+    c.execute(f"UPDATE users SET prof_level = ? WHERE user_id = ?", (lv, user_id))
+    row = c.fetchone()
+    close_db(db)
+
+
 #1)нет слова в таблице ->None
 #2)нет ссылки со словом (например fw=абракадабра) ->fw
 #3)есть норм ссылка ->str

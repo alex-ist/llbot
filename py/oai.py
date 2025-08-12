@@ -387,12 +387,12 @@ class ExampleSentence(BaseModel):
     example_sentence: str
 
 
-async def gen_example_sentence ( fw, nw, pos, rejected_sentences = None, extra = None, prof_level=None, model="gpt-4.1"):
+async def gen_example_sentence ( fw, nw, pos, rejected_sentences = None, extra = None, prof_level=None, model="gpt-5"):
     SYSTEM_PROMPT = """
 Generate a natural-sounding English sentence as an example for a given English word or phrase for language-learning purposes. 
 The sentence should be a realistic example that an American native speaker might use in everyday conversation.
 """
-    if pos == 'verb':
+    if pos == 'verb' and prof_level and not prof_level.startswith("A"):
         tense =""
         r = random.randint(1, 10)
         if r <= 3:
@@ -443,8 +443,10 @@ The sentence should be a realistic example that an American native speaker might
         
 
     ex = response.output_parsed.example_sentence
-    
-    logger.info(f"generate example: {fw}->{ex}")
+    if prof_level:
+        logger.info(f"generate example({prof_level}): {fw}->{ex}")
+    else:
+        logger.info(f"generate example: {fw}->{ex}")
     logger.info(f"Usage tokens: {response.usage.input_tokens}, {response.usage.output_tokens}")
     return ex
 

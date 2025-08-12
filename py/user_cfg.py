@@ -9,7 +9,8 @@ class User(Singleton):
         
         self.user_id=user_id
         db, cursor=open_db()
-        cursor.execute("""SELECT foreign_lang, min_trening_interval, min_cards_for_trening, max_cards_for_trening, cur_cards_for_trening, o_param, shown_words_count, current_forget_rate, username, auto_play_audio
+        cursor.execute("""SELECT foreign_lang, min_trening_interval, min_cards_for_trening, max_cards_for_trening, 
+                                 cur_cards_for_trening, o_param, shown_words_count, current_forget_rate, username, auto_play_audio, prof_level
                           FROM users 
                           WHERE user_id = ?""",
                     (self.user_id,))
@@ -33,6 +34,7 @@ class User(Singleton):
 
         self.username = r[8]
         self.auto_play_audio = r[9]
+        self.prof_level = r[10]
         self.first_interval=datetime.timedelta(minutes=60) #черз сколько повторять первое слов
         self.native_lang="ru"
 

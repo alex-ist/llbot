@@ -188,8 +188,12 @@ async function updateCardUI(fl, card) {
         const backExampleText = back.querySelector(".example .example-text");
 
         backExampleText.querySelector(".ex-native").textContent  = card.native_example || "";
+        backExampleText.querySelector(".ex-native").opacity = 1;
+
         backExampleText.querySelector(".ex-foreign").textContent = card.example || "";
+        backExampleText.querySelector(".ex-foreign").opacity = 0;
         backExampleText.dataset.state = "native";
+
         backExampleText.onclick = () => toggleExample(backExampleText);
 
         // front.style.display = "flex";
@@ -198,7 +202,6 @@ async function updateCardUI(fl, card) {
         let new_ft;
         if (card.dict_lnk === undefined) 
             new_ft = document.createElement('div');
-        
         else 
         {
             new_ft = document.createElement('a');

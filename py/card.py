@@ -12,13 +12,14 @@ NATIVE_LANG = "ru"
 
 
 class Word:
-    def __init__(self, user_id, foreign_w, nw_list, pos, example=None, native_example = None, word_id=-1, lnk=None):
+    def __init__(self, user_id, foreign_w, nw_list, pos, example=None, native_example = None, word_id=-1, lnk=None, ex_prof_level=""):
         self.user_id=user_id
         self.word_id=word_id
         self.native_lang=NATIVE_LANG
         self.foreign_lang=FOREIGN_LANG
         self.foreign_w=foreign_w
-        self.nw_list = nw_list[:4] + [None] * (4 - len(nw_list))
+        self.nw_list = nw_list[:4]
+        self.nw_list += [None] * (4 - len(self.nw_list))
         self.pos=pos
         if example=="":
             example=None
@@ -27,6 +28,25 @@ class Word:
         self.audio=None
         self.audio_example=None
         self.lnk=lnk
+        self.ex_prof_level=ex_prof_level
+        
+    def GetExProfLevel(self):
+        return self.ex_prof_level
+
+    @staticmethod
+    def ShiftLevel(level, op):
+        levels = ["A1", "A2", "B1", "B2", "C1", "C2"]
+        try:
+            idx = levels.index(level)
+        except ValueError:
+            return "B1"  # если level не найден
+    
+        if op == "+":
+            idx = min(idx + 1, len(levels) - 1)
+        elif op == "-":
+            idx = max(idx - 1, 0)
+        return levels[idx]
+        
 
     def GetDictLink(self):
         return self.lnk
@@ -39,12 +59,16 @@ class Word:
     def GetNwList(self):
         return self.nw_list
 
-    def GetAllNativesStr(self):
-        all=self.nw_list[0]
-        for i in range(1, len(self.nw_list)):
-            if self.nw_list[i] is not None:
-                all+=f", {self.nw_list[i]}"
+    @staticmethod
+    def ListToStr(nw_list):
+        all=nw_list[0]
+        for i in range(1, len(nw_list)):
+            if nw_list[i] is not None:
+                all+=f", {nw_list[i]}"
         return all
+
+    def GetAllNativesStr(self):
+        return Word.ListToStr(self.nw_list)
 
     def GetPos(self):
         return self.pos
@@ -53,11 +77,6 @@ class Word:
         if self.example is None:
             return ""
         return self.example
-
-    def GetNativeExample(self):
-        if self.n_example is None:
-            return ""
-        return self.n_example
 
     def ChangeForeign(self, new_fw):
         if new_fw[0]=="+":
@@ -88,6 +107,17 @@ class Word:
             new_ex=None
         self.example=new_ex
         self.audio_example=None
+
+    def GetNativeExample(self):
+        if self.n_example is None:
+            return ""
+        return self.n_example
+
+    def ChangeNativeExample(self, nw_ex):
+        if nw_ex=="":
+            nw_ex=None
+        self.n_example=nw_ex
+
     
     #восстанавливает карту по данным из базы
     def ReloadFromDb(self):
@@ -113,8 +143,8 @@ class Word:
             self.word_id=word_add(self.user_id, self.foreign_w, self.nw_list, self.pos, self.example)
 
     @staticmethod
-    def CreateWord(user_id, foreign_w, nw_list, pos, example=None,    native_example=None, lnk=None):
-        word=Word (user_id, foreign_w, nw_list, pos, example=example, native_example=native_example, word_id=-1, lnk=lnk)
+    def CreateWord(user_id, foreign_w, nw_list, pos, example=None,    native_example=None, lnk=None, prof_level=""):
+        word=Word (user_id, foreign_w, nw_list, pos, example=example, native_example=native_example, word_id=-1, lnk=lnk, ex_prof_level=prof_level)
         return word
 
     @staticmethod

@@ -190,8 +190,11 @@ def get_next(ttd:datetime.timedelta):
         w=f"через {delta_days} дней"
     return w
 
-def msg07_pre_add_word():
-    return "<code>➕ Добавление слова ... ⏳</code>"
+def msg07_pre_add_word(w):
+    return f"<code>➕ Добавление слова:</code>\n\n {w} ..⏳"
+
+def msg07_pre_add_word2(w, pos, nw_str):
+    return f"<code>➕ Добавление слова:</code>\n\n {w} (<i>{pos}</i>) -> {nw_str}..⏳"
 
 def msg07_edit_word():
     return "<code>📝 Редактирование слова:</code>\n"

@@ -1,5 +1,5 @@
 import asyncio
-from trans import translate_text, detect_lang, get_dict_rawlink
+from trans import detect_lang, get_dict_rawlink
 from oai import check_fw_input, translate_word, translate_phrase, gen_example_sentence, translate_ru_word, translate_en_ex
 from bot_db import word_read_by_fw
 from msg_txt import *
@@ -42,10 +42,11 @@ def is_word_in_db(self:'LLBot', fw):
 
 async def add_word(self:'LLBot', ev:str):
     await self.clear_screan()
-    await self.m2.text(msg07_pre_add_word())
 
+    pl = self.u.prof_level
     w = ev.split('msg:', 1)[1]
     w=w.lower().strip()
+    await self.m2.text(msg07_pre_add_word(w))
 
     #limit the length of string 64 symb
     w=limit_input_word_len(w)
@@ -84,19 +85,22 @@ async def add_word(self:'LLBot', ev:str):
             fw=cw
             if is_word_in_db(self, fw):
                 return True #будем редактировать, вместо добавления
-        
-        #4) пытаемся создать ссылку на слово cambreadge
-        lnk=await get_dict_rawlink(self.user_id, cw)
 
         #5) переводим
         if word_count == 1:
             nw_list = await translate_word(fw, pos)
         else:
             nw_list = await translate_phrase(fw, pos)
+        await self.m2.text(msg07_pre_add_word2(w, pos, Word.ListToStr(nw_list)))
+
+        #4) пытаемся создать ссылку на слово cambreadge
         #6) генерируем пример
-        ex = await gen_example_sentence(fw, nw_list[0], pos)
+        lnk, ex = await asyncio.gather(
+            get_dict_rawlink(self.user_id, cw),
+            gen_example_sentence(fw, nw_list[0], pos, prof_level=pl)
+        )
     
-    else: #было на русском
+    else: #на русском
         #7) переводим
         tr_w, pos = await translate_ru_word(w)
         if tr_w==w:
@@ -106,20 +110,21 @@ async def add_word(self:'LLBot', ev:str):
         if is_word_in_db(self, fw):
             return True #будем редактировать вместо добавления
         nw_list.append(w)
+        await self.m2.text(msg07_pre_add_word2(fw, pos, Word.ListToStr(nw_list)))
 
     #9) генерируем пример
     #6) пытаемся создать ссылку на слово в cambridge, если еще не
         if lnk is None:
             lnk, ex = await asyncio.gather(
                 get_dict_rawlink(self.user_id, fw),
-                gen_example_sentence(fw, nw_list[0], pos)
+                gen_example_sentence(fw, nw_list[0], pos, prof_level=pl)
             )
         else:
-            ex = await gen_example_sentence(fw, nw_list[0], pos)
+            ex = await gen_example_sentence(fw, nw_list[0], pos, prof_level=pl)
             
     n_ex = await translate_en_ex(ex)
 
     self.log_info(f"add word: {w} -> {nw_list} pos={pos}")
-    self.edited_word=Word.CreateWord(self.user_id, fw, nw_list, pos, example=ex, native_example=n_ex, lnk=lnk)
+    self.edited_word=Word.CreateWord(self.user_id, fw, nw_list, pos, example=ex, native_example=n_ex, lnk=lnk, prof_level=pl)
     self.call_state(self.ST_EDIT_NEW)
     return True
