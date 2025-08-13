@@ -188,10 +188,10 @@ async function updateCardUI(fl, card) {
         const backExampleText = back.querySelector(".example .example-text");
 
         backExampleText.querySelector(".ex-native").textContent  = card.native_example || "";
-        backExampleText.querySelector(".ex-native").opacity = 1;
+        backExampleText.querySelector(".ex-native").style.opacity = 1;
 
         backExampleText.querySelector(".ex-foreign").textContent = card.example || "";
-        backExampleText.querySelector(".ex-foreign").opacity = 0;
+        backExampleText.querySelector(".ex-foreign").style.opacity = 0;
         backExampleText.dataset.state = "native";
 
         backExampleText.onclick = () => toggleExample(backExampleText);
@@ -239,7 +239,7 @@ async function flipFlash(){
             let card = cardSet.getCurrentCard();
             if (card && card.direction != 0) {
                 await playAudio("fw");
-                console.log("play1: d=" + card.direction + "  fw=" + card.foreignW);
+                // console.log("play1: d=" + card.direction + "  fw=" + card.foreignW);
             }
         }
     }
@@ -758,7 +758,7 @@ function toggleExample(wrap) {
   const toForeign = wrap.dataset.state === "native";
   const exN = wrap.querySelector(".ex-native");
   const exF = wrap.querySelector(".ex-foreign");
-
+ 
   if (toForeign) {
     wrap.dataset.state = "foreign";
     gsap.to(exN, { opacity: 0, duration: 0.2 });
@@ -767,5 +767,6 @@ function toggleExample(wrap) {
     wrap.dataset.state = "native";
     gsap.to(exF, { opacity: 0, duration: 0.2 });
     gsap.to(exN, { opacity: 1, duration: 0.2 });
+ 
   }
 }

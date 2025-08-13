@@ -138,7 +138,7 @@ class Word:
 
     def SaveWordToDb(self):
         if self.word_id>=0:
-            word_update(self.user_id, self.word_id, self.foreign_w, self.nw_list, self.pos, self.example)
+            word_update(self.user_id, self.word_id, self.foreign_w, self.nw_list, self.pos, self.example, self.n_example)
         else:
             self.word_id=word_add(self.user_id, self.foreign_w, self.nw_list, self.pos, self.example)
 

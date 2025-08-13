@@ -65,8 +65,13 @@ async def st_edit_word(self:'LLBot') -> None:
 
     ex_list=[]
     selected_button=None
-    pl = self.edited_word.ex_prof_level
     new_word_flag = (self.edited_word.word_id == -1)
+    if new_word_flag:
+        pl = self.edited_word.ex_prof_level
+    else:
+        pl = self.u.prof_level
+        self.edited_word.ex_prof_level = pl
+        
     pg = word_get_progress(self.user_id, self.edited_word.word_id)
     pos = self.edited_word.pos
     rlnk = self.edited_word.GetDictLink() #full raw link is used because it will be open without asking in telegram
@@ -119,6 +124,7 @@ async def st_edit_word(self:'LLBot') -> None:
             ru_ex = await translate_en_ex(ex)
             cnt1+=1
             self.edited_word.ChangeNativeExample(ru_ex)
+            self.edited_word.ChangeExample(ex)
             continue
 
 

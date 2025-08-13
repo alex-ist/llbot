@@ -143,23 +143,23 @@ def words_delete(user_id:int):
     c.execute("DELETE FROM words WHERE user_id = ?", (user_id,))
     close_db(db, True)
 
-def word_update(user_id:int, word_id:int, foreign_w, nw_list, pos, example):
+def word_update(user_id:int, word_id:int, foreign_w, nw_list, pos, example, n_example):
     db, c=open_db()
     pos_db = str_to_posdb(pos)
     nw_list = (nw_list + [None] * 4)[:4]
-    c.execute("UPDATE words SET fw0 = ?, nw0 = ?, nw1 = ?, nw2 = ?, nw3 = ?, pos = ?, example0 = ? WHERE word_id = ? AND user_id = ?", 
-             (foreign_w, nw_list[0], nw_list[1], nw_list[2], nw_list[3], pos_db, example, word_id, user_id))
+    c.execute("UPDATE words SET fw0 = ?, nw0 = ?, nw1 = ?, nw2 = ?, nw3 = ?, pos = ?, example0 = ?, ex_ru0 = ? WHERE word_id = ? AND user_id = ?", 
+             (foreign_w, nw_list[0], nw_list[1], nw_list[2], nw_list[3], pos_db, example, n_example, word_id, user_id))
     close_db(db, commit=True)
 
-def word_add(user_id:int, foreign_w, nw_list, pos, example=None):
+def word_add(user_id:int, foreign_w, nw_list, pos, example, n_example):
     db, c=open_db()
     #fixme: должно ли быть foreign_w уникальным для каждого юзера? если да:
     #if not cursor.execute("SELECT * FROM words WHERE user_id = ? AND foreign_w = ?", (user_id, foreign_w,)).fetchone():
     current_timestamp = t_to_DB(datetime.datetime.now())
     pos_db = str_to_posdb(pos)
     nw_list = (nw_list + [None] * 4)[:4]
-    c.execute("INSERT INTO words (user_id, fw0, nw0, nw1, nw2, nw3, pos, example0, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-             (user_id, foreign_w, nw_list[0], nw_list[1], nw_list[2], nw_list[3], pos_db, example, current_timestamp))
+    c.execute("INSERT INTO words (user_id, fw0, nw0, nw1, nw2, nw3, pos, example0, ex_ru0, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+             (user_id, foreign_w, nw_list[0], nw_list[1], nw_list[2], nw_list[3], pos_db, example, n_example, current_timestamp))
     word_id=c.lastrowid
     close_db(db, commit=True)
     return word_id
