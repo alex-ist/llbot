@@ -392,6 +392,11 @@ async def gen_example_sentence ( fw, nw, pos, rejected_sentences = None, extra =
 Generate a natural-sounding English sentence as an example for a given English word or phrase for language-learning purposes. 
 The sentence should be a realistic example that an American native speaker might use in everyday conversation.
 """
+    if prof_level and not prof_level=="A1":
+        SYSTEM_PROMPT += "Max length of example must be 8 words.\n"
+    elif prof_level and not prof_level=="A2":
+        SYSTEM_PROMPT += "Max length of example must be 10 words.\n"
+
     if pos == 'verb' and prof_level and not prof_level.startswith("A"):
         tense =""
         r = random.randint(1, 10)
