@@ -392,10 +392,10 @@ async def gen_example_sentence ( fw, nw, pos, rejected_sentences = None, extra =
 Generate a natural-sounding English sentence as an example for a given English word or phrase for language-learning purposes. 
 The sentence should be a realistic example that an American native speaker might use in everyday conversation.
 """
-    if prof_level and not prof_level=="A1":
-        SYSTEM_PROMPT += "Max length of example must be 8 words.\n"
-    elif prof_level and not prof_level=="A2":
-        SYSTEM_PROMPT += "Max length of example must be 10 words.\n"
+    if prof_level and prof_level=="A1":
+        SYSTEM_PROMPT += "Max length of example must be 9 words.\n"
+    elif prof_level and prof_level=="A2":
+        SYSTEM_PROMPT += "Max length of example must be 11 words.\n"
 
     if pos == 'verb' and prof_level and not prof_level.startswith("A"):
         tense =""
@@ -424,6 +424,8 @@ The sentence should be a realistic example that an American native speaker might
         {"role": "system", "content": SYSTEM_PROMPT},
         {"role": "user",   "content": USER_PROMPT},
     ]
+    #logger.info(f"SYSTEM_PROMPT: {SYSTEM_PROMPT}")
+    #logger.info(f"USER_PROMPT: {USER_PROMPT}")
     if model=="gpt-5":
         response = await aclient.responses.parse(
             model=model,
@@ -616,8 +618,8 @@ async def update2_table_words():
                 pos = str_to_posdb(pos)
             skip = False
             extra = None            
-            print(f"gpt5: {n_ex5}")
-            print(f"gpt4: {n_ex4}")
+            print(f"gpt5({level}): {n_ex5}")
+            print(f"gpt4({level}): {n_ex4}")
             print(f"Ok? (y/n/s/p/:/q/+/-)")
             ans = input().strip().lower()
             if ans.startswith('q'):
@@ -686,8 +688,8 @@ async def update3_table_words():
     init_oai()
     from bot_db import open_db, close_db, posdb_to_str, str_to_posdb
     db, c=open_db()
-    # c.execute("SELECT fw0, pos, nw0, example1, user_id, word_id FROM words WHERE example1 IS NOT NULL AND ex_ru1 IS NULL")
-    c.execute("SELECT fw0, pos, nw0, example0, user_id, word_id FROM words WHERE example0 IS NOT NULL AND ex_ru0 IS NULL")
+    c.execute("SELECT fw0, pos, nw0, example1, user_id, word_id FROM words WHERE example1 IS NOT NULL AND ex_ru1 IS NULL")
+    #c.execute("SELECT fw0, pos, nw0, example0, user_id, word_id FROM words WHERE example0 IS NOT NULL AND ex_ru0 IS NULL")
     rows = c.fetchall()
     print(f"Found {len(rows)} lines to update")
     for row in rows:
@@ -706,7 +708,8 @@ async def update3_table_words():
 #            continue
 #        elif ans == 'q':
 #            break
-        c.execute("UPDATE words SET ex_ru0 = ?  WHERE word_id = ?" , (n_ex_ru, word_id))
+        c.execute("UPDATE words SET ex_ru1 = ?  WHERE word_id = ?" , (n_ex_ru, word_id))
+#        c.execute("UPDATE words SET ex_ru0 = ?  WHERE word_id = ?" , (n_ex_ru, word_id))
         db.commit()
     
     close_db(db, commit=True)
@@ -717,7 +720,7 @@ async def update3_table_words():
 
 
 import asyncio
-# asyncio.run(update2_table_words())
+#asyncio.run(update2_table_words())
 
 
 

@@ -1,5 +1,5 @@
 "use strict";
-const VER = 55
+const VER = 56
 let query_id;
 
 class Card {
@@ -14,7 +14,8 @@ class Card {
         this.answer = -1;  // not showed card
         this.dict_lnk = d_link;
         this.q_id = q_id;
-		this.a_lnk=`/au/en/w/${foreignW}.ogg?q=${q_id}`
+        const firstLetter = foreignW[0].toLowerCase();
+		this.a_lnk=`/au/en/w/${firstLetter}/${foreignW}.ogg?q=${q_id}`
         this.audio = null; 
     }
     //вернет слово для изучения

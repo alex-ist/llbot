@@ -30,7 +30,8 @@ async def tts_example(example, lang):
         return p
 
 async def tts_word(word, lang, pos=None):
-    p=f"data/{lang}/w/{word}"+SPEACH_EXT
+    first_letter = word[0].lower()
+    p=f"data/{lang}/w/{first_letter}/{word}"+SPEACH_EXT
     if os.path.isfile(p):
         return p
     else:

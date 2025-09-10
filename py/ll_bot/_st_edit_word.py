@@ -111,15 +111,20 @@ async def st_edit_word(self:'LLBot') -> None:
         if self.ev=='kbd:lv_less':
             pl=self.edited_word.ex_prof_level=Word.ShiftLevel(pl, "-")
             self.ev='kbd:new_ex'
+            ex_list=[]    #изменили уровень сложности, поэтому генирим новый пример без учета предыдущих примеров
+            ex = None
         elif self.ev=='kbd:lv_more':
             pl=self.edited_word.ex_prof_level=Word.ShiftLevel(pl, "+")
             self.ev='kbd:new_ex'
+            ex_list=[]
+            ex = None
 
         if self.ev=='kbd:new_ex':
             if selected_button!="ex":
                 selected_button="ex"
                 cnt1=0
-            ex_list.append(ex)
+            if ex:
+                ex_list.append(ex)
             ex = await gen_example_sentence(fw, self.edited_word.nw_list[0], pos, rejected_sentences=ex_list, prof_level=pl)
             ru_ex = await translate_en_ex(ex)
             cnt1+=1
