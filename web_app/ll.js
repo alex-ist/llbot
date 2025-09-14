@@ -1,5 +1,5 @@
 "use strict";
-const VER = 56
+const VER = 57
 let query_id;
 
 class Card {
@@ -30,7 +30,11 @@ class Card {
     }
     loadAudio() {
         return new Promise((resolve, reject) => {
-            this.audio = new Audio(this.a_lnk);
+            if (this.cdict_a_lnk)
+                this.audio = new Audio(this.cdict_a_lnk);
+            else
+                this.audio = new Audio(this.a_lnk);                
+
             this.audio.addEventListener('canplaythrough', resolve);
             this.audio.addEventListener('error', reject);
         });
@@ -180,13 +184,17 @@ async function updateCardUI(fl, card) {
         let ipa_text = card.ipa ? card.ipa : "";
         let reg_text = "us";
 
-
         if (card.direction==0)  { //show foreign
             frontNative.style.visibility = "hidden";
             frontForeign.querySelector(".foreign-text").textContent = card.foreignW;
             frontForeign.querySelector(".pos-text").textContent = pos_text;
-            frontForeign.querySelector(".ipa_text").textContent = ipa_text;
-            frontForeign.querySelector(".reg_text").textContent = reg_text;
+            if (ipa_text){
+                frontForeign.querySelector(".ipa-text").textContent = `/${ipa_text}/`;
+                frontForeign.querySelector(".reg-text").textContent = `${reg_text}: `;
+            } else {
+                frontForeign.querySelector(".ipa-text").textContent = "";
+                frontForeign.querySelector(".reg-text").textContent = "";
+            }
             frontForeign.style.visibility = "visible";
 
         } else {
