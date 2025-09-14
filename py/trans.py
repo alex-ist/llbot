@@ -8,48 +8,55 @@ from google.cloud import translate
 import httpx
 from bot_db import *
 from botlog import logger
-from utils import remove_en_article
+from utils import remove_en_article, remove_brackets
 
-
-import re
-def remove_brackets(fw: str):
-    fw = fw.strip().lower()
-    return re.sub(r'\([^)]*\)', '', fw).strip()
 
 async def get_dict_rawlink(user_id, fw: str, lang="en") -> str:
     link = db_get_dict_link(fw) #проверим наличие линка в кеше: None - новое слово, ""- слово проверенное раньше, и словарь его не знал
     if link is None: #new word in dict table
-        link = await web_get_en_dictionary_link(user_id, fw) #None - нет такого слова
-        if link is None:
+        link, status = await web_get_en_dictionary_link(user_id, fw) #False - нет такого слова, None - неизвестно (таймаут, сбой, непредвиденный код)
+        if link is None: 
             link=""
         db_upd_dict_link(fw, link)
     return link
 
 #Fetches the link for the word from Cambridge Dictionary.
-async def web_get_en_dictionary_link(user_id, fw: str) -> str:
-    src_link='https://dictionary.cambridge.org/dictionary/english/'
+HEADERS = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'}
+SRC_LINK = 'https://dictionary.cambridge.org/dictionary/english/'
+# status -> "ok", "not_found", "banned", "error"
+async def web_get_en_dictionary_link(user_id, fw: str) -> str:    
     fw = remove_en_article(fw)
     fw = remove_brackets(fw)
-    link = src_link + fw.replace(" ", "-")
+    link = SRC_LINK + fw.replace(" ", "-")
     
     try:
-        async with httpx.AsyncClient() as client:
-            headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'}
-            response = await client.head(link, follow_redirects=False, headers=headers, timeout=3)
+        async with httpx.AsyncClient(headers=HEADERS, timeout=20) as client:
+            response = await client.head(link, follow_redirects=False)
             # Check if the status code is in the redirection range
             if 300 <= response.status_code < 400:
                 redirect_link = response.headers.get('Location')
-                if redirect_link and redirect_link != src_link:
-                    logger.info(f"{user_id}: cambrige dict get link for fw={fw}: resp.code={response.status_code}")
-                    return redirect_link
+                if redirect_link and redirect_link != SRC_LINK:
+                    logger.info(f"{user_id}: cambrige dict get link for hw = {fw}: resp.code={response.status_code} redirect={redirect_link}")
+                    return redirect_link, "ok"
             elif response.status_code == 200:
-                logger.info(f"{user_id}: cambrige dict get link for fw={fw}: resp.code={response.status_code}")
-                return link
-            logger.warning(f"{user_id}: check cambrige dict, unknown fw={fw}: resp.code={response.status_code}")
-            return None
+                logger.info(f"{user_id}: cambrige dict get link for hw = {fw}: resp.code={response.status_code}")
+                return link, "ok"
+            elif response.status_code == 404 or response.status_code == 410:
+                logger.info(f"{user_id}: cambrige dict no link for hw = {fw}: resp.code={response.status_code}")
+                return None, "not_found" #страницы точно нет.
+            elif response.status_code == 403:
+                logger.info(f"{user_id}: !!!!!!!!!!!!!! CAMBRIGE DICT 403 FORBIDDEN hw = {fw}: resp.code={response.status_code}")
+                return None, "banned"
+            else:
+                print(f"Unknown status code: {response.status_code}")
+                return None, "error" #неизвестно (таймаут, сбой, непредвиденный код).
+            logger.warning(f"{user_id}: check cambrige dict, unknown hw = {fw}: resp.code={response.status_code}")
+            return False, "not_found" #страницы точно нет.
+    except httpx.TimeoutException:
+        logger.error(f"{user_id}: httpx: check cambrige dict fw={fw}: Exception: Timeout")
     except Exception as e:
-        logger.error(f"{user_id}: httpx: check cambrige dict fw={fw}: Exception: {e}")
-    return None
+        logger.error(f"{user_id}: httpx: check cambrige dict fw={fw}: Exception ({type(e).__name__}): {e}")
+    return None, "error"
 
 gtrans_async_client = None
 async def g_translate(word:str, src_lang="en", target_lang="ru"):

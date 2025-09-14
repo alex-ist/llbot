@@ -198,12 +198,13 @@ img {
     width: 100%;             /* чтобы spacer продолжал «толкать» слово */
 }
 
-.pos-text {
+.pos-and-ipa {
     font-size: 18px;          /* меньше, чем у слова */
     font-style: italic;       /* курсив */
     line-height: 20px;
     color: #5F634F;
     margin-top: 10px;          /* небольшой отступ снизу ряда */
+    text-align: center;
 }
 
 .native {

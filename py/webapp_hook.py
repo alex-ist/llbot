@@ -167,10 +167,12 @@ async def websocket_handler(request):
                             'cid': card.training_card_id, 
                             'dir': card.direction, 
                             'fw': card.word.GetForeign(), 
-                            'nw_list': card.word.GetNwList(), 
+                            'nw_list': card.word.GetNwList(),
                             'pos': card.word.GetPos(), 
                             'ex': card.word.GetExample(),
-                            'n_ex': card.word.GetNativeExample()
+                            'n_ex': card.word.GetNativeExample(),
+                            'ipa': card.word.GetIpa(),
+                            'cdict_au': card.word.GetCDictAu()  #имя аудио файла из кембриджа
                         }
                         lnk=card.GetDictLink()
                         if lnk:  # Проверяем, существует ли lnk (не None и не пустая строка)
@@ -296,7 +298,7 @@ async def generate_audio_ex(request):
     if uid is None:
         raise web.HTTPBadRequest(reason="c is unknown")
 
-    wd=await Word.ReadFromDb_by_cid(uid, cid)
+    wd=Word.ReadFromDb_by_cid(uid, cid)
     if wd is None:
         logger.error(f"{uid}:cid={cid}: generate_audio_ex: can't get word")
         raise web.HTTPBadRequest(reason="c is wrong")

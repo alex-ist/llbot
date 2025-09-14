@@ -53,5 +53,6 @@ Thumbs.db
 _map.txt
 
 
-keys/openai.txt
-
+keys/*
+data/*
+certs/*

@@ -3,19 +3,22 @@ const VER = 56
 let query_id;
 
 class Card {
-    constructor(cid, direction, foreignW, nw_list, pos, example, n_ex, d_link, q_id) {
-        this.cid = cid;
-        this.direction = direction;
-        this.foreignW = foreignW;
-        this.nw_list = nw_list;
-        this.pos = pos;
-        this.example = example;
-        this.native_example = n_ex;
+    constructor(cardData, q_id) {
+        this.cid = cardData.cid;
+        this.direction = cardData.dir;
+        this.foreignW = cardData.fw;
+        this.nw_list = cardData.nw_list;
+        this.pos = cardData.pos;
+        this.example = cardData.ex;
+        this.native_example = cardData.n_ex;
         this.answer = -1;  // not showed card
-        this.dict_lnk = d_link;
+        this.dict_lnk = cardData.lnk;
         this.q_id = q_id;
-        const firstLetter = foreignW[0].toLowerCase();
-		this.a_lnk=`/au/en/w/${firstLetter}/${foreignW}.ogg?q=${q_id}`
+        const firstLetter = this.foreignW[0].toLowerCase();
+		this.a_lnk=`/au/en/w/${firstLetter}/${this.foreignW}.ogg?q=${q_id}`;
+        const cdict_au = cardData.cdict_au;
+        this.cdict_a_lnk = cdict_au ? `/au/en/w/${firstLetter}/${cdict_au}?q=${q_id}` : null;
+        this.ipa = cardData.ipa;
         this.audio = null; 
     }
     //вернет слово для изучения
@@ -174,10 +177,16 @@ async function updateCardUI(fl, card) {
         if (pos_text == "phrase" || pos_text == "other")
             pos_text = "";
 
+        let ipa_text = card.ipa ? card.ipa : "";
+        let reg_text = "us";
+
+
         if (card.direction==0)  { //show foreign
             frontNative.style.visibility = "hidden";
             frontForeign.querySelector(".foreign-text").textContent = card.foreignW;
             frontForeign.querySelector(".pos-text").textContent = pos_text;
+            frontForeign.querySelector(".ipa_text").textContent = ipa_text;
+            frontForeign.querySelector(".reg_text").textContent = reg_text;
             frontForeign.style.visibility = "visible";
 
         } else {
@@ -215,6 +224,14 @@ async function updateCardUI(fl, card) {
         old_ft.parentNode.replaceChild(new_ft, old_ft);
         back.querySelector(".native-text").textContent = n_text;
         back.querySelector(".foreign .pos-text").textContent = pos_text;
+        if (ipa_text){
+            back.querySelector(".foreign .ipa-text").textContent = `/${ipa_text}/`;
+            back.querySelector(".foreign .reg-text").textContent = `${reg_text}: `;
+        } else {
+            back.querySelector(".foreign .ipa-text").textContent = "";
+            back.querySelector(".foreign .reg-text").textContent = "";
+        }
+
         // back.style.display = "flex";
     }
     else
@@ -407,7 +424,7 @@ ws.addEventListener('message', async (event) => {
             setAutoPlay(receivedData.autoplay, false);
 
         receivedData.card.forEach(cardData => {
-            cardSet.addCard(new Card(cardData.cid, cardData.dir, cardData.fw, cardData.nw_list, cardData.pos, cardData.ex, cardData.n_ex, cardData.lnk, query_id));
+            cardSet.addCard(new Card(cardData, query_id));
         });
     
         document.querySelector('.txt-counter').textContent =cardSet.cards.length;

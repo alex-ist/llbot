@@ -58,6 +58,11 @@ def remove_en_article(fw: str):
     return fw2.strip()
 
 import re
+def remove_brackets(fw: str):
+    fw = fw.strip().lower()
+    return re.sub(r'\([^)]*\)', '', fw).strip()
+
+
 #сравнивает слова с образцом
 def clean_compare_str(sample, str1, str2=None, lang='en'):
     # Функция для очистки строки от знаков препинания, артиклев

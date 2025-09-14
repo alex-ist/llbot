@@ -69,8 +69,21 @@ async def st_trening(self:'LLBot') -> None:
 
             w = tc.word 
             t = f'{html_lnk} = {w.GetAllNativesStr()}\n'
-            if w.pos:
-                t += f'<i>[{w.pos}]</i>\n'
+            pos_and_ipa = ""
+            reg = 'US'            
+            ipa = w.GetIpa()
+            if ipa:
+                pos_and_ipa += f'{reg} /{ipa}/ '
+
+            pos = w.GetPos()
+            if pos:
+                if pos_and_ipa:
+                    pos_and_ipa += ', '
+                pos_and_ipa += f'<i>{pos}</i>'
+                
+            if pos_and_ipa:
+                t += f'[{pos_and_ipa}]\n'
+            
                 
             await self.m2.voice(voice=a, txt=t, kbd=_kbd_trening(self.sub_state))
         self.timer_run(dt.timedelta(minutes=30), "tmr:tren_to1") #запускаем таймер на неактивность пользователя

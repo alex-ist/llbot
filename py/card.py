@@ -28,6 +28,13 @@ class Word:
         self.audio=None
         self.audio_example=None
         self.lnk=lnk
+        self.ipa = {}
+        self.ipa['uk'] = None
+        self.ipa['us'] = None
+        self.cdict_au = {}
+        self.cdict_au['uk'] = None
+        self.cdict_au['us'] = None
+        
         self.ex_prof_level=ex_prof_level
         
     def GetExProfLevel(self):
@@ -72,6 +79,14 @@ class Word:
 
     def GetPos(self):
         return self.pos
+
+    def GetIpa(self):
+        reg = 'us'
+        return self.ipa[reg]
+
+    def GetCDictAu(self):
+        reg = 'us'
+        return self.cdict_au[reg]
 
     def GetExample(self):
         if self.example is None:
@@ -151,15 +166,28 @@ class Word:
     def ReadFromDb(user_id:int, word_id:int) -> 'Word':
         foreign_w, nw_list, pos, example, n_example =word_read(user_id, word_id)
         word=Word(user_id, foreign_w, nw_list, pos, example=example, native_example=n_example, word_id=word_id)
-        word.lnk = db_get_dict_link(word.foreign_w)  #пробуем установить ссылку на словарь считав из локального кэша.
+
+        reg="us"
+        source_url, hw, ipa, fn = get_from_dict(foreign_w, pos, region=reg)
+        # logger.info(f"{user_id}: ReadFromDb: fw={foreign_w}, ipa={ipa}, fn={fn}, hw={hw}, url={source_url}")
+        word.lnk = source_url
+        word.ipa[reg] = ipa
+        word.cdict_au[reg] = fn
         return word
 
     @staticmethod
-    async def ReadFromDb_by_cid(uid:int, cid:int) -> 'Word':
+    def ReadFromDb_by_cid(uid:int, cid:int) -> 'Word':
         word_id, foreign_w, nw_list, pos, example, n_example=word_read_by_cid(uid, cid)
         if word_id:
             word=Word(uid, foreign_w, nw_list, pos=pos, example=example, native_example=n_example,  word_id=word_id)
-            await word.SetDictLink()
+            # await word.SetDictLink()
+            
+            reg="us"
+            source_url, hw, ipa, fn = get_from_dict(foreign_w, pos, region=reg)
+            logger.info(f"ReadFromDb_by_cid: fw={foreign_w}, ipa={ipa}, fn={fn}, hw={hw}, url={source_url}")
+            word.lnk = source_url
+            word.ipa[reg] = ipa
+            word.cdict_au[reg] = fn
             return word
         else:
             logger.warning(f"{uid}: cid={cid}: can't get word")

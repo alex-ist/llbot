@@ -64,6 +64,15 @@ def posdb_to_str(pos):
         return "preposition"
     elif pos == "adv":
         return "adverb"
+    elif pos == "excl":
+        return "exclamation"
+    elif pos == "conj":
+        return "conjunction"
+    elif pos == "det":
+        return "determiner"
+    elif pos == "pron":
+        return "pronoun"
+    
     else:
         return pos
     
@@ -76,8 +85,37 @@ def str_to_posdb(pos_str):
         return "prep"
     elif pos_str == "adverb":
         return "adv"
+    elif pos_str == "exclamation":
+        return "excl"
+    elif pos_str == "conjunction":
+        return "conj"
+    elif pos_str == "determiner":
+        return "det"
+    elif pos_str == "pronoun":
+        return "pron"
     else:
-        return pos_str    
+        return pos_str
+
+def get_from_dict(fw:str, pos:str, region="us"):
+    db, c=open_db()
+    c.execute("SELECT source_url, is_pron FROM c_dict WHERE  fw = ?", (fw,))
+    row = c.fetchone()
+    source_url=hw=ipa=fn=None
+    if row:
+        source_url = row[0]
+        is_pron = row[1]
+        if source_url and is_pron==1:
+            db, c=open_db()
+            pos = str_to_posdb(pos)
+            c.execute("SELECT hw, ipa, fn FROM c_dict_pron WHERE  fw = ? and pos = ? and region = ? order by entry_num", (fw, pos, region))
+            row = c.fetchone()
+            if row:
+                hw = row[0]
+                ipa = row[1]
+                fn = row[2]
+    close_db(db)
+    return source_url, hw, ipa, fn 
+    
 
 def word_read(user_id:int, word_id:int):
     db, c=open_db()
