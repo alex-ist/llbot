@@ -215,110 +215,119 @@ def save_json(fw, raw_json):
     with open(full_path, 'w', encoding='utf-8') as f:
         f.write(raw_json)
 
+async def cambr_scrap_word(fw):
+    db, c=open_db()
+    c.execute("SELECT fw FROM c_dict where fw=?", (fw,))
+    r2 = c.fetchall()
+    if r2 and len(r2)>0:
+        close_db(db)
+        return "already"
+
+    pronunciations, entries, link, status =  await scrape_lemma(fw)
+    if status == "banned":
+        logger.error(f"!!!!!!!!!!! CAMBRIGE DICT BANNED for fw = {fw}")
+        return status
+    
+    if status == "error": #неизвестно (таймаут, сбой, непредвиденный код).
+        logger.warning(f"cambrige dict: link is None for fw={fw}, skip")
+        return status
+
+    if status == "not_found": #страницы точно нет.
+        logger.warning(f"cambrige dict: link == False for fw={fw}")
+        c.execute("INSERT OR REPLACE INTO c_dict (fw, source_url) VALUES (?, ?)", (fw, None))
+        db.commit()            
+        return status
+    if not pronunciations and not entries:
+        logger.warning(f"cambrige dict: no entries for fw={fw}")
+        #like status == "not_found"
+        c.execute("INSERT OR REPLACE INTO c_dict (fw, source_url) VALUES (?, ?)", (fw, None))
+        db.commit()            
+        return "not_found"
+
+    if not pronunciations and entries:
+        c.execute("INSERT OR REPLACE INTO c_dict (fw, source_url, is_pron) VALUES (?, ?, ?)", (fw, link, 0))
+        db.commit()            
+        return "no_pron"
+
+    region_nums = {
+            "uk": {},  # audio_link -> num
+            "us": {},  # audio_link -> num
+    }
+    dl_ok = 'UNKNOWN'
+    for p in pronunciations:
+        hw = p.get('hw')
+        region = (p.get('region') or "").lower().strip()
+        audio_link = p.get('audio')
+        pos = p.get('pos')
+        ipa = p.get('ipa')
+        
+        if not hw:
+            continue
+        if region not in ("uk", "us"):
+            continue
+        if not pos or not audio_link:
+            continue
+        
+        num, is_new = get_num_for_link(region_nums[region], audio_link)
+        dst_filename = f"{hw}.{region}.{num}.ogg"
+        # change slahes in hw to _
+        dst_filename = re.sub(r"[\\/]", "_", dst_filename)
+        # change first '-' in hw to '_'
+        if dst_filename[0] == '-':
+            dst_filename = "_" + dst_filename[1:]
+        full_path = os.path.join(AUDIO_PATH, fw[0].lower(), dst_filename)
+
+        
+        if is_new and os.path.exists(full_path):
+            logger.info(f"cambrige dict audio must be new but it already exists: {full_path}")
+            os.remove(full_path) #remove old file
+        
+        if not is_new and not os.path.exists(full_path):
+            logger.warning(f"cambrige dict file must exist but it does not: {full_path}")
+        
+        if not os.path.exists(full_path):
+            dl_ok = await download_file(audio_link, full_path)
+            if not dl_ok:
+                logger.error(f"!!!!!!!cambrige dict download error: {audio_link} for {hw}")
+                # если хоть один файл не скачался, то пропускаем всё слово, потом докачаем.
+                break
+        
+        if dl_ok == True:
+            pos = str_to_posdb(pos)
+            c.execute("INSERT OR REPLACE INTO c_dict_pron (fw, hw, pos, region, ipa, fn, entry_num) VALUES (?, ?, ?, ?, ?, ?, ?)", 
+                        (fw, hw, pos, region, ipa, dst_filename, p.get('entry_num', 0)))
+
+    if dl_ok == True:
+        c.execute("INSERT OR REPLACE INTO c_dict (fw, source_url, is_pron) VALUES (?, ?, ?)", (fw, link, 1))
+        db.commit()
+        raw_json = json.dumps(entries, indent=None, ensure_ascii=False) if entries is not None else None
+        save_json(fw, raw_json)
+        status = "ok"
+    elif dl_ok == False:
+        #если хоть один файл не скачался, то пропускаем всё слово, потом докачаем.
+        db.rollback()
+        logger.error(f"!!!!!!!cambrige dict download error: skip word fw={fw}")
+        status = "error"
+    else:
+        c.execute("INSERT OR REPLACE INTO c_dict (fw, source_url, is_pron) VALUES (?, ?, ?)", (fw, link, 0))
+        db.commit()            
+        status = "no_pron"
+    close_db(db)
+    return status
+
 async def run_scrap():
     logger.info(f"cambrige dict get link")
     db, c=open_db()
     c.execute("SELECT fw0 FROM words group by fw0 ")
     rows = c.fetchall()
+    close_db(db)
     for w in rows:
         fw = w[0]
-        c.execute("SELECT fw FROM c_dict where fw=?", (fw,))
-        r2 = c.fetchall()
-        if r2 and len(r2)>0:
-            continue
-
-        print(fw)
-        await asyncio.sleep(2+random.randint(1,10))
-        pronunciations, entries, link, status =  await scrape_lemma(fw)
+        status = await cambr_scrap_word(fw)
+        print(f"{fw}: status={status}")
         if status == "banned":
-            logger.error(f"!!!!!!!!!!! CAMBRIGE DICT BANNED for fw = {fw}")
-            print(f"!!!!!!!!!!! CAMBRIGE DICT BANNED for hw = {fw}")
             exit(1)
-        
-        if status == "error": #неизвестно (таймаут, сбой, непредвиденный код).
-            logger.warning(f"cambrige dict: link is None for fw={fw}, skip")
-            continue
-
-        if status == "not_found": #страницы точно нет.
-            logger.warning(f"cambrige dict: link == False for fw={fw}")
-            c.execute("INSERT OR REPLACE INTO c_dict (fw, source_url) VALUES (?, ?)", (fw, None))
-            db.commit()            
-            continue
-        if not pronunciations and not entries:
-            logger.warning(f"cambrige dict: no entries for fw={fw}")
-            #like status == "not_found"
-            c.execute("INSERT OR REPLACE INTO c_dict (fw, source_url) VALUES (?, ?)", (fw, None))
-            db.commit()            
-            continue
-
-        if not pronunciations and entries:
-            c.execute("INSERT OR REPLACE INTO c_dict (fw, source_url, is_pron) VALUES (?, ?, ?)", (fw, link, 0))
-            db.commit()            
-            continue
-        
-        # print("Pronunciations:")
-        # print(json.dumps(pronunciations, indent=2, ensure_ascii=False))
-        # print("\nEntries:")
-        # print(json.dumps(entries, indent=2, ensure_ascii=False))
-
-        region_nums = {
-                "uk": {},  # audio_link -> num
-                "us": {},  # audio_link -> num
-        }
-        dl_ok = 'UNKNOWN'
-        for p in pronunciations:
-            hw = p.get('hw')
-            region = (p.get('region') or "").lower().strip()
-            audio_link = p.get('audio')
-            pos = p.get('pos')
-            ipa = p.get('ipa')
-            
-            if not hw:
-                continue
-            if region not in ("uk", "us"):
-                continue
-            if not pos or not audio_link:
-                continue
-            
-            num, is_new = get_num_for_link(region_nums[region], audio_link)
-            dst_filename = f"{hw}.{region}.{num}.ogg"
-            # change slahes in hw to _
-            dst_filename = re.sub(r"[\\/]", "_", dst_filename)
-            # change first '-' in hw to '_'
-            if dst_filename[0] == '-':
-                dst_filename = "_" + dst_filename[1:]
-            full_path = os.path.join(AUDIO_PATH, fw[0].lower(), dst_filename)
-
-            
-            if is_new and os.path.exists(full_path):
-                logger.info(f"cambrige dict audio must be new but it already exists: {full_path}")
-                os.remove(full_path) #remove old file
-            
-            if not is_new and not os.path.exists(full_path):
-                logger.warning(f"cambrige dict file must exist but it does not: {full_path}")
-            
-            if not os.path.exists(full_path):
-                dl_ok = await download_file(audio_link, full_path)
-                if not dl_ok:
-                    logger.error(f"!!!!!!!cambrige dict download error: {audio_link} for {hw}")
-                    # если хоть один файл не скачался, то пропускаем всё слово, потом докачаем.
-                    break
-            
-            if dl_ok == True:
-                pos = str_to_posdb(pos)
-                c.execute("INSERT OR REPLACE INTO c_dict_pron (fw, hw, pos, region, ipa, fn, entry_num) VALUES (?, ?, ?, ?, ?, ?, ?)", 
-                            (fw, hw, pos, region, ipa, dst_filename, p.get('entry_num', 0)))
-
-        if dl_ok == True:
-            c.execute("INSERT OR REPLACE INTO c_dict (fw, source_url, is_pron) VALUES (?, ?, ?)", (fw, link, 1))
-            db.commit()
-            raw_json = json.dumps(entries, indent=None, ensure_ascii=False) if entries is not None else None
-            save_json(fw, raw_json)
-        else:
-             #если хоть один файл не скачался, то пропускаем всё слово, потом докачаем.
-            db.rollback()
-            logger.error(f"!!!!!!!cambrige dict download error: skip word fw={fw}")
-    close_db(db)
+        await asyncio.sleep(2+random.randint(1,10))
 
 
 import asyncio

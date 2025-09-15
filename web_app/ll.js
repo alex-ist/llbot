@@ -19,7 +19,9 @@ class Card {
         const cdict_au = cardData.cdict_au;
         this.cdict_a_lnk = cdict_au ? `/au/en/w/${firstLetter}/${cdict_au}?q=${q_id}` : null;
         this.ipa = cardData.ipa;
-        this.audio = null; 
+        this.audio1 = null; 
+        this.audio2 = null;
+        this.audioIndex = 0; 
     }
     //вернет слово для изучения
     getA(){
@@ -28,18 +30,31 @@ class Card {
         else
             return this.nw_list[0];
     }
-    loadAudio() {
+    async loadOneAudio(src) {
+        if (!src)
+             return null;
+        const aa = new Audio(src);
         return new Promise((resolve, reject) => {
-            if (this.cdict_a_lnk)
-                this.audio = new Audio(this.cdict_a_lnk);
-            else
-                this.audio = new Audio(this.a_lnk);                
-
-            this.audio.addEventListener('canplaythrough', resolve);
-            this.audio.addEventListener('error', reject);
+            aa.addEventListener("canplaythrough", () => resolve(aa), { once: true });
+            aa.addEventListener("error", reject, { once: true });
         });
+    }
+
+    async loadAudio() {
+        this.audio1 = await this.loadOneAudio(this.a_lnk);
+        this.audio2 = await this.loadOneAudio(this.cdict_a_lnk);
+    }
+    
+    getNextAudio() {
+        const audios = [this.audio1, this.audio2].filter(Boolean); // только существующие
+        if (audios.length === 0) return null;
+
+        const audio = audios[this.audioIndex % audios.length];
+        this.audioIndex++;
+        return audio;
     }    
 }
+
 
 class CardSet {
     constructor() {
@@ -135,7 +150,7 @@ async function playAudio(audioSrc) {
         stopPlayAudio();
     
         if (audioSrc == "fw") {
-            last_audio=c.audio;
+            last_audio=c.getNextAudio();
         }
         else if (audioSrc == "ex") {
             const hash = await getHash(c.example);
