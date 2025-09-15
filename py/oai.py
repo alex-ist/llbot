@@ -462,7 +462,8 @@ class TranslatedSentence(BaseModel):
     russian_sentence: str
 
 async def translate_en_ex(en_ex):
-    SYSTEM_PROMPT = "Translate the sentence from English to Russian."
+    # SYSTEM_PROMPT = "Translate the sentence from English to Russian."
+    SYSTEM_PROMPT = "Translate the sentence from English into Russian, ensuring the translation is as close to word-for-word as possible while still sounding natural and correct in Russian."
     USER_PROMPT = f'English sentence: \n{en_ex}\n'
     messages =[
         {"role": "system", "content": SYSTEM_PROMPT},

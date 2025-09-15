@@ -141,8 +141,8 @@ def parse_senses(soup):
 from botlog import logger
 from trans import web_get_en_dictionary_link
     
-async def scrape_lemma(fw):    
-    link, status = await web_get_en_dictionary_link("111", fw) #None - нет такого слова
+async def scrape_lemma(user_id, fw):    
+    link, status = await web_get_en_dictionary_link(user_id, fw) #None - нет такого слова
     if status != "ok":
         return None, None, None, status
    
@@ -153,7 +153,7 @@ async def scrape_lemma(fw):
             if resp.status_code == 404 or resp.status_code == 410:
                 return None, None, link, "not_found" #страницы точно нет.
             elif resp.status_code == 403:
-                logger.info(f" !!!!!!!!!!!!!! CAMBRIGE DICT 403 FORBIDDEN fw = {fw}: resp.code={resp.status_code}")
+                logger.info(f"{user_id}: !!!!!!!!!!!!!! CAMBRIGE DICT 403 FORBIDDEN fw = {fw}: resp.code={resp.status_code}")
                 return None, None, link, "banned"
             elif resp.status_code == 200:
                 soup = BeautifulSoup(resp.text, "html.parser")
@@ -161,15 +161,14 @@ async def scrape_lemma(fw):
                 entries = parse_senses(soup)
                 return pronunciations, entries, link, "ok"
             else:
-                print(f"Unknown status code: {resp.status_code}")
-                logger.warning(f"Unknown status code: {resp.status_code}")
+                logger.warning(f"{user_id}: Unknown status code: {resp.status_code}")
                 return None, None, link, "error" #неизвестно (таймаут, сбой, непредвиденный код).
 
     except httpx.TimeoutException:
-        logger.error(f"httpx: read cambrige dict fw={fw}: Exception: Timeout")
+        logger.error(f"{user_id}: httpx: read cambrige dict fw={fw}: Exception: Timeout")
         return None, None, link, "error"
     except Exception as e:
-        logger.error(f"httpx: read cambrige dict fw={fw}: Exception ({type(e).__name__}): {e}")
+        logger.error(f"{user_id}: httpx: read cambrige dict fw={fw}: Exception ({type(e).__name__}): {e}")
         return None, None, link, "error"
 
 
@@ -215,7 +214,7 @@ def save_json(fw, raw_json):
     with open(full_path, 'w', encoding='utf-8') as f:
         f.write(raw_json)
 
-async def cambr_scrap_word(fw):
+async def cambr_scrap_word(user_id, fw):
     db, c=open_db()
     c.execute("SELECT fw FROM c_dict where fw=?", (fw,))
     r2 = c.fetchall()
@@ -223,22 +222,22 @@ async def cambr_scrap_word(fw):
         close_db(db)
         return "already"
 
-    pronunciations, entries, link, status =  await scrape_lemma(fw)
+    pronunciations, entries, link, status =  await scrape_lemma(user_id, fw)
     if status == "banned":
-        logger.error(f"!!!!!!!!!!! CAMBRIGE DICT BANNED for fw = {fw}")
+        logger.error(f"{user_id}: !!!!!!!!!!! CAMBRIGE DICT BANNED for fw = {fw}")
         return status
     
     if status == "error": #неизвестно (таймаут, сбой, непредвиденный код).
-        logger.warning(f"cambrige dict: link is None for fw={fw}, skip")
+        logger.warning(f"{user_id}: cambrige dict: link is None for fw={fw}, skip")
         return status
 
     if status == "not_found": #страницы точно нет.
-        logger.warning(f"cambrige dict: link == False for fw={fw}")
+        logger.warning(f"{user_id}: cambrige dict: link == False for fw={fw}")
         c.execute("INSERT OR REPLACE INTO c_dict (fw, source_url) VALUES (?, ?)", (fw, None))
         db.commit()            
         return status
     if not pronunciations and not entries:
-        logger.warning(f"cambrige dict: no entries for fw={fw}")
+        logger.warning(f"{user_id}: cambrige dict: no entries for fw={fw}")
         #like status == "not_found"
         c.execute("INSERT OR REPLACE INTO c_dict (fw, source_url) VALUES (?, ?)", (fw, None))
         db.commit()            
@@ -279,16 +278,16 @@ async def cambr_scrap_word(fw):
 
         
         if is_new and os.path.exists(full_path):
-            logger.info(f"cambrige dict audio must be new but it already exists: {full_path}")
+            logger.info(f"{user_id}: cambrige dict audio must be new but it already exists: {full_path}")
             os.remove(full_path) #remove old file
         
         if not is_new and not os.path.exists(full_path):
-            logger.warning(f"cambrige dict file must exist but it does not: {full_path}")
+            logger.warning(f"{user_id}: cambrige dict file must exist but it does not: {full_path}")
         
         if not os.path.exists(full_path):
             dl_ok = await download_file(audio_link, full_path)
             if not dl_ok:
-                logger.error(f"!!!!!!!cambrige dict download error: {audio_link} for {hw}")
+                logger.error(f"{user_id}: !!!!!!!cambrige dict download error: {audio_link} for {hw}")
                 # если хоть один файл не скачался, то пропускаем всё слово, потом докачаем.
                 break
         
@@ -306,7 +305,7 @@ async def cambr_scrap_word(fw):
     elif dl_ok == False:
         #если хоть один файл не скачался, то пропускаем всё слово, потом докачаем.
         db.rollback()
-        logger.error(f"!!!!!!!cambrige dict download error: skip word fw={fw}")
+        logger.error(f"{user_id}: !!!!!!!cambrige dict download error: skip word fw={fw}")
         status = "error"
     else:
         c.execute("INSERT OR REPLACE INTO c_dict (fw, source_url, is_pron) VALUES (?, ?, ?)", (fw, link, 0))
@@ -323,7 +322,9 @@ async def run_scrap():
     close_db(db)
     for w in rows:
         fw = w[0]
-        status = await cambr_scrap_word(fw)
+        status = await cambr_scrap_word(1111, fw)
+        if status == "already":
+            continue        
         print(f"{fw}: status={status}")
         if status == "banned":
             exit(1)

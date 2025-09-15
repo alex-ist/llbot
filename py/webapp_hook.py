@@ -172,11 +172,9 @@ async def websocket_handler(request):
                             'ex': card.word.GetExample(),
                             'n_ex': card.word.GetNativeExample(),
                             'ipa': card.word.GetIpa(),
-                            'cdict_au': card.word.GetCDictAu()  #имя аудио файла из кембриджа
+                            'cdict_au': card.word.GetCDictAu(),  #имя аудио файла из кембриджа
+                            'lnk': card.word.GetDictLink()
                         }
-                        lnk=card.GetDictLink()
-                        if lnk:  # Проверяем, существует ли lnk (не None и не пустая строка)
-                            card_data['lnk'] = lnk
 
                         data_obj['card'].append(card_data)
 

@@ -1,5 +1,6 @@
 import asyncio
 from trans import detect_lang, get_dict_rawlink
+from cambrige import cambr_scrap_word
 from oai import check_fw_input, translate_word, translate_phrase, gen_example_sentence, translate_ru_word, translate_en_ex
 from bot_db import word_read_by_fw
 from msg_txt import *
@@ -64,9 +65,6 @@ async def add_word(self:'LLBot', ev:str):
     #9) генерируем пример
     #3) если nw или (fw и нет ссылки и было исправление):
     #        создаем ссылку на слово cambreadge
-
-    lnk=None
-
     #1) выяснить язык слова (для пары русско английский - легко и однозначно: по кодировке)
     src_lang, targ_lang=await detect_lang(self.user_id, self.u.foreign_lang, self.u.native_lang, w)
 
@@ -81,7 +79,6 @@ async def add_word(self:'LLBot', ev:str):
         #3) если исправили опечатки: проверяяем слово еще раз на наличие в базе еще раз -> если есть то редактирование
         if cw!=fw:
             self.log_warn(f"spell correction: {fw} -> {cw}")
-            lnk=None
             fw=cw
             if is_word_in_db(self, fw):
                 return True #будем редактировать, вместо добавления
@@ -95,8 +92,8 @@ async def add_word(self:'LLBot', ev:str):
 
         #4) пытаемся создать ссылку на слово cambreadge
         #6) генерируем пример
-        lnk, ex = await asyncio.gather(
-            get_dict_rawlink(self.user_id, cw),
+        status, ex = await asyncio.gather(
+            cambr_scrap_word(self.user_id, fw),
             gen_example_sentence(fw, nw_list[0], pos, prof_level=pl)
         )
     
@@ -114,17 +111,14 @@ async def add_word(self:'LLBot', ev:str):
 
     #9) генерируем пример
     #6) пытаемся создать ссылку на слово в cambridge, если еще не
-        if lnk is None:
-            lnk, ex = await asyncio.gather(
-                get_dict_rawlink(self.user_id, fw),
-                gen_example_sentence(fw, nw_list[0], pos, prof_level=pl)
-            )
-        else:
-            ex = await gen_example_sentence(fw, nw_list[0], pos, prof_level=pl)
+        status, ex = await asyncio.gather(
+            cambr_scrap_word(self.user_id, fw),
+            gen_example_sentence(fw, nw_list[0], pos, prof_level=pl)
+        )
             
     n_ex = await translate_en_ex(ex)
 
     self.log_info(f"add word: {w} -> {nw_list} pos={pos}")
-    self.edited_word=Word.CreateWord(self.user_id, fw, nw_list, pos, example=ex, native_example=n_ex, lnk=lnk, prof_level=pl)
+    self.edited_word=Word.CreateWord(self.user_id, fw, nw_list, pos, example=ex, native_example=n_ex, prof_level=pl)
     self.call_state(self.ST_EDIT_NEW)
     return True

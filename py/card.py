@@ -12,7 +12,7 @@ NATIVE_LANG = "ru"
 
 
 class Word:
-    def __init__(self, user_id, foreign_w, nw_list, pos, example=None, native_example = None, word_id=-1, lnk=None, ex_prof_level=""):
+    def __init__(self, user_id, foreign_w, nw_list, pos, example=None, native_example = None, word_id=-1, ex_prof_level=""):
         self.user_id=user_id
         self.word_id=word_id
         self.native_lang=NATIVE_LANG
@@ -27,7 +27,6 @@ class Word:
         self.n_example=native_example
         self.audio=None
         self.audio_example=None
-        self.lnk=lnk
         self.ipa = {}
         self.ipa['uk'] = None
         self.ipa['us'] = None
@@ -36,6 +35,7 @@ class Word:
         self.cdict_au['us'] = None
         
         self.ex_prof_level=ex_prof_level
+        self.lnk = None
         
     def GetExProfLevel(self):
         return self.ex_prof_level
@@ -158,8 +158,8 @@ class Word:
             self.word_id=word_add(self.user_id, self.foreign_w, self.nw_list, self.pos, self.example, self.n_example)
 
     @staticmethod
-    def CreateWord(user_id, foreign_w, nw_list, pos, example=None,    native_example=None, lnk=None, prof_level=""):
-        word=Word (user_id, foreign_w, nw_list, pos, example=example, native_example=native_example, word_id=-1, lnk=lnk, ex_prof_level=prof_level)
+    def CreateWord(user_id, foreign_w, nw_list, pos, example=None,    native_example=None, prof_level=""):
+        word=Word (user_id, foreign_w, nw_list, pos, example=example, native_example=native_example, word_id=-1, ex_prof_level=prof_level)
         return word
 
     @staticmethod
@@ -180,7 +180,6 @@ class Word:
         word_id, foreign_w, nw_list, pos, example, n_example=word_read_by_cid(uid, cid)
         if word_id:
             word=Word(uid, foreign_w, nw_list, pos=pos, example=example, native_example=n_example,  word_id=word_id)
-            # await word.SetDictLink()
             
             reg="us"
             source_url, hw, ipa, fn = get_from_dict(foreign_w, pos, region=reg)
@@ -192,10 +191,6 @@ class Word:
         else:
             logger.warning(f"{uid}: cid={cid}: can't get word")
             return None
-
-    async def SetDictLink(self):
-        if self.lnk is None:
-            self.lnk=await get_dict_rawlink(self.user_id, self.foreign_w, self.foreign_lang)
 
     #Устанавливает Аудио файл для записи в наборе. Проеверяет есть ли на локальном хранилище этот файл, если нет, то пытается его получить из сети.
     async def SetAudio(self):
