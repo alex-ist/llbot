@@ -1,4 +1,0 @@
-sudo systemctl restart nginx
-python3 py/main.py &
-#update free dns
-#curl -s http://sync.afraid.org/u/qyQy4pbB4yGNXxzL8hKWTjJn/

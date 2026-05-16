@@ -13,10 +13,10 @@ def init_eleven():
         k=f.readline().strip()
         elevenlabs = AsyncElevenLabs(api_key=k.strip())
     voice_id = {}
-    voice_id['def']="JBFqnCBsd6RMkjVDRZzb" #default
+    voice_id['roger']="CwhRBWXzGAHq8TQ4Fs17" #roger
+    voice_id['sarah']="EXAVITQu4vr4xnSDxMaL" #sarah
+    voice_id['matilda']="XrExE9yKIg1WjnnlVkGX" #matilda
     voice_id['osvald']="8IPGRyOZO2AwIAvImcr8" #osvald
-    voice_id['amelia']="ZF6FPAbjXT4488VcRRnw" #amelia
-    voice_id['anna_rita']="wJqPPQ618aTW29mptyoc" #ana-rita
 
 
 async def eleven_speach(text, lang, file_name, model="eleven_multilingual_v2", pos=None):
@@ -25,10 +25,10 @@ async def eleven_speach(text, lang, file_name, model="eleven_multilingual_v2", p
 
     logger.info(f"generate audio for w: {text}")
     v_id = random.choice([
-        voice_id['def'],
-        voice_id['osvald'],
-        voice_id['amelia'],
-        voice_id['anna_rita']
+        voice_id['roger'],
+        voice_id['sarah'],
+        voice_id['matilda'],
+        voice_id['osvald']
     ])
        
     audio_stream = elevenlabs.text_to_speech.convert(
