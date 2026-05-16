@@ -6,6 +6,9 @@ import random
 
 client = None
 aclient = None
+TEXT_MODEL = "gpt-5.4"
+
+
 def init_oai():
     global aclient, client
     with open ("keys/openai.txt", 'r') as f:
@@ -25,74 +28,6 @@ async def oai_transcript(file_name, lang=None, await_word=None):
         )
         logger.info(f"openAI - whisper responce, lang={lang}: {transcript}")
         return transcript
-
-async def oai_aget_example1(fw, fw2=None):
-    temp =1.0
-
-    try:
-        m=[
-            {
-              "role": "system",
-              "content": [
-                {
-                  "type": "text",
-                  "text": "Craft an example sentence using the given English word or idiom, in a style typical of normal interpersonal communication, favoring American English. The sentence should not exceed 15 words and must return only one sentence!"
-                }
-              ]
-            },
-            {
-              "role": "user",
-              "content": [
-                {
-                  "type": "text",
-                  "text": fw 
-                }
-              ]
-            }
-          ]
-
-        #logger.info(m)
-        response = await aclient.chat.completions.create(model='gpt-4o',
-            messages=m,
-            temperature=temp,
-            max_tokens=60)
-    except ValueError as e:
-        logger.error(f"openAI - ValueError: {e}")
-        return None, None 
-    except Exception as e:
-        logger.error("openAI: "+str(e))
-        return None, None
-    r=response.choices[0].message.content.strip()
-    #print(response.choices[0].message.content)
-    return r, response
-
-
-async def oai_aget_example2(fw, n=0, fw2=None):
-    temp=0.75+n*0.05
-    if temp>1.0:
-        temp =1.0
-
-    try:
-        m=[
-                {"role": "system", "content": "You are American native speaker. I give you english word or idiom. You give me an example of english sentence. Max length of example must be 12 words"},
-                {'role': 'user', 'content': fw}
-            ]
-        #logger.info(m)
-        response = await aclient.chat.completions.create(model='gpt-3.5-turbo',
-            messages=m,
-            temperature=temp,
-            max_tokens=60)
-    except ValueError as e:
-        logger.error(f"openAI - ValueError: {e}")
-        return None, None 
-    except Exception as e:
-        logger.error("openAI: "+str(e))
-        return None, None
-    r=response.choices[0].message.content.strip()
-    #print(response.choices[0].message.content)
-    return r, response
-
-
 
 async def oai_speach(text, lang, file_name, model="tts-1", speed=1.0):
     #it loks, lang is not supported. руский понимает автоматом, сербский оч плохо, скорее нет.
@@ -215,11 +150,10 @@ Act as a spelling checker. For any English word provided:
         {"role": "user",   "content": USER_PROMPT1},
     ]
     response = await aclient.responses.parse(
-        model="gpt-4o",
+        model=TEXT_MODEL,
         input=messages,
         text_format=CheckedWord,               # ⬅ schema = наш Pydantic-класс
         max_output_tokens=50,
-        temperature=0.01,        
     )
 
     cw = response.output_parsed.corrected_word
@@ -257,11 +191,10 @@ Act as a dictionary compiler. For any word provided, and its part of speech:
             {"role": "user",   "content": USER_PROMPT2},
         ]
         response = await aclient.responses.parse(
-            model="gpt-4o",
+            model=TEXT_MODEL,
             input=messages,
             text_format=WordBaseForm,               # ⬅ schema = наш Pydantic-класс
             max_output_tokens=50,
-            temperature=0.01,        
         )
 
         cw = response.output_parsed.word_base_form
@@ -282,10 +215,9 @@ Act as a spelling checker. For any phrase or idiom provided:
         {"role": "user",   "content": USER_PROMPT},
     ]
     response = await aclient.responses.parse(
-        model="gpt-4o",
+        model=TEXT_MODEL,
         input=messages,
         text_format=CheckedPhrase, 
-        temperature=0.01,        
         max_output_tokens=50,
     )
 
@@ -325,10 +257,9 @@ async def translate_word(fw, pos):
         {"role": "user",   "content": USER_PROMPT},
     ]
     response = await aclient.responses.parse(
-        model="gpt-4.1",
+        model=TEXT_MODEL,
         input=messages,
         text_format=TranslatedWord, 
-        temperature=0.0,        
     )
 
     nw = response.output_parsed.translated_word
@@ -349,10 +280,9 @@ async def translate_ru_word(nw):
         {"role": "user",   "content": USER_PROMPT},
     ]
     response = await aclient.responses.parse(
-        model="gpt-4.1",
+        model=TEXT_MODEL,
         input=messages,
         text_format=TranslatedRuWord, 
-        temperature=0.0,        
     )
 
     fw = response.output_parsed.en_word
@@ -370,10 +300,9 @@ async def translate_phrase(fw, pos):
         {"role": "user",   "content": USER_PROMPT},
     ]
     response = await aclient.responses.parse(
-        model="gpt-4.1",
+        model=TEXT_MODEL,
         input=messages,
         text_format=TranslatedPhrase, 
-        temperature=0.01,        
     )
 
     nw = [response.output_parsed.translated_phrase,]
@@ -387,7 +316,7 @@ class ExampleSentence(BaseModel):
     example_sentence: str
 
 
-async def gen_example_sentence ( fw, nw, pos, rejected_sentences = None, extra = None, prof_level=None, model="gpt-5"):
+async def gen_example_sentence ( fw, nw, pos, rejected_sentences = None, extra = None, prof_level=None, model=TEXT_MODEL):
     SYSTEM_PROMPT = """
 Generate a natural-sounding English sentence as an example for a given English word or phrase for language-learning purposes. 
 The sentence should be a realistic example that an American native speaker might use in everyday conversation.
@@ -426,14 +355,14 @@ The sentence should be a realistic example that an American native speaker might
     ]
     #logger.info(f"SYSTEM_PROMPT: {SYSTEM_PROMPT}")
     #logger.info(f"USER_PROMPT: {USER_PROMPT}")
-    if model=="gpt-5":
+    if model.startswith("gpt-5"):
         response = await aclient.responses.parse(
             model=model,
             input=messages,
             text_format=ExampleSentence, 
             max_output_tokens=200,
             reasoning={
-                "effort": "minimal"
+                "effort": "low"
             },
             text={
                 "verbosity": "low"
@@ -470,10 +399,9 @@ async def translate_en_ex(en_ex):
         {"role": "user",   "content": USER_PROMPT},
     ]
     response = await aclient.responses.parse(
-        model="gpt-4.1",
+        model=TEXT_MODEL,
         input=messages,
         text_format=TranslatedSentence, 
-        temperature=0.01,        
     )
 
     ru_ex = response.output_parsed.russian_sentence
@@ -614,13 +542,11 @@ async def update2_table_words():
             
         while True:
             if not skip:
-                n_ex5 = await gen_example_sentence(fw, nw, pos, ea, extra, model="gpt-5", prof_level=level)
-                n_ex4 = await gen_example_sentence(fw, nw, pos, ea, extra, model="gpt-4.1", prof_level=level)
+                n_ex = await gen_example_sentence(fw, nw, pos, ea, extra, prof_level=level)
                 pos = str_to_posdb(pos)
             skip = False
             extra = None            
-            print(f"gpt5({level}): {n_ex5}")
-            print(f"gpt4({level}): {n_ex4}")
+            print(f"{TEXT_MODEL}({level}): {n_ex}")
             print(f"Ok? (y/n/s/p/:/q/+/-)")
             ans = input().strip().lower()
             if ans.startswith('q'):
@@ -641,13 +567,10 @@ async def update2_table_words():
                     skip = True
                     continue
             elif ans == 'y':
-                n_ex=n_ex5
-            elif ans == '4':
-                n_ex=n_ex4
+                pass
             elif ans == 's':
                 break
             else:
-                n_ex=n_ex5
                 ea.append(n_ex)
                 continue
                 
