@@ -17,6 +17,9 @@ def init_eleven():
     voice_id['sarah']="EXAVITQu4vr4xnSDxMaL" #sarah
     voice_id['matilda']="XrExE9yKIg1WjnnlVkGX" #matilda
     voice_id['osvald']="8IPGRyOZO2AwIAvImcr8" #osvald
+    voice_id['rachel']="21m00Tcm4TlvDq8ikWAM" #free/default
+    voice_id['domi']="AZnzlk1XvdvUeBnXmlld" #free/default
+    voice_id['antoni']="ErXwobaYiN019PkySvjV" #free/default
 
 
 async def eleven_speach(text, lang, file_name, model="eleven_multilingual_v2", pos=None):
@@ -24,12 +27,17 @@ async def eleven_speach(text, lang, file_name, model="eleven_multilingual_v2", p
         init_eleven()
 
     logger.info(f"generate audio for w: {text}")
-    v_id = random.choice([
-        voice_id['roger'],
-        voice_id['sarah'],
-        voice_id['matilda'],
-        voice_id['osvald']
+    v_name = random.choice([
+        'roger',
+        'sarah',
+        'matilda',
+        'osvald',
+        'rachel',
+        'domi',
+        'antoni'
     ])
+    v_id = voice_id[v_name]
+    logger.info(f"elevenlabs voice selected: {v_name} ({v_id})")
        
     audio_stream = elevenlabs.text_to_speech.convert(
         text=text,

@@ -17,18 +17,6 @@ def init_oai():
         aclient = AsyncOpenAI(api_key=k)
 
 
-async def oai_transcript(file_name, lang=None, await_word=None):
-    with open(file_name, "rb") as file:
-        transcript = await aclient.audio.transcriptions.create(
-            model="whisper-1",
-            language=lang,
-            #prompt="",
-            file=file,
-            response_format="text"
-        )
-        logger.info(f"openAI - whisper responce, lang={lang}: {transcript}")
-        return transcript
-
 async def oai_speach(text, lang, file_name, model="tts-1", speed=1.0):
     #it loks, lang is not supported. руский понимает автоматом, сербский оч плохо, скорее нет.
     v = random.choice([
@@ -409,23 +397,6 @@ async def translate_en_ex(en_ex):
     logger.info(f"translate_en_ex: {en_ex}\n->\n{ru_ex}")
     # logger.info(f"Usage tokens: {response.usage.input_tokens}, {response.usage.output_tokens}")
     return ru_ex
-
-
-
-
-async def oai_transcript(file_name, lang=None, await_word=None):
-    with open(file_name, "rb") as file:
-        transcript = await aclient.audio.transcriptions.create(
-            model="whisper-1",
-            language=lang,
-            #prompt="",
-            file=file,
-            response_format="text"
-        )
-        logger.info(f"openAI - whisper responce, lang={lang}: {transcript}")
-        return transcript
-
-
 
 from bot_db import open_db, close_db, posdb_to_str, str_to_posdb
 async def update_table_words():

@@ -9,10 +9,7 @@ from urllib.parse import parse_qs
 
 from card import Word, TrainingCard, TrainingCardSet
 from user_cfg import User
-from oai import oai_transcript
-from gog import google_transcript
-
-from utils import clean_compare_str
+from pron_transcript import compare_ipa, pron_transcript
 
 WA_VER=12
 
@@ -216,7 +213,7 @@ async def websocket_handler(request):
                     
                     if lang_dir=="fw": #fixme get current lang:
                         lang="en"
-                        word = c.GetForeign() if c else None
+                        word = c.word.GetIpa() if c and c.word else None
                     elif lang_dir=="nw":
                         lang="ru"
                         word=c.GetNative() if c else None
@@ -235,19 +232,16 @@ async def websocket_handler(request):
                 
                 logger.info(f"{user_id}: WA: written to file ok, len={sz}")
                 
-                (t1, s1), (t2, s2) = await asyncio.gather(
-                    measure_time(oai_transcript, file_name, lang, word),
-                    measure_time(google_transcript, file_name, lang, word)
-                )
+                t1, s1 = await measure_time(pron_transcript, file_name, lang, word)
                 #проверка корректности ответа
-                correct_answ=clean_compare_str(word, s1, s2, lang=lang)
+                correct_answ=compare_ipa(word, s1) if lang == "en" else False
                 try:
                     if correct_answ:
                         data_obj = { 'type': "flip-flash"} #автопереворот карточки.
                         json_str = json.dumps(data_obj)
                         logger.warning(f"{user_id}: WA: send data: flip-flash")
                         await ws.send_str(json_str)
-                    res_str=f"o:{int(t1)}:{s1} <br> g:{int(t2)}:{s2}"
+                    res_str=f"o:{int(t1)}:{s1}"
                     logger.warning(f"{user_id}: WA: send data: info-msg: {res_str}")
                     data_obj = { 'type': "info-msg", 'text' : res_str}
                     json_str = json.dumps(data_obj)
