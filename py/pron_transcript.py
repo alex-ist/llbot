@@ -1,5 +1,4 @@
 import asyncio
-import json
 import os
 import re
 from dataclasses import dataclass
@@ -7,17 +6,16 @@ from dataclasses import dataclass
 import librosa
 import torch
 from huggingface_hub import login as hf_login, snapshot_download
-from transformers import AutoConfig, AutoFeatureExtractor, AutoModel
 
 from botlog import logger
+from pron_model import load_conformer_ctc_checkpoint
 
 
-BACKBONE_ID = "utter-project/mHuBERT-147"
-HEAD_REPO = "istomin9192/mHuBERT-147-ipa-head"
+HEAD_REPO = "istomin9192/ipa-private-v1"
+MODEL_REVISION = os.environ.get("HF_MODEL_REVISION", "main")
 SR = 16_000
 MAX_SAMPLES = 15 * SR
 
-_HF_TOKEN = os.environ.get("HF_TOKEN")
 _MODEL = None
 _MODEL_LOCK = asyncio.Lock()
 
@@ -30,6 +28,19 @@ class PronunciationModel:
     blank_id: int
     id2phone: dict
     device: str
+
+
+def _load_hf_token() -> str | None:
+    token = os.environ.get("HF_TOKEN")
+    if token:
+        return token.strip()
+
+    token_path = os.path.join("keys", "hf_token")
+    if os.path.isfile(token_path):
+        with open(token_path, encoding="utf-8") as f:
+            return f.read().strip()
+
+    return None
 
 
 def _normalize_ipa(ipa: str | None) -> str:
@@ -81,40 +92,30 @@ def _load_audio(file_name: str):
 
 
 def _load_model_sync() -> PronunciationModel:
-    if _HF_TOKEN:
-        hf_login(token=_HF_TOKEN, add_to_git_credential=False)
+    hf_token = _load_hf_token()
+    if hf_token:
+        hf_login(token=hf_token, add_to_git_credential=False)
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
-    logger.info(f"pron_transcript: loading HF model on {device}")
+    logger.info(f"pron_transcript: loading private HF model on {device}")
 
-    head_repo_dir = snapshot_download(repo_id=HEAD_REPO, token=_HF_TOKEN)
-    conformer_head_dir = os.path.join(head_repo_dir, "conformer_v1")
-    ipa_map_path = os.path.join(head_repo_dir, "ipa_map.json")
-
-    conformer_config = AutoConfig.from_pretrained(
-        conformer_head_dir,
-        trust_remote_code=True,
+    repo_dir = snapshot_download(
+        repo_id=HEAD_REPO,
+        revision=MODEL_REVISION,
+        token=hf_token,
     )
-    backbone_id = getattr(conformer_config, "base_model", BACKBONE_ID)
+    checkpoint_path = os.path.join(repo_dir, "best.pt")
 
-    feature_extractor = AutoFeatureExtractor.from_pretrained(
-        backbone_id,
-        token=_HF_TOKEN,
+    conformer_head, phone_to_id, _ckpt, backbone, feature_extractor = load_conformer_ctc_checkpoint(
+        checkpoint_path,
+        device=device,
+        load_backbone_model=True,
     )
-    backbone = AutoModel.from_pretrained(
-        backbone_id,
-        token=_HF_TOKEN,
-    ).to(device).eval()
-    conformer_head = AutoModel.from_pretrained(
-        conformer_head_dir,
-        trust_remote_code=True,
-    ).to(device).eval()
 
-    with open(ipa_map_path, encoding="utf-8") as f:
-        id2phone = json.load(f)["id2phone"]
+    id2phone = {str(pid): phone for phone, pid in phone_to_id.items()}
+    blank_id = conformer_head.blank_id
 
-    blank_id = conformer_config.architecture["blank_id"]
-    logger.info("pron_transcript: HF model loaded")
+    logger.info("pron_transcript: private HF model loaded")
     return PronunciationModel(
         feature_extractor=feature_extractor,
         backbone=backbone,
@@ -144,8 +145,10 @@ def _transcribe_sync(model: PronunciationModel, file_name: str) -> str:
     with torch.no_grad():
         inp = model.feature_extractor(wav, sampling_rate=SR, return_tensors="pt")
         emb = model.backbone(inp.input_values.to(model.device)).last_hidden_state
-        outputs = model.conformer_head(emb, input_lengths=[emb.shape[1]])
-        probs = torch.softmax(outputs.logits[0], dim=-1)
+        input_lengths = torch.tensor([emb.shape[1]], device=model.device)
+        outputs = model.conformer_head(emb, input_lengths=input_lengths)
+        logits = outputs.logits if hasattr(outputs, "logits") else outputs
+        probs = torch.softmax(logits[0], dim=-1)
 
     phones, conf = _decode_ctc_predictions(probs, model.blank_id, model.id2phone)
     ipa = "".join(phones)
