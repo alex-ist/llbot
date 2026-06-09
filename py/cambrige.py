@@ -9,6 +9,7 @@ import requests
 from bs4 import BeautifulSoup
 from bs4.element import NavigableString
 from bot_db import *
+from cmu_pron import expression_ipa, is_multiword_expression, text_ipa
 import random
 
 BASE = "https://dictionary.cambridge.org"
@@ -245,6 +246,40 @@ def save_json(fw, raw_json):
     with open(full_path, 'w', encoding='utf-8') as f:
         f.write(raw_json)
 
+def save_c_dict_status(c, fw, source_url, is_pron):
+    c.execute(
+        "UPDATE c_dict SET source_url = ?, is_pron = ? WHERE fw = ?",
+        (source_url, is_pron, fw),
+    )
+    if c.rowcount == 0:
+        c.execute(
+            "INSERT INTO c_dict (fw, source_url, is_pron) VALUES (?, ?, ?)",
+            (fw, source_url, is_pron),
+        )
+
+def save_cmu_us_pronunciations(c, fw, entries):
+    ipa = text_ipa(fw)
+    if not ipa:
+        return 0
+
+    rows = entries or [{"hw": fw, "pos": "phrase", "entry_num": 0}]
+    saved = 0
+    seen = set()
+    for entry in rows:
+        pos = str_to_posdb(entry.get("pos") or "phrase")
+        entry_num = entry.get("entry_num", 0)
+        key = (pos, entry_num)
+        if key in seen:
+            continue
+        seen.add(key)
+        hw = entry.get("hw") or fw
+        c.execute(
+            "INSERT INTO c_dict_pron (fw, hw, pos, region, ipa, fn, entry_num) VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (fw, hw, pos, "us", ipa, None, entry_num),
+        )
+        saved += 1
+    return saved
+
 async def cambr_scrap_word(user_id, fw):
     db, c=open_db()
     c.execute("SELECT fw FROM c_dict where fw=?", (fw,))
@@ -264,20 +299,23 @@ async def cambr_scrap_word(user_id, fw):
 
     if status == "not_found": #страницы точно нет.
         logger.warning(f"{user_id}: cambrige dict: link == False for fw={fw}")
-        c.execute("INSERT OR REPLACE INTO c_dict (fw, source_url) VALUES (?, ?)", (fw, None))
+        cmu_saved = save_cmu_us_pronunciations(c, fw, None)
+        save_c_dict_status(c, fw, None, 1 if cmu_saved else 0)
         db.commit()            
-        return status
+        return "ok" if cmu_saved else status
     if not pronunciations and not entries:
         logger.warning(f"{user_id}: cambrige dict: no entries for fw={fw}")
         #like status == "not_found"
-        c.execute("INSERT OR REPLACE INTO c_dict (fw, source_url) VALUES (?, ?)", (fw, None))
+        cmu_saved = save_cmu_us_pronunciations(c, fw, None)
+        save_c_dict_status(c, fw, None, 1 if cmu_saved else 0)
         db.commit()            
-        return "not_found"
+        return "ok" if cmu_saved else "not_found"
 
     if not pronunciations and entries:
-        c.execute("INSERT OR REPLACE INTO c_dict (fw, source_url, is_pron) VALUES (?, ?, ?)", (fw, link, 0))
+        cmu_saved = save_cmu_us_pronunciations(c, fw, entries)
+        save_c_dict_status(c, fw, link, 1 if cmu_saved else 0)
         db.commit()            
-        return "no_pron"
+        return "ok" if cmu_saved else "no_pron"
 
     region_nums = {
             "uk": {},  # audio_link -> num
@@ -290,6 +328,10 @@ async def cambr_scrap_word(user_id, fw):
         audio_link = p.get('audio')
         pos = p.get('pos')
         ipa = normalize_ipa(p.get('ipa'))
+        if region == "us" and is_multiword_expression(fw):
+            ipa = expression_ipa(fw) or ipa
+        if region == "us" and not ipa:
+            ipa = text_ipa(fw)
         
         if not hw:
             continue

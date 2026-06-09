@@ -104,7 +104,7 @@ def get_from_dict(fw:str, pos:str, region="us"):
     if row:
         source_url = row[0]
         is_pron = row[1]
-        if source_url and is_pron==1:
+        if is_pron==1:
             db, c=open_db()
             pos = str_to_posdb(pos)
             c.execute("SELECT hw, ipa, fn FROM c_dict_pron WHERE  fw = ? and pos = ? and region = ? order by entry_num", (fw, pos, region))

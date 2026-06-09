@@ -12,6 +12,7 @@ from user_cfg import User
 from pron_alignment import pron_alignment
 
 WA_VER=12
+PRON_FLIP_MIN_QUALITY = 90
 
 import time
 #обертка для async функции, измеряет время выполнения
@@ -117,6 +118,7 @@ async def websocket_handler(request):
     err_code="err"
     lang = None
     target_transcription = None
+    voice_card = None
     from run_bot import web_app_after_tren_cb, web_app_before_tren_cb
     async for msg in ws:
         try:
@@ -212,6 +214,7 @@ async def websocket_handler(request):
                     lang_dir = parsed_data.get('lang')
                     cid = parsed_data.get('cid')
                     c=tcs.GetCard(cid)
+                    voice_card = c
 
                     lang="en"
                     target_transcription = parsed_data.get('transcription') or (c.word.GetIpa() if c and c.word else None)
@@ -238,6 +241,14 @@ async def websocket_handler(request):
                     json_str = json.dumps(data_obj, ensure_ascii=False)
                     logger.warning(f"{user_id}: WA: send data: pron-alignment, wper={alignment.get('wper')}")
                     await ws.send_str(json_str)
+
+                    wper = float(alignment.get("wper") or 0)
+                    quality = max(0, min(100, round((1 - wper) * 100)))
+                    if voice_card and voice_card.direction != 0 and quality >= PRON_FLIP_MIN_QUALITY:
+                        logger.warning(
+                            f"{user_id}: WA: send data: flip-flash, cid={voice_card.training_card_id}, quality={quality}"
+                        )
+                        await ws.send_str(json.dumps({ 'type': "flip-flash" }))
 
                     res_str=f"align:{int(t1)}:wper={alignment.get('wper')}"
                     logger.warning(f"{user_id}: WA: {res_str}")
