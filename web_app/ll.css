@@ -64,6 +64,10 @@ body {
 .blk4 {
     min-height: 70px;
     margin: 15px;
+    position: relative;
+    display: flex;
+    justify-content: center;
+    align-items: center;
 }
 
 img {
@@ -163,15 +167,15 @@ img {
 }
 
 .pron-good {
-    color: #4E9B63;
+    color: #418854;
 }
 
 .pron-mid {
-    color: #C89B28;
+    color: #bb8c16;
 }
 
 .pron-bad {
-    color: #C94343;
+    color: #b44d4d;
 }
 
 .pron-target-correct {
@@ -179,11 +183,11 @@ img {
 }
 
 .pron-inserted {
-    color: #367DD2;
+    color: #3471bd;
 }
 
 .pron-struck {
-    color: #C94343;
+    color: #b44d4d;
     position: relative;
 }
 
@@ -363,6 +367,25 @@ img {
     justify-content: center;
     align-items: center;
     display: flex;
+    position: relative;
+    z-index: 2;
+}
+
+.mic-wave {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: min(280px, 88vw);
+    height: 80px;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.16s ease;
+    z-index: 1;
+}
+
+.mic-wave.active {
+    opacity: 1;
 }
 
 /* Removal indicator styles - removed text overlay, using visual card effects instead */

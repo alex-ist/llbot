@@ -1,5 +1,5 @@
 "use strict";
-const VER = 58
+const VER = 59
 let query_id;
 
 class Card {
@@ -693,6 +693,9 @@ let micAudioContext;
 let micAnalyser;
 let micLevelData;
 let silenceCheckTimer;
+let micWaveCanvas;
+let micWaveCtx;
+let micWaveFrame;
 let micStartedAt = 0;
 let lastVoiceAt = 0;
 let voiceDetected = false;
@@ -735,6 +738,79 @@ function stopSilenceWatch() {
         clearInterval(silenceCheckTimer);
         silenceCheckTimer = null;
     }
+}
+
+function resizeMicWaveCanvas() {
+    if (!micWaveCanvas)
+        return;
+
+    const rect = micWaveCanvas.getBoundingClientRect();
+    const dpr = window.devicePixelRatio || 1;
+    const width = Math.max(1, Math.round(rect.width * dpr));
+    const height = Math.max(1, Math.round(rect.height * dpr));
+    if (micWaveCanvas.width !== width || micWaveCanvas.height !== height) {
+        micWaveCanvas.width = width;
+        micWaveCanvas.height = height;
+    }
+}
+
+function drawMicWave() {
+    if (!micWaveCanvas || !micWaveCtx)
+        return;
+
+    resizeMicWaveCanvas();
+    const width = micWaveCanvas.width;
+    const height = micWaveCanvas.height;
+    micWaveCtx.clearRect(0, 0, width, height);
+
+    const centerY = height / 2;
+    const amplitude = height * 0.38;
+    const data = micLevelData;
+    if (micAnalyser && data)
+        micAnalyser.getByteTimeDomainData(data);
+
+    micWaveCtx.lineWidth = Math.max(2, Math.round((window.devicePixelRatio || 1) * 2));
+    micWaveCtx.lineCap = "round";
+    micWaveCtx.strokeStyle = "rgba(255, 255, 255, 0.74)";
+    micWaveCtx.shadowColor = "rgba(109, 72, 128, 0.28)";
+    micWaveCtx.shadowBlur = 8 * (window.devicePixelRatio || 1);
+    micWaveCtx.beginPath();
+
+    const samples = data || [];
+    const sampleLen = samples.length || 1;
+    for (let x = 0; x < width; x++) {
+        const sample = samples.length ? samples[Math.floor(x * sampleLen / width)] : 128;
+        const y = centerY + ((sample - 128) / 128) * amplitude;
+        if (x === 0)
+            micWaveCtx.moveTo(x, y);
+        else
+            micWaveCtx.lineTo(x, y);
+    }
+    micWaveCtx.stroke();
+
+    if (mic_record_on)
+        micWaveFrame = requestAnimationFrame(drawMicWave);
+}
+
+function startMicWave() {
+    micWaveCanvas = micWaveCanvas || document.querySelector(".mic-wave");
+    if (!micWaveCanvas)
+        return;
+
+    micWaveCtx = micWaveCtx || micWaveCanvas.getContext("2d");
+    micWaveCanvas.classList.add("active");
+    cancelAnimationFrame(micWaveFrame);
+    drawMicWave();
+}
+
+function stopMicWave() {
+    micWaveCanvas = micWaveCanvas || document.querySelector(".mic-wave");
+    cancelAnimationFrame(micWaveFrame);
+    micWaveFrame = null;
+    if (micWaveCanvas)
+        micWaveCanvas.classList.remove("active");
+    if (micWaveCtx && micWaveCanvas)
+        micWaveCtx.clearRect(0, 0, micWaveCanvas.width, micWaveCanvas.height);
 }
 
 async function startSilenceWatch() {
@@ -814,6 +890,7 @@ async function mic_off() {
     if (mic_record_on) {
         clearTimeout(micTimeout);
         stopSilenceWatch();
+        stopMicWave();
         console.log("mic Rec OFF");
         mic_record_on = false;
         micIcon.src = "img/micbut1.png";
@@ -831,6 +908,7 @@ async function mic_on() {
         if (!mic_record_on)
             return;
         await startRecording();
+        startMicWave();
         await startSilenceWatch();
     }
 }
