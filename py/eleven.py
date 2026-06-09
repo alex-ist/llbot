@@ -16,10 +16,7 @@ def init_eleven():
     voice_id['roger']="CwhRBWXzGAHq8TQ4Fs17" #roger
     voice_id['sarah']="EXAVITQu4vr4xnSDxMaL" #sarah
     voice_id['matilda']="XrExE9yKIg1WjnnlVkGX" #matilda
-    voice_id['osvald']="8IPGRyOZO2AwIAvImcr8" #osvald
-    voice_id['rachel']="21m00Tcm4TlvDq8ikWAM" #free/default
-    voice_id['domi']="AZnzlk1XvdvUeBnXmlld" #free/default
-    voice_id['antoni']="ErXwobaYiN019PkySvjV" #free/default
+    voice_id['antoni']="ErXwobaYiN019PkySvjV" #antoni
 
 
 async def eleven_speach(text, lang, file_name, model="eleven_multilingual_v2", pos=None):
@@ -31,9 +28,6 @@ async def eleven_speach(text, lang, file_name, model="eleven_multilingual_v2", p
         'roger',
         'sarah',
         'matilda',
-        'osvald',
-        'rachel',
-        'domi',
         'antoni'
     ])
     v_id = voice_id[v_name]

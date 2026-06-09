@@ -7,6 +7,7 @@ import httpx
 
 import requests
 from bs4 import BeautifulSoup
+from bs4.element import NavigableString
 from bot_db import *
 import random
 
@@ -18,6 +19,36 @@ HEADERS = {
 
 def text(el):
     return re.sub(r"\s+", " ", el.get_text(" ", strip=True)) if el else None
+
+def normalize_ipa(ipa):
+    if not ipa:
+        return None
+    ipa = re.sub(r"\s+", " ", ipa).strip()
+    ipa = re.sub(r"\s*\(\s*", "(", ipa)
+    ipa = re.sub(r"\s*\)\s*", ")", ipa)
+    ipa = ipa.replace(" ə ", "(ə)")
+    ipa = ipa.replace("(ə)r", "ər")
+    ipa = re.sub(r"e(?![ɪə])", "ɛ", ipa)
+    return ipa or None
+
+def ipa_text(el):
+    if not el:
+        return None
+
+    def node_text(node):
+        if isinstance(node, NavigableString):
+            return str(node)
+
+        classes = set(node.get("class", []))
+        value = "".join(node_text(child) for child in node.children)
+        if node.name == "sup" or classes.intersection({"sp", "dsp"}):
+            value = value.strip()
+            return f"({value})" if value else ""
+        return value
+
+    value = "".join(node_text(child) for child in el.children)
+    return normalize_ipa(value)
+
 def text_all(els):
     r =  ""
     for el in els:
@@ -60,9 +91,9 @@ def parse_pronunciations(soup):
                 if not reg_block:
                     continue
                 region = text(reg_block.select_one(".region"))  # 'uk' / 'us'
-                ipa = text(reg_block.select_one(".pron .ipa"))
+                ipa = ipa_text(reg_block.select_one(".pron .ipa"))
                 audio = collect_audio(reg_block)
-                if region or ipa or any(audio.values()):
+                if region or ipa or audio:
                     out.append( {
                         "hw": head,
                         "pos": pos,
@@ -258,7 +289,7 @@ async def cambr_scrap_word(user_id, fw):
         region = (p.get('region') or "").lower().strip()
         audio_link = p.get('audio')
         pos = p.get('pos')
-        ipa = p.get('ipa')
+        ipa = normalize_ipa(p.get('ipa'))
         
         if not hw:
             continue
@@ -334,4 +365,3 @@ async def run_scrap():
 import asyncio
 if __name__ == "__main__":
     asyncio.run(run_scrap())
-

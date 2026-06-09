@@ -1,5 +1,5 @@
 "use strict";
-const VER = 57
+const VER = 58
 let query_id;
 
 class Card {
@@ -181,6 +181,7 @@ function stopPlayAudio() {
 
 async function updateCardUI(fl, card) {
     if (card) {
+        clearInfoMsg();
         const front=fl.querySelector(".front");
         const frontForeign = front.querySelector(".foreign");
         const frontNative = front.querySelector(".native");
@@ -204,7 +205,7 @@ async function updateCardUI(fl, card) {
             frontForeign.querySelector(".foreign-text").textContent = card.foreignW;
             frontForeign.querySelector(".pos-text").textContent = pos_text;
             if (ipa_text){
-                frontForeign.querySelector(".ipa-text").textContent = `/${ipa_text}/`;
+                setIpaText(frontForeign.querySelector(".ipa-text"), ipa_text);
                 frontForeign.querySelector(".reg-text").textContent = `${reg_text}: `;
             } else {
                 frontForeign.querySelector(".ipa-text").textContent = "";
@@ -248,7 +249,7 @@ async function updateCardUI(fl, card) {
         back.querySelector(".native-text").textContent = n_text;
         back.querySelector(".foreign .pos-text").textContent = pos_text;
         if (ipa_text){
-            back.querySelector(".foreign .ipa-text").textContent = `/${ipa_text}/`;
+            setIpaText(back.querySelector(".foreign .ipa-text"), ipa_text);
             back.querySelector(".foreign .reg-text").textContent = `${reg_text}: `;
         } else {
             back.querySelector(".foreign .ipa-text").textContent = "";
@@ -347,7 +348,7 @@ async function endPan(ev) {
 
 
     if (Math.abs(ev.deltaX) > BREAK_POINT) {
-        document.querySelector('.info-msg').textContent="";
+        clearInfoMsg();
 
         const dataToSend = {
             type:   "answer",
@@ -434,6 +435,131 @@ ws.addEventListener('open', () => {
 });
 
 let cmd_reload=0;
+
+function clearInfoMsg() {
+    document.querySelector('.info-msg').replaceChildren();
+}
+
+function qualityClass(value) {
+    const quality = Number(value || 0);
+    if (quality <= 0.5)
+        return "pron-bad";
+    if (quality <= 0.8)
+        return "pron-mid";
+    return "pron-good";
+}
+
+function eventToken(event) {
+    const status = event.status;
+    const target = event.target_phone || "";
+    const heard = event.heard_phone || "";
+    if (status === "substitution")
+        return `${heard || "?"}-${target || "?"}`;
+    if (status === "deletion")
+        return `-${target || "?"}`;
+    if (status === "insertion")
+        return `+${heard || "?"}`;
+    return heard || target || "?";
+}
+
+function appendSupSchwa(container, sonorant) {
+    const schwa = document.createElement("sup");
+    schwa.className = "pron-sup-schwa";
+    schwa.textContent = "ə";
+    container.appendChild(schwa);
+    container.appendChild(document.createTextNode(sonorant));
+}
+
+function setIpaText(container, ipa) {
+    container.textContent = "";
+    if (!ipa)
+        return;
+
+    container.appendChild(document.createTextNode("/"));
+    const parts = String(ipa).split(/(\(ə\)[ln])/g);
+    for (const part of parts) {
+        if (!part)
+            continue;
+        const match = part.match(/^\(ə\)([ln])$/);
+        if (match)
+            appendSupSchwa(container, match[1]);
+        else
+            container.appendChild(document.createTextNode(part));
+    }
+    container.appendChild(document.createTextNode("/"));
+}
+
+function appendPhoneText(layer, text) {
+    const match = String(text || "").match(/^([+-]?)(?:\(ə\))([ln])$/);
+    if (!match) {
+        layer.textContent = text;
+        return;
+    }
+
+    if (match[1])
+        layer.appendChild(document.createTextNode(match[1]));
+
+    appendSupSchwa(layer, match[2]);
+}
+
+function createPhoneLayer(text, className) {
+    const layer = document.createElement("span");
+    layer.className = className;
+    appendPhoneText(layer, text);
+    return layer;
+}
+
+function createPronEvent(event) {
+    const item = document.createElement("span");
+    const status = event.status;
+    item.className = `pron-event pron-${status || "unknown"}`;
+    item.title = `${eventToken(event)} ${event.target_quality ?? ""}`;
+
+    if (status === "insertion") {
+        item.appendChild(createPhoneLayer("", "pron-target-spacer"));
+        item.appendChild(createPhoneLayer(`+${event.heard_phone || "?"}`, "pron-heard pron-inserted"));
+        return item;
+    }
+
+    const colorClass = qualityClass(event.target_quality);
+    if (status === "substitution") {
+        item.appendChild(createPhoneLayer(event.target_phone || "?", "pron-target pron-target-correct"));
+        item.appendChild(createPhoneLayer(event.heard_phone || "?", "pron-heard pron-struck"));
+        return item;
+    }
+
+    if (status === "deletion") {
+        item.appendChild(createPhoneLayer(event.target_phone || "?", "pron-target pron-target-correct"));
+        item.appendChild(createPhoneLayer(" ", "pron-heard pron-missing-space"));
+        return item;
+    }
+
+    item.appendChild(createPhoneLayer("", "pron-target-spacer"));
+    item.appendChild(createPhoneLayer(event.heard_phone || event.target_phone || "?", `pron-heard ${colorClass}`));
+    return item;
+}
+
+function renderPronAlignment(data) {
+    const box = document.querySelector('.info-msg');
+    box.replaceChildren();
+
+    const card = document.createElement("div");
+    card.className = "pron-card";
+
+    const score = document.createElement("div");
+    score.className = "pron-score";
+    const quality = Math.max(0, Math.min(100, Math.round((1 - Number(data.wper || 0)) * 100)));
+    score.textContent = `${quality}`;
+    card.appendChild(score);
+
+    const row = document.createElement("div");
+    row.className = "pron-result";
+    for (const event of data.display_events || [])
+        row.appendChild(createPronEvent(event));
+    card.appendChild(row);
+    box.appendChild(card);
+}
+
 ws.addEventListener('message', async (event) => {
     const receivedData = JSON.parse(event.data);
     console.log(d()+"Rx data:", receivedData);
@@ -478,7 +604,10 @@ ws.addEventListener('message', async (event) => {
     }
     else if (receivedData.type === "info-msg") {
         console.log("Rx info msg:"+receivedData.text);
-        document.querySelector('.info-msg').innerHTML=receivedData.text;
+        document.querySelector('.info-msg').textContent=receivedData.text;
+    }
+    else if (receivedData.type === "pron-alignment") {
+        renderPronAlignment(receivedData);
     }
     else if (receivedData.type === "flip-flash") {
         console.log("flip-flash");
@@ -556,20 +685,104 @@ function playS2() {
 }
 
 let mediaRecorder;
+let micStream;
 let audioChunks = [];
 let mic_inited =false;
 let mic_record_on  =false;
+let micAudioContext;
+let micAnalyser;
+let micLevelData;
+let silenceCheckTimer;
+let micStartedAt = 0;
+let lastVoiceAt = 0;
+let voiceDetected = false;
+const MIC_MAX_RECORD_MS = 10000;
+const MIC_SILENCE_MS = 1100;
+const MIC_MIN_RECORD_MS = 700;
+const MIC_SILENCE_RMS = 0.015;
+
+function setupMicAnalyser() {
+    if (!micStream || micAnalyser)
+        return;
+
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContextClass)
+        return;
+
+    micAudioContext = new AudioContextClass();
+    const source = micAudioContext.createMediaStreamSource(micStream);
+    micAnalyser = micAudioContext.createAnalyser();
+    micAnalyser.fftSize = 1024;
+    micLevelData = new Uint8Array(micAnalyser.fftSize);
+    source.connect(micAnalyser);
+}
+
+function getMicRms() {
+    if (!micAnalyser || !micLevelData)
+        return 0;
+
+    micAnalyser.getByteTimeDomainData(micLevelData);
+    let sum = 0;
+    for (let i = 0; i < micLevelData.length; i++) {
+        const normalized = (micLevelData[i] - 128) / 128;
+        sum += normalized * normalized;
+    }
+    return Math.sqrt(sum / micLevelData.length);
+}
+
+function stopSilenceWatch() {
+    if (silenceCheckTimer) {
+        clearInterval(silenceCheckTimer);
+        silenceCheckTimer = null;
+    }
+}
+
+async function startSilenceWatch() {
+    stopSilenceWatch();
+    if (!micAnalyser)
+        return;
+
+    if (micAudioContext && micAudioContext.state === "suspended")
+        await micAudioContext.resume();
+
+    micStartedAt = Date.now();
+    lastVoiceAt = micStartedAt;
+    voiceDetected = false;
+
+    silenceCheckTimer = setInterval(async () => {
+        if (!mic_record_on)
+            return;
+
+        const now = Date.now();
+        const rms = getMicRms();
+        if (rms >= MIC_SILENCE_RMS) {
+            voiceDetected = true;
+            lastVoiceAt = now;
+            return;
+        }
+
+        if (
+            voiceDetected &&
+            now - micStartedAt >= MIC_MIN_RECORD_MS &&
+            now - lastVoiceAt >= MIC_SILENCE_MS
+        ) {
+            console.log("mic auto stop by silence, rms=" + rms.toFixed(4));
+            await mic_off();
+        }
+    }, 100);
+}
 
 async function init_mic() {
     if (mic_inited)
         return;
     try {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
         const options = { mimeType: 'audio/webm', audioBitsPerSecond: 24000 };
-        mediaRecorder = new MediaRecorder(stream, options);
+        mediaRecorder = new MediaRecorder(micStream, options);
         mediaRecorder.ondataavailable = event => {
             audioChunks.push(event.data);
         };
+        setupMicAnalyser();
         mic_inited = true;
     } catch (error) {
         console.error("mic init error:", error);
@@ -593,12 +806,14 @@ async function micbut_click() {
     }
     else {
         await mic_on();
-        micTimeout = setTimeout(mic_off, 10000);
+        micTimeout = setTimeout(mic_off, MIC_MAX_RECORD_MS);
     }
 }
 
 async function mic_off() {
     if (mic_record_on) {
+        clearTimeout(micTimeout);
+        stopSilenceWatch();
         console.log("mic Rec OFF");
         mic_record_on = false;
         micIcon.src = "img/micbut1.png";
@@ -613,7 +828,10 @@ async function mic_on() {
         console.log("mic Rec ON");
         mic_record_on = true;
         await playS1();
+        if (!mic_record_on)
+            return;
         await startRecording();
+        await startSilenceWatch();
     }
 }
 
@@ -648,6 +866,9 @@ async function startRecording() {
 }
 
 function stopRecording() {
+  if (!mediaRecorder || mediaRecorder.state === "inactive")
+    return;
+
   mediaRecorder.onstop = () => {
     const audioBlob = new Blob(audioChunks);
     sendAudioToServer(audioBlob);
@@ -660,8 +881,9 @@ function sendAudioToServer(audioBlob) {
 
     const dataToSend = {
         type:  "rec-voice",
-        lang:   cur_card.direction?"fw":"nw",
+        lang:   "fw",
         cid:    cur_card.cid,
+        transcription: cur_card.ipa,
     };
     let r=JSON.stringify(dataToSend)
     ws.send(r);

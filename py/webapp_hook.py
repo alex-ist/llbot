@@ -9,7 +9,7 @@ from urllib.parse import parse_qs
 
 from card import Word, TrainingCard, TrainingCardSet
 from user_cfg import User
-from pron_transcript import compare_ipa, pron_transcript
+from pron_alignment import pron_alignment
 
 WA_VER=12
 
@@ -115,6 +115,8 @@ async def websocket_handler(request):
 
     tcs=None
     err_code="err"
+    lang = None
+    target_transcription = None
     from run_bot import web_app_after_tren_cb, web_app_before_tren_cb
     async for msg in ws:
         try:
@@ -210,18 +212,10 @@ async def websocket_handler(request):
                     lang_dir = parsed_data.get('lang')
                     cid = parsed_data.get('cid')
                     c=tcs.GetCard(cid)
-                    
-                    if lang_dir=="fw": #fixme get current lang:
-                        lang="en"
-                        word = c.word.GetIpa() if c and c.word else None
-                    elif lang_dir=="nw":
-                        lang="ru"
-                        word=c.GetNative() if c else None
-                    else:
-                        lang=None
-                        word=None
 
-                    logger.info(f"{user_id}: WA: rec-voice, lang={lang_dir}, expect = {word}")
+                    lang="en"
+                    target_transcription = parsed_data.get('transcription') or (c.word.GetIpa() if c and c.word else None)
+                    logger.info(f"{user_id}: WA: rec-voice, lang={lang_dir}, transcription = {target_transcription}")
 
             if msg.type == WSMsgType.BINARY:
                 sz = len(msg.data)
@@ -231,21 +225,22 @@ async def websocket_handler(request):
                     file.write(msg.data)
                 
                 logger.info(f"{user_id}: WA: written to file ok, len={sz}")
-                
-                t1, s1 = await measure_time(pron_transcript, file_name, lang, word)
-                #проверка корректности ответа
-                correct_answ=compare_ipa(word, s1) if lang == "en" else False
-                try:
-                    if correct_answ:
-                        data_obj = { 'type': "flip-flash"} #автопереворот карточки.
-                        json_str = json.dumps(data_obj)
-                        logger.warning(f"{user_id}: WA: send data: flip-flash")
-                        await ws.send_str(json_str)
-                    res_str=f"o:{int(t1)}:{s1}"
-                    logger.warning(f"{user_id}: WA: send data: info-msg: {res_str}")
-                    data_obj = { 'type': "info-msg", 'text' : res_str}
+
+                if lang != "en" or not target_transcription:
+                    data_obj = { 'type': "info-msg", 'text' : "pronunciation alignment requires English IPA transcription"}
                     json_str = json.dumps(data_obj)
                     await ws.send_str(json_str)
+                    continue
+                
+                t1, alignment = await measure_time(pron_alignment, file_name, target_transcription, lang)
+                try:
+                    data_obj = { 'type': "pron-alignment", 'elapsed_ms': int(t1), **alignment}
+                    json_str = json.dumps(data_obj, ensure_ascii=False)
+                    logger.warning(f"{user_id}: WA: send data: pron-alignment, wper={alignment.get('wper')}")
+                    await ws.send_str(json_str)
+
+                    res_str=f"align:{int(t1)}:wper={alignment.get('wper')}"
+                    logger.warning(f"{user_id}: WA: {res_str}")
                 except Exception as e:
                     logger.warning(f"{user_id}: WA: Error sending data via ws: {e}")
                     break

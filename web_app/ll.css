@@ -89,7 +89,118 @@ img {
     color: rgba(255, 255, 255, 0.9);
     font-size: 20px;
     font-style: normal;
-    padding: 15px;    
+    padding: 15px;
+    width: 100%;
+    text-align: center;
+}
+
+.pron-card {
+    margin: 0 auto;
+    padding: 10px 12px 12px;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.86);
+    box-shadow: 0 2px 8px rgba(67, 43, 77, 0.16);
+    font-family: "Charis SIL", "Noto Sans", "Arial Unicode MS", "DejaVu Sans", serif;
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    max-width: 100%;
+}
+
+.pron-score {
+    align-self: flex-end;
+    min-width: 28px;
+    padding: 1px 7px;
+    margin-bottom: 3px;
+    border-radius: 7px;
+    background: rgba(109, 72, 128, 0.12);
+    color: #6D4880;
+    font-size: 17px;
+    line-height: 22px;
+    font-weight: 700;
+}
+
+.pron-result {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: flex-end;
+    gap: 5px 7px;
+    max-width: 100%;
+    line-height: 1;
+}
+
+.pron-event {
+    display: inline-grid;
+    grid-template-rows: 18px 28px;
+    justify-items: center;
+    align-items: end;
+    min-width: 18px;
+    font-weight: 700;
+}
+
+.pron-target,
+.pron-target-spacer {
+    display: block;
+    min-height: 18px;
+    font-size: 16px;
+    line-height: 18px;
+}
+
+.pron-heard {
+    display: block;
+    min-height: 28px;
+    font-size: 25px;
+    line-height: 28px;
+}
+
+.pron-sup-schwa {
+    position: relative;
+    top: -0.45em;
+    margin-right: 1px;
+    font-size: 0.72em;
+    line-height: 0;
+}
+
+.pron-good {
+    color: #4E9B63;
+}
+
+.pron-mid {
+    color: #C89B28;
+}
+
+.pron-bad {
+    color: #C94343;
+}
+
+.pron-target-correct {
+    color: #171717;
+}
+
+.pron-inserted {
+    color: #367DD2;
+}
+
+.pron-struck {
+    color: #C94343;
+    position: relative;
+}
+
+.pron-struck::after {
+    content: "";
+    position: absolute;
+    left: -2px;
+    right: -2px;
+    top: 50%;
+    border-top: 2px solid rgba(0, 0, 0, 0.9);
+    transform: rotate(-58deg);
+    transform-origin: center;
+}
+
+.pron-missing-space {
+    min-width: 18px;
+    border-bottom: 2px solid rgba(201, 67, 67, 0.45);
 }
 
 .speaker {

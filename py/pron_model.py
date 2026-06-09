@@ -323,44 +323,6 @@ class ConformerCTCHead(nn.Module):
         return self.out(x)
 
 
-def save_conformer_ctc_checkpoint(
-    path: str,
-    model_name: str,
-    head: ConformerCTCHead,
-    phone_to_id: Dict[str, int],
-    extra: Optional[Dict] = None,
-    backbone=None,
-):
-    first_layer = head.layers[0]
-    payload = {
-        "backbone_id": model_name,
-        "head_state_dict": head.state_dict(),
-        "phone_to_id": phone_to_id,
-        "head_config": {
-            "input_dim": head.input_proj[0].in_features,
-            "encoder_dim": head.input_proj[0].out_features,
-            "num_layers": len(head.layers),
-            "num_attention_heads": first_layer.self_attn.attention.h,
-            "conv_kernel_size": first_layer.conv_module.depthwise_conv.kernel_size[0],
-            "dropout": head.input_proj[2].p,
-            "n_phones": len(phone_to_id),
-            "ff_expansion": first_layer.ffn1.linear1.out_features // first_layer.ffn1.linear2.out_features,
-            "conv_expansion": (
-                first_layer.conv_module.pointwise_conv1.out_channels
-                // first_layer.conv_module.depthwise_conv.in_channels
-            ),
-            "local_attn_window": head.local_attn_window,
-        },
-        "model_type": "ctc_conformer_head",
-    }
-    if backbone is not None:
-        payload["backbone_state_dict"] = backbone.state_dict()
-    if extra:
-        payload.update(extra)
-    os.makedirs(os.path.dirname(path), exist_ok=True)
-    torch.save(payload, path)
-
-
 def load_conformer_ctc_checkpoint(path: str, device: str, load_backbone_model: bool = False):
     ckpt = torch.load(path, map_location="cpu")
     phone_to_id = ckpt["phone_to_id"]
@@ -397,6 +359,5 @@ __all__ = [
     "get_backbone_trainable_params",
     "load_backbone",
     "load_conformer_ctc_checkpoint",
-    "save_conformer_ctc_checkpoint",
     "unfreeze_top_encoder_layers",
 ]
