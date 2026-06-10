@@ -35,8 +35,27 @@ class Card {
              return null;
         const aa = new Audio(src);
         return new Promise((resolve, reject) => {
-            aa.addEventListener("canplaythrough", () => resolve(aa), { once: true });
-            aa.addEventListener("error", reject, { once: true });
+            const cleanup = () => {
+                clearTimeout(timer);
+                aa.removeEventListener("canplaythrough", onReady);
+                aa.removeEventListener("loadeddata", onReady);
+                aa.removeEventListener("error", onError);
+            };
+            const onReady = () => {
+                cleanup();
+                resolve(aa);
+            };
+            const onError = (err) => {
+                cleanup();
+                reject(err);
+            };
+            const timer = setTimeout(() => {
+                cleanup();
+                resolve(null);
+            }, 8000);
+            aa.addEventListener("canplaythrough", onReady, { once: true });
+            aa.addEventListener("loadeddata", onReady, { once: true });
+            aa.addEventListener("error", onError, { once: true });
         });
     }
 
@@ -138,6 +157,24 @@ flash0.parentNode.insertBefore(flash1, flash0.nextSibling); // Вставляе�
 let upFlash=flash0;
 let downFlash=flash1;
 let ss='q';
+
+function showLoadedCards() {
+    downFlash.querySelector(".loading").style.display = 'none';
+    downFlash.querySelector(".front").style.display = 'flex';
+    upFlash.querySelector(".loading").style.display = 'none';
+    upFlash.querySelector(".front").style.display = 'flex';
+}
+
+async function preloadCardAudio(cards) {
+    for (const card of cards) {
+        try {
+            await card.loadAudio();
+            console.log(d()+`:Audio for ${card.foreignW} loaded`);
+        } catch (error) {
+            console.log(d()+`:Error loading audio for "${card.foreignW}":`, error);
+        }
+    }
+}
 
 function d() {
     return Date.now()/1000;
@@ -563,7 +600,7 @@ function renderPronAlignment(data) {
 ws.addEventListener('message', async (event) => {
     const receivedData = JSON.parse(event.data);
     console.log(d()+"Rx data:", receivedData);
-    if (receivedData.type === "cmd-reload") {
+    if (receivedData.type === "cmd-reload" || receivedData.type === "reload") {
         cmd_reload=1;
         window.location.reload(true); // <--no return from here
         return
@@ -584,23 +621,8 @@ ws.addEventListener('message', async (event) => {
         await updateCardUI(downFlash, cardSet.getNextCard())
         downFlash.style.zIndex = -1;
 
-        // Последовательно загружаем аудиофайлы
-        let loadedCount = 0;
-        for (const card of cardSet.cards) {
-            try {
-                await card.loadAudio();
-                console.log(d()+`:Audio for ${card.foreignW} loaded`);
-            } catch (error) {
-                console.log(d()+`:Error loading audio for "${card.foreignW}":`, error);
-            }
-            loadedCount++;
-            if (loadedCount === 2) { // Если загружено 2 карточки, скрываем индикатор и показываем карточки
-                downFlash.querySelector(".loading").style.display = 'none';
-                downFlash.querySelector(".front").style.display = 'flex';
-                upFlash.querySelector(".loading").style.display = 'none';
-                upFlash.querySelector(".front").style.display = 'flex';
-            }
-        }
+        showLoadedCards();
+        preloadCardAudio(cardSet.cards);
     }
     else if (receivedData.type === "info-msg") {
         console.log("Rx info msg:"+receivedData.text);
