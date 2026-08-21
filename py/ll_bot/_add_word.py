@@ -94,7 +94,13 @@ async def add_word(self:'LLBot', ev:str):
         #6) генерируем пример
         status, ex = await asyncio.gather(
             cambr_scrap_word(self.user_id, fw),
-            gen_example_sentence(fw, nw_list[0], pos, prof_level=pl)
+            gen_example_sentence(
+                fw,
+                nw_list[0],
+                pos,
+                prof_level=pl,
+                topic="programming or machine learning",
+            )
         )
     
     else: #на русском
@@ -113,7 +119,13 @@ async def add_word(self:'LLBot', ev:str):
     #6) пытаемся создать ссылку на слово в cambridge, если еще не
         status, ex = await asyncio.gather(
             cambr_scrap_word(self.user_id, fw),
-            gen_example_sentence(fw, nw_list[0], pos, prof_level=pl)
+            gen_example_sentence(
+                fw,
+                nw_list[0],
+                pos,
+                prof_level=pl,
+                topic="programming or machine learning",
+            )
         )
             
     n_ex = await translate_en_ex(ex)

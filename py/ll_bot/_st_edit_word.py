@@ -125,7 +125,14 @@ async def st_edit_word(self:'LLBot') -> None:
                 cnt1=0
             if ex:
                 ex_list.append(ex)
-            ex = await gen_example_sentence(fw, self.edited_word.nw_list[0], pos, rejected_sentences=ex_list, prof_level=pl)
+            ex = await gen_example_sentence(
+                fw,
+                self.edited_word.nw_list[0],
+                pos,
+                rejected_sentences=ex_list,
+                prof_level=pl,
+                topic="programming or machine learning",
+            )
             ru_ex = await translate_en_ex(ex)
             cnt1+=1
             self.edited_word.ChangeNativeExample(ru_ex)

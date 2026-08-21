@@ -304,7 +304,16 @@ class ExampleSentence(BaseModel):
     example_sentence: str
 
 
-async def gen_example_sentence ( fw, nw, pos, rejected_sentences = None, extra = None, prof_level=None, model=TEXT_MODEL):
+async def gen_example_sentence(
+    fw,
+    nw,
+    pos,
+    rejected_sentences=None,
+    extra=None,
+    prof_level=None,
+    model=TEXT_MODEL,
+    topic=None,
+):
     SYSTEM_PROMPT = """
 Generate a natural-sounding English sentence as an example for a given English word or phrase for language-learning purposes. 
 The sentence should be a realistic example that an American native speaker might use in everyday conversation.
@@ -327,6 +336,13 @@ The sentence should be a realistic example that an American native speaker might
     USER_PROMPT = f'Word or phrase: "{fw}"\nPart of speech: "{pos}"\nRussian meaning: "{nw}"\n'
     if prof_level:
         USER_PROMPT += f'Language proficiency level: "{prof_level}"\n'
+
+    if topic:
+        USER_PROMPT += (
+            f'Topic or domain: "{topic}"\n'
+            "Use the word or phrase in this topic or domain when it is natural and "
+            "semantically correct. Do not force an unrelated technical meaning.\n"
+        )
 
     if extra:
         USER_PROMPT += f"Important information from user: {extra}\n"
