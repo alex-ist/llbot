@@ -2,6 +2,7 @@ import os
 from openai import OpenAI, AsyncOpenAI
 from botlog import logger
 import random
+from config import required_env
 
 
 client = None
@@ -11,10 +12,9 @@ TEXT_MODEL = "gpt-5.4"
 
 def init_oai():
     global aclient, client
-    with open ("keys/openai.txt", 'r') as f:
-        k=f.readline().strip()
-        client = OpenAI(api_key=k)
-        aclient = AsyncOpenAI(api_key=k)
+    api_key = required_env("OPENAI_API_KEY")
+    client = OpenAI(api_key=api_key)
+    aclient = AsyncOpenAI(api_key=api_key)
 
 
 async def oai_speach(text, lang, file_name, model="tts-1", speed=1.0):

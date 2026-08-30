@@ -8,6 +8,7 @@ import torch
 from huggingface_hub import login as hf_login, snapshot_download
 
 from botlog import logger
+from config import required_env
 from pron_model import load_backbone, load_conformer_ctc_checkpoint
 from pron_scoring import parse_target_transcription, score_pronunciation_alignment
 from сtc_alignment import score_target_pronunciation
@@ -35,17 +36,8 @@ class PronunciationAligner:
     device: str
 
 
-def _load_hf_token() -> str | None:
-    token = os.environ.get("HF_TOKEN")
-    if token:
-        return token.strip()
-
-    token_path = os.path.join("keys", "hf_token")
-    if os.path.isfile(token_path):
-        with open(token_path, encoding="utf-8") as f:
-            return f.read().strip()
-
-    return None
+def _load_hf_token() -> str:
+    return required_env("HF_TOKEN")
 
 
 def _ui_display_event(event: dict[str, Any]) -> dict[str, Any]:

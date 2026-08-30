@@ -3,6 +3,7 @@
 import os
 from google.cloud import texttospeech_v1
 from botlog import logger
+from config import google_credentials
 
 gtts_async_client = None  
 #extension defines file format OGG, MP3, WAV.
@@ -36,7 +37,10 @@ async def google_speach(text, lang, file_name):
 
     global gtts_async_client
     if gtts_async_client is None:
-        gtts_async_client = texttospeech_v1.TextToSpeechAsyncClient()
+        credentials, _ = google_credentials()
+        gtts_async_client = texttospeech_v1.TextToSpeechAsyncClient(
+            credentials=credentials
+        )
     response = await gtts_async_client.synthesize_speech(request=request)
     
     dir_name = os.path.dirname(file_name)  # получить имя директории из полного пути файла

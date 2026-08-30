@@ -54,6 +54,7 @@ _map.txt
 
 
 keys/*
+.env
 data/*
 certs/*
 backup/*

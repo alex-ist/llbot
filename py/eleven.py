@@ -2,16 +2,17 @@ import asyncio
 from elevenlabs.client import AsyncElevenLabs
 import random
 from botlog import logger
+from config import required_env
 
 #fixme - add second account to elevenlabs
 
 elevenlabs = None
 voice_id = None
 def init_eleven():
-    global elevenlabs, aelevenlabs, voice_id
-    with open ("keys/eleven.txt", 'r') as f:
-        k=f.readline().strip()
-        elevenlabs = AsyncElevenLabs(api_key=k.strip())
+    global elevenlabs, voice_id
+    elevenlabs = AsyncElevenLabs(
+        api_key=required_env("ELEVENLABS_API_KEY")
+    )
     voice_id = {}
     voice_id['roger']="CwhRBWXzGAHq8TQ4Fs17" #roger
     voice_id['sarah']="EXAVITQu4vr4xnSDxMaL" #sarah

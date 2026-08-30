@@ -9,6 +9,7 @@ import httpx
 from bot_db import *
 from botlog import logger
 from utils import remove_en_article, remove_brackets
+from config import google_credentials
 
 
 async def get_dict_rawlink(user_id, fw: str, lang="en") -> str:
@@ -62,9 +63,13 @@ gtrans_async_client = None
 async def g_translate(word:str, src_lang="en", target_lang="ru"):
     global gtrans_async_client
     if gtrans_async_client is None:
-        gtrans_async_client = translate.TranslationServiceAsyncClient()
+        credentials, _ = google_credentials()
+        gtrans_async_client = translate.TranslationServiceAsyncClient(
+            credentials=credentials
+        )
+    _, project_id = google_credentials()
     request={
-        "parent": "projects/bamboo-antler-386512/locations/global",
+        "parent": f"projects/{project_id}/locations/global",
         "contents": [word],
         "mime_type": "text/plain",
         "source_language_code": src_lang,
@@ -76,6 +81,7 @@ async def g_translate(word:str, src_lang="en", target_lang="ru"):
 
 
 async def detect_lang(user_id:int, flang:str, nlang:str, word:str):
+    global gtrans_async_client
     if flang=="en" and nlang=="ru":
          if word.isascii():
             return flang, nlang
@@ -83,10 +89,16 @@ async def detect_lang(user_id:int, flang:str, nlang:str, word:str):
             return nlang, flang
     else:
         logger.warning(f"{user_id}: detect_lang for flang={flang} and nlang={nlang}. Not tested!!")
+        if gtrans_async_client is None:
+            credentials, _ = google_credentials()
+            gtrans_async_client = translate.TranslationServiceAsyncClient(
+                credentials=credentials
+            )
+        _, project_id = google_credentials()
         dl_req=translate.DetectLanguageRequest(
                 content=word,
-                parent="projects/bamboo-antler-386512/locations/global",
-            )        
+                parent=f"projects/{project_id}/locations/global",
+            )
         tr = await gtrans_async_client.detect_language(dl_req)
         detected_lang=tr.languages[0].language_code
         if detected_lang==nlang:

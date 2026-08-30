@@ -5,9 +5,7 @@ from run_bot import bot_run, bot_stop
 from webapp_hook import webapp_hook_run
 import platform
 import signal
-import os
-
-os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "/llbot/keys/bamboo-antler-386512-4ce534dff745.json"
+from config import required_env
 
 def _raise_system_exit():
     raise SystemExit
@@ -27,14 +25,11 @@ async def main_async():
     for sig in (signal.SIGINT, signal.SIGTERM, signal.SIGABRT):
         loop.add_signal_handler(sig, _raise_system_exit)
 
+    token = required_env("TELEGRAM_BOT_TOKEN")
     if prod:
-        with open("keys/lingolink.txt", 'r') as f:
-            token = f.readline().strip()
-            logger.info("Running LL production bot")
+        logger.info("Running LL production bot")
     else:
-        with open("keys/tg-token.txt", 'r') as f:
-            token = f.readline().strip()
-            logger.info("Running LL test bot")
+        logger.info("Running LL test bot")
     
     if not token:
         logger.error("No telegram token found")

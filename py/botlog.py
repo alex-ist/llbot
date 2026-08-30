@@ -8,17 +8,13 @@ def log_init():
     def_fmt="%(asctime)s: %(name)s: %(levelname)s: %(message)s"
     ll_fmt= "%(asctime)s: %(levelname)s: %(message)s"
 
-    if os.path.isfile("keys/freedns.txt"): #on server
-        if not os.path.exists("log"):
-            os.makedirs("log")
-        logging.basicConfig(
-            filename=DEFAULT_LOG_NAME,
-            filemode='a',
-            format=def_fmt, level=logging.WARNING)
-        ll_handler = logging.FileHandler(DEFAULT_LOG_NAME, mode='a') #специальный хендлер для LL
-    else: #on local comp
-        logging.basicConfig(format=def_fmt, level=logging.WARNING)
-        ll_handler = logging.StreamHandler() #специальный хендлер для LL
+    if not os.path.exists("log"):
+        os.makedirs("log")
+    logging.basicConfig(
+        filename=DEFAULT_LOG_NAME,
+        filemode='a',
+        format=def_fmt, level=logging.WARNING)
+    ll_handler = logging.FileHandler(DEFAULT_LOG_NAME, mode='a') #специальный хендлер для LL
 
     logging.getLogger('httpx').setLevel(logging.WARNING)
     logging.getLogger('apscheduler').setLevel(logging.WARNING)
