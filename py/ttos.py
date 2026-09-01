@@ -37,6 +37,7 @@ async def tts_word(word, lang, pos=None):
     else:
         #fixme check errors
         # await google_speach(word, lang, p)
+        os.makedirs(os.path.dirname(p), exist_ok=True)
         if pos == 'verb':
             word = f"to {word}"
         await eleven_speach(word, lang, p)
