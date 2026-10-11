@@ -4,19 +4,19 @@
         <meta charset="utf-8"/>
         <title>Lingo Link</title>
         <meta content="width=device-width, initial-scale=1" name="viewport"/>
-        <link href="ll.css?ver=73" rel="stylesheet" type="text/css"/>
+        <link href="ll.css?ver=20260926-9" rel="stylesheet" type="text/css"/>
         <link href="https://fonts.googleapis.com" rel="preconnect"/>
         <link href="https://fonts.gstatic.com" rel="preconnect" crossorigin="anonymous"/>
         <link href="https://fonts.googleapis.com/css2?family=Charis+SIL:wght@400;700&display=swap" rel="stylesheet"/>
-        <link href="img/favicon.ico" rel="shortcut icon" type="image/x-icon"/>
-        <link href="img/webclip.png" rel="apple-touch-icon"/>
+        <link href="img/favicon.ico?ver=20260926-2" rel="shortcut icon" type="image/x-icon"/>
+        <link href="img/webclip.png?ver=20260926-2" rel="apple-touch-icon"/>
     </head>
     <body>
         <div class="container" id="container">
             <div class="blk1">
                 <div class="speaker">                    
-                    <div class="speaker-e"><img src="img/sp-e1.png" width="52" alt=""/></div>
-                    <div class="speaker-d"><img src="img/sp-d1.png" width="52" alt=""/></div>
+                    <div class="speaker-e"><img src="img/sp-e1.png?ver=20260926-2" width="52" alt=""/></div>
+                    <div class="speaker-d"><img src="img/sp-d1.png?ver=20260926-2" width="52" alt=""/></div>
                 </div>
                 <div class="counter">
                     <div class="txt-counter">0</div>
@@ -36,7 +36,7 @@
                             <div class="foreign">
                                 <div class="fw-row">
                                     <div class="f-left">
-                                        <img src="img/play.png" alt="" width="36" onclick="playAudio('fw');"/>
+                                        <img src="img/play.png?ver=20260926-2" alt="" width="36" onclick="playAudio('fw');"/>
                                     </div>
                                     <a class="foreign-text" href="#" target="_blank">
                                         <span class="dot"></span> Loading...
@@ -51,12 +51,16 @@
                                 </div>
                             </div>
                             <div class="native">
+                                <div class="n-left">
+                                    <img src="img/play.png?ver=20260926-2" alt="" width="36" onclick="playAudio('nw');"/>
+                                </div>
                                 <div class="native-text"></div>
+                                <div class="spacer"></div>
                             </div>
                         </div>
                         <div class="example">
                             <div class="t-left">
-                                <img src="img/play.png" width="36" alt="" onclick="playAudio('ex');"/>
+                                <img src="img/play.png?ver=20260926-2" width="36" alt="" onclick="playAudio('ex');"/>
                             </div>
                             <div class="example-text"></div>
                         </div>
@@ -70,7 +74,7 @@
                             <div class="foreign">
                                 <div class="fw-row">
                                     <div class="f-left">
-                                        <img src="img/play.png" alt="" width="36" onclick="playAudio('fw');"/>
+                                        <img src="img/play.png?ver=20260926-2" alt="" width="36" onclick="playAudio('fw');"/>
                                     </div>
                                     <a class="foreign-text" href="#" target="_blank">..loading</a>
                                     <div class="spacer"></div>
@@ -83,12 +87,16 @@
                                 </div>
                             </div>
                             <div class="back-native">
+                                <div class="n-left">
+                                    <img src="img/play.png?ver=20260926-2" alt="" width="36" onclick="playAudio('nw');"/>
+                                </div>
                                 <div class="native-text"></div>
+                                <div class="spacer"></div>
                             </div>
                         </div>
                         <div class="example">
                             <div class="t-left">
-                                <img src="img/play.png" width="36" alt="" onclick="playAudio('ex');"/>
+                                <img src="img/play.png?ver=20260926-2" width="36" alt="" onclick="playAudio('ex');"/>
                             </div>
                             <div class="example-text">
                                 <span class="ex ex-native">Перевод на русский</span>
@@ -101,13 +109,13 @@
             <div class="blk4">
                 <canvas class="mic-wave" aria-hidden="true"></canvas>
                 <div class="micbut">
-                    <img src="img/micbut0.png" width="73" alt="" onclick="micbut_click()"/></div>
+                    <img src="img/micbut0.png?ver=20260926-2" width="73" alt="" onclick="micbut_click()"/></div>
             </div>
         </div>
     </body>
     <script src="https://hammerjs.github.io/dist/hammer.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <script src="ll.js?ver=75"></script>
+    <script src="ll.js?ver=20260926-9"></script>
 </html>
 

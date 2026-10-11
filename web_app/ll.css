@@ -21,7 +21,7 @@ html {
 
 body {
     margin: 0;
-    background-image: url('img/bg-41.png'), linear-gradient(0deg, #FFB06D 0%, #F3A893 59.72%, #9870A2 100%);
+    background-image: url('img/bg-41.png?ver=20260926-2'), linear-gradient(0deg, #FFB06D 0%, #F3A893 59.72%, #9870A2 100%);
     background-position: center;
     background-size:  cover; 
     background-repeat: no-repeat; 
@@ -59,6 +59,7 @@ body {
     margin: 0 15px 0 15px;
     perspective: 1000px;
     min-height: 400px;
+    position: relative;
 }
 
 .blk4 {
@@ -226,7 +227,6 @@ img {
     height: 100%;
     width: 100%;
     position: absolute;
-    transform-style: preserve-3d;
 }
 
 .corner-box {
@@ -258,18 +258,13 @@ img {
     position: absolute;
     height: 100%;
     width: 100%;
-    backface-visibility: hidden;
     display: flex;
     flex-direction: column;
     justify-content: space-around;
 }
 
-.front {
-    transform: rotateY(-0deg);
-}
-
 .back {
-    transform: rotateY(-180deg);
+    display: none;
 }
 
 .q-text {
@@ -346,9 +341,13 @@ img {
 
 .back-native {
     margin-top: 20px;
+    align-self: center;
+    display: flex;
+    justify-content: center;
+    align-items: center;
 }
 
-.t-left, .f-left {
+.t-left, .f-left, .n-left {
     flex: none;
     margin-right: 10px;
 }

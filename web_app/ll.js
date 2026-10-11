@@ -1,5 +1,5 @@
 "use strict";
-const VER = 59
+const VER = 73
 let query_id;
 
 class Card {
@@ -11,6 +11,7 @@ class Card {
         this.pos = cardData.pos;
         this.example = cardData.ex;
         this.native_example = cardData.n_ex;
+        this.nativeText = this.nw_list.filter(Boolean).join(", ");
         this.answer = -1;  // not showed card
         this.dict_lnk = cardData.lnk;
         this.q_id = q_id;
@@ -60,8 +61,12 @@ class Card {
     }
 
     async loadAudio() {
-        this.audio1 = await this.loadOneAudio(this.a_lnk);
-        this.audio2 = await this.loadOneAudio(this.cdict_a_lnk);
+        const [dictionaryAudio, generatedAudio] = await Promise.all([
+            this.loadOneAudio(this.cdict_a_lnk).catch(() => null),
+            this.loadOneAudio(this.a_lnk).catch(() => null)
+        ]);
+        this.audio1 = dictionaryAudio;
+        this.audio2 = generatedAudio;
     }
     
     getNextAudio() {
@@ -137,6 +142,13 @@ async function getHash(inputString) {
     return hashHex.substring(0, 12);
 }
 
+function addFinalPeriod(text) {
+    const trimmed = text.trim();
+    if (!trimmed || /\p{P}$/u.test(trimmed))
+        return trimmed;
+    return `${trimmed}.`;
+}
+
 //playAudio("https://lingolink.bot.nu/au/en/audio_words/disposal.ogg");
 // Создание тестового CardSet
 const cardSet = new CardSet();
@@ -160,9 +172,19 @@ let ss='q';
 
 function showLoadedCards() {
     downFlash.querySelector(".loading").style.display = 'none';
-    downFlash.querySelector(".front").style.display = 'flex';
     upFlash.querySelector(".loading").style.display = 'none';
-    upFlash.querySelector(".front").style.display = 'flex';
+    showCardFront(downFlash);
+    showCardFront(upFlash);
+}
+
+function showCardFront(flash) {
+    flash.querySelector(".front").style.display = 'flex';
+    flash.querySelector(".back").style.display = 'none';
+}
+
+function showCardBack(flash) {
+    flash.querySelector(".front").style.display = 'none';
+    flash.querySelector(".back").style.display = 'flex';
 }
 
 async function preloadCardAudio(cards) {
@@ -181,9 +203,13 @@ function d() {
 }
 
 let last_audio;
-async function playAudio(audioSrc) {
+let pendingInitialNativeAudio = null;
+
+async function playAudio(audioSrc, queueIfBlocked=false) {
     let c=cardSet.getCurrentCard();
     if (c) {
+        if (!queueIfBlocked)
+            pendingInitialNativeAudio = null;
         stopPlayAudio();
     
         if (audioSrc == "fw") {
@@ -196,15 +222,60 @@ async function playAudio(audioSrc) {
             last_audio = new Audio(s_link);
             //console.log("E:" + s_link);
         }
+        else if (audioSrc == "nw") {
+            const text = addFinalPeriod(c.nativeText);
+            if (!text)
+                return;
+            const hash = await getHash(text);
+            const s_link = `/au/ru/e/${hash}.wav?q=${encodeURIComponent(query_id)}&c=${encodeURIComponent(c.cid)}&kind=native`;
+            last_audio = new Audio(s_link);
+        }
         else
-            return;
+            return false;
+
+        if (!last_audio)
+            return false;
+
+        if (queueIfBlocked) {
+            pendingInitialNativeAudio = {
+                audio: last_audio,
+                cid: c.cid
+            };
+        }
 
         try {
             await last_audio.play();
+            if (queueIfBlocked)
+                pendingInitialNativeAudio = null;
+            return true;
         } catch (err) {
             console.warn('Audio play failed:', err);
-        }            
+            return false;
+        }
     }
+    return false;
+}
+
+function retryPendingInitialNativeAudio() {
+    const pending = pendingInitialNativeAudio;
+    const card = cardSet.getCurrentCard();
+    if (!pending || !card || pending.cid != card.cid)
+        return false;
+    if (!isSoundEnabled) {
+        pendingInitialNativeAudio = null;
+        return false;
+    }
+
+    pendingInitialNativeAudio = null;
+    last_audio = pending.audio;
+    const playPromise = pending.audio.play();
+    if (playPromise) {
+        playPromise.catch(err => {
+            console.warn('Initial native audio retry failed:', err);
+            pendingInitialNativeAudio = pending;
+        });
+    }
+    return true;
 }
 
 
@@ -300,6 +371,8 @@ async function updateCardUI(fl, card) {
 }
 
 async function tapHandler (ev) {
+    if (retryPendingInitialNativeAudio())
+        return;
     await mic_off();
     if (ev.target.closest('img'))
         return;
@@ -310,17 +383,39 @@ async function tapHandler (ev) {
 async function flipFlash(){
     if (ss=='q') {
         ss='a';
-        gsap.to(upFlash, {
-            duration: 0.7, rotationY: 180, ease: Back.easeOut,
+        const animation = new Promise(resolve => {
+            gsap.to(upFlash, {
+                duration: 0.35,
+                rotationY: 90,
+                ease: "power2.in",
+                force3D: true,
+                onComplete: () => {
+                    showCardBack(upFlash);
+                    gsap.set(upFlash, {rotationY: -90});
+                    gsap.to(upFlash, {
+                        duration: 0.35,
+                        rotationY: 0,
+                        ease: Back.easeOut,
+                        force3D: true,
+                        onComplete: () => {
+                            // Drop the temporary GPU layer after the 3D flip. Some
+                            // Android WebViews otherwise keep stale corner pixels
+                            // until the next drag transform forces a repaint.
+                            gsap.set(upFlash, {clearProps: "transform"});
+                            void upFlash.offsetWidth;
+                            resolve();
+                        }
+                    });
+                }
+            });
         });
 
         if (isSoundEnabled) {
             let card = cardSet.getCurrentCard();
-            if (card && card.direction != 0) {
-                await playAudio("fw");
-                // console.log("play1: d=" + card.direction + "  fw=" + card.foreignW);
-            }
+            if (card)
+                void playAudio(card.direction == 0 ? "nw" : "fw");
         }
+        await animation;
     }
 
 }
@@ -328,7 +423,7 @@ async function flipFlash(){
 async function startPan(ev) {
     await mic_off();
     let rot = -48.0*ev.deltaX/maxWidth;
-    gsap.set(upFlash, {x: ev.deltaX, y: ev.deltaY, rotation: rot});
+    gsap.set(upFlash, {x: ev.deltaX, y: ev.deltaY, rotation: rot, force3D: false});
     const absDX = Math.abs(ev.deltaX);
     const absDY = Math.abs(ev.deltaY);
 
@@ -351,12 +446,13 @@ async function startPan(ev) {
 async function completeSwipe(){
     upFlash.style.zIndex -= 2; // перетаскиваем html карточки назад
     ss='q';
-    gsap.set(upFlash, {x: '0%', y: '0%', rotation: 0, rotationY:0, scale: 1, opacity: 1});
+    gsap.set(upFlash, {x: '0%', y: '0%', rotation: 0, rotationY: 0, scale: 1, opacity: 1, force3D: false});
 
     if (cardSet.getLen()>=1) {
         const u=upFlash;
         upFlash=downFlash;
         downFlash=u;
+        showCardFront(downFlash);
         await updateCardUI(downFlash, cardSet.getNextCard());
     }
     else {
@@ -398,23 +494,23 @@ async function endPan(ev) {
         cardSet.setAnswer(ev.deltaX>0 ? 1 : 0 );
         if (isSoundEnabled) {
             let card=cardSet.getCurrentCard();
-            if (card && card.direction==0){
-                await playAudio("fw");
-                console.log("play1: d=" + card.direction+"  fw="+card.foreignW);
-            }
+            if (card)
+                void playAudio(card.direction == 0 ? "fw" : "nw");
         }
 
-        gsap.to(upFlash, 0.3, { 
-            ease: Cubic.easeInOut, 
-            x: ev.deltaX>0 ? '120%' : '-120%', 
+        gsap.to(upFlash, 0.3, {
+            ease: Cubic.easeInOut,
+            x: ev.deltaX>0 ? '120%' : '-120%',
+            force3D: false,
             onComplete: completeSwipe
         });
     } else
         gsap.to(upFlash, .2, {
             ease: Cubic.easeInOut,
             x: '0%',
-            y: '0%',            
-            rotation: 0            
+            y: '0%',
+            rotation: 0,
+            force3D: false
         });
         gsap.to(".corner-box",  .2, {opacity: 0});
 
@@ -622,6 +718,9 @@ ws.addEventListener('message', async (event) => {
         downFlash.style.zIndex = -1;
 
         showLoadedCards();
+        const firstCard = cardSet.getCurrentCard();
+        if (isSoundEnabled && firstCard && firstCard.direction != 0)
+            void playAudio("nw", true);
         preloadCardAudio(cardSet.cards);
     }
     else if (receivedData.type === "info-msg") {
@@ -681,8 +780,8 @@ speakerD.addEventListener('click', invertAutoPlay);
 
 
 //mic handling
-let play_s1 = new Audio("/3.ogg");
-let play_s2 = new Audio("/2.ogg");
+let play_s1 = new Audio("/3.ogg?ver=20260926-2");
+let play_s2 = new Audio("/2.ogg?ver=20260926-2");
 play_s2.volume = 0.6;
 play_s1.volume = 0.35;
 
@@ -1061,8 +1160,9 @@ function resetCardPosition() {
     gsap.to(upFlash, .2, {
         ease: Cubic.easeInOut,
         x: '0%',
-        y: '0%',            
-        rotation: 0            
+        y: '0%',
+        rotation: 0,
+        force3D: false
     });
 }
 
@@ -1089,6 +1189,7 @@ async function removeWord(card) {
         y: '-150%',
         opacity: 0,
         scale: 0.8,
+        force3D: false,
         onComplete: completeSwipe
     });
 }

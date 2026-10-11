@@ -10,6 +10,7 @@ from urllib.parse import parse_qs
 from card import Word, TrainingCard, TrainingCardSet
 from user_cfg import User
 from pron_alignment import pron_alignment
+from ttos import tts_russian
 
 WA_VER=12
 PRON_FLIP_MIN_QUALITY = 90
@@ -305,6 +306,30 @@ async def generate_audio_ex(request):
     audio_path=wd.audio_example
     return web.FileResponse(audio_path)
 
+
+async def generate_audio_ru(request):
+    qid = request.rel_url.query.get('q')
+    cid = request.rel_url.query.get('c')
+    kind = request.rel_url.query.get('kind')
+    if qid is None or cid is None or kind != 'native':
+        raise web.HTTPBadRequest(reason="q, c and a valid kind are required")
+
+    uid = active_connections.get_key1_by_key2(qid)
+    logger.warning(f"{uid}: generate_audio_ru cid={cid}, qid={qid}, kind={kind}")
+    if uid is None:
+        raise web.HTTPBadRequest(reason="c is unknown")
+
+    wd = Word.ReadFromDb_by_cid(uid, cid)
+    if wd is None:
+        logger.error(f"{uid}:cid={cid}: generate_audio_ru: can't get word")
+        raise web.HTTPBadRequest(reason="c is wrong")
+
+    text = wd.GetAllNativesStr()
+    audio_path = await tts_russian(text)
+    if audio_path is None:
+        raise web.HTTPNotFound(reason="Russian text is empty")
+    return web.FileResponse(audio_path)
+
 async def webapp_hook_run(production_bot, bot_token):
     logger.warning(f"webapp_hook run")
 
@@ -321,6 +346,7 @@ async def webapp_hook_run(production_bot, bot_token):
     
     app2 = web.Application()
     app2.router.add_route('GET', '/generate-au-ex', generate_audio_ex)
+    app2.router.add_route('GET', '/generate-au-ru', generate_audio_ru)
     runner2 = web.AppRunner(app2)
     await runner2.setup()
     site2 = web.TCPSite(runner2, '127.0.0.1', port=8502) 

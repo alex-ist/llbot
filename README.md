@@ -44,7 +44,8 @@ Before running LLBot, prepare:
 - an OpenAI API key;
 - a Google Cloud service account with access to the required Translation and Text-to-Speech APIs;
 - an ElevenLabs API key;
-- a Hugging Face token with access to the pronunciation model.
+- a Hugging Face token with access to the pronunciation model;
+- enough disk space for the xVibePocketTTS Russian model (about 458 MB, downloaded on first use).
 
 ## Installation
 
@@ -83,6 +84,8 @@ TELEGRAM_BOT_TOKEN=
 LINGOLINK_GOOGLE_SERVICE_ACCOUNT_JSON=
 HF_TOKEN=
 ELEVENLABS_API_KEY=
+# Optional: male_deep, female_silky, or male_authoritative
+XVIBE_VOICE=male_deep
 ```
 
 ## Mini App deployment
@@ -93,6 +96,19 @@ The backend starts local services for:
 
 - the training WebSocket on `127.0.0.1:8501`;
 - generated example audio on `127.0.0.1:8502`.
+
+Russian word translations are synthesized locally with xVibePocketTTS and cached under `data/ru/e/`.
+
+xVibePocketTTS and its RUAccent models run in a separate process, started only
+when an uncached Russian translation needs audio. Requests are serialized and
+WAV files are published atomically. The process exits after **15 minutes of
+inactivity**, measured from the end of its last request; an active synthesis is
+never interrupted by this timer. Cached audio does not start or keep the process
+alive. The next uncached request starts a new process and reloads the models.
+The worker exits when the bot stops, including an unexpected bot exit on Linux.
+Model diagnostics go to the service's stderr/journal; worker start and exit
+events are recorded in `log/ll.log`. Loading and synthesis have a separate
+10-minute response timeout, after which a stalled worker is terminated.
 
 Before deploying your own instance, replace the deployment-specific Mini App and webhook URLs in `py/run_bot.py`, and configure a reverse proxy for the static files and backend routes.
 
@@ -112,6 +128,12 @@ Run the current pronunciation-scoring tests with:
 
 ```bash
 PYTHONPATH=py python -m unittest py/test_pron_scoring.py
+```
+
+Test the synthesis process lifecycle without loading real models:
+
+```bash
+PYTHONPATH=py python -m unittest discover -s py -p 'test_xvibe.py'
 ```
 
 ## Security

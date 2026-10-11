@@ -16,4 +16,5 @@ huggingface_hub
 librosa
 torch
 transformers
+xvibe-pocket-tts @ git+https://github.com/GenVoice/xVibePocketTTS.git@d067e35829dd8fe049c63e26e20b98e8e9ff87a7
 nltk
